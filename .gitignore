@@ -1,6 +1,6 @@
 # Ignore everything
-data/
-software/
+*
+/data
 
 # Do not ignore files of the following kind...
 !*.R
@@ -10,4 +10,5 @@ software/
 !*.sh
 !*.Rmd
 
-
+# ... even if they are in subdirectories
+!*/
