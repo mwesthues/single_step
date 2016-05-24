@@ -27,3 +27,7 @@ Select equi-distant SNPs with approximately 10 SNPs per Mbp.
 
 Impute mRNAs for inbred lines without mRNA-data using BGLR and genomic kinshipp
 information.
+
+6.   [./analysis/cat_mrna_imputation_results.R](./analysis/cat_mrna_imputation_results.R)
+
+Concatenate the output from mRNA imputation for further analyses.

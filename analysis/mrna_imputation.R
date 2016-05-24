@@ -126,5 +126,5 @@ loocv_lst <- mclapply(seq_len(ncol(mrna_aug)), FUN = function(i) {
 out_nm <- paste0("Pool=", het_grp, "_Model=", hypred_model, "_VCOV=", g_method,
                  "_Iter=", niter, "_SnpFilter=", snp_filtr)
 saveRDS(loocv_lst,
-        file = paste0("./data/processed/mrna_imputation-", out_nm, ".RDS"))
+        file = paste0("./data/derived/mrna_imputation-", out_nm, ".RDS"))
 
