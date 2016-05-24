@@ -31,3 +31,8 @@ information.
 6.   [./analysis/cat_mrna_imputation_results.R](./analysis/cat_mrna_imputation_results.R)
 
 Concatenate the output from mRNA imputation for further analyses.
+
+7.   [./analysis/pheno_prediction.R](./analysis/pheno_prediction.R)
+
+Prediction of agronomic traits in maize hybrids based on mRNAs, which were
+imputed for genotypes for which only genomic data were available.
