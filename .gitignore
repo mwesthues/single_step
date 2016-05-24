@@ -1,0 +1,13 @@
+# Ignore everything
+data/
+software/
+
+# Do not ignore files of the following kind...
+!*.R
+!*.r
+!*.tex
+!*.md
+!*.sh
+!*.Rmd
+
+
