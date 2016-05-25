@@ -34,12 +34,12 @@ DT <- rbindlist(grp_lst)
 # Training set predictive ability
 DT[!is.na(y), cor(y, yhat), ]
 # GTP-IDs of genotypes without mRNAs.
-miss_mrna_geno <- DT[!is.na(y), unique(G), ]
+miss_mrna_geno <- DT[is.na(y), unique(G), ]
 # GTP-IDs of genotypes with mRNAs.
-with_mrna_geno <- DT[is.na(y), unique(G), ]
+with_mrna_geno <- DT[!is.na(y), unique(G), ]
   
 # Get the imputed mRNAs for genotypes without mRNA information only.
-yhat_DT <- DT[!is.na(y), .(G, mRNA, yhat), ]
+yhat_DT <- DT[is.na(y), .(G, mRNA, yhat), ]
 yhat_DT <- dcast.data.table(yhat_DT,
                             formula = G ~ mRNA,
                             value.var = "yhat")
