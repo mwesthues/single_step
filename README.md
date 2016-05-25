@@ -36,3 +36,7 @@ Concatenate the output from mRNA imputation for further analyses.
 
 Prediction of agronomic traits in maize hybrids based on mRNAs, which were
 imputed for genotypes for which only genomic data were available.
+
+8.   [./analysis/pheno_predability.R](./analysis/pheno_predability.R)
+
+Compute the predictive abilities from the cross-validation runs and plot them.
