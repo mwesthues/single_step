@@ -10,5 +10,8 @@ pred_ability <- DT[, .(PredAbility = cor(y, yhat)),
                    by = .(Phenotype, Predictor)]
 
 ggplot(pred_ability, aes(x = Phenotype, y = PredAbility, fill = Predictor)) +
-  geom_bar(stat = "identity") +
-  theme_pander()
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_bw() +
+  theme(legend.position = "top") +
+  xlab("Trait") +
+  ylab(bquote(r^{2}))

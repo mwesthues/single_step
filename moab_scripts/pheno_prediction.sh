@@ -11,7 +11,7 @@
 #MOAB -l pmem=4000mb
 #
 # Estimated wallclock time for job
-#MOAB -l walltime=00:01:30:00
+#MOAB -l walltime=00:00:40:00
 #
 # Job submission directory
 #MOAB -d /pfs/work2/workspace/scratch/ho_westhues-gamazon-0/gamazon
@@ -40,6 +40,9 @@
 #
 #MOAB -v VCOV=RadenII
 #
+#MOAB -v IMPUTED=yes
+#
+#MOAB -v COMPARISON=none
 ##### **********************************************************************
 ########### End MOAB header ##########
 

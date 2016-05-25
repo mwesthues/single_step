@@ -12,3 +12,8 @@
 
 # ... even if they are in subdirectories
 !*/
+
+# However, ignore all files, which start with the following identifier: 
+input_*
+
+
