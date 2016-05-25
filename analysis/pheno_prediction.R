@@ -9,7 +9,7 @@ source("./analysis/snp_functions.R")
 if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "2")
   Sys.setenv("TRAIT" = "GTM")
-  Sys.setenv("PREDICTOR" = "mrna")
+  Sys.setenv("PREDICTOR" = "snp")
   Sys.setenv("ITER" = "50000")
   Sys.setenv("MODEL" = "BRR_Kernel")
   Sys.setenv("SNP_FILTER" = "FALSE")
@@ -30,7 +30,7 @@ if (grepl("Bayes", x = hypred_model)) {
   hypred_model <- hypred_model
 } else bglr_model <- "BRR"
 
-poss_data <- c("mrna", "roots")
+poss_data <- c("mrna", "roots", "snp")
 if (!all(predictor %in% poss_data)) {
   stop("Your selection is not part of the set of predictors")
 }
@@ -50,6 +50,15 @@ numParam <- nrow(param_df)
 if (predictor %in% "mrna") {
   mrna <- readRDS("./data/processed/imputed_mrna.RDS")
 }
+
+if (predictor %in% "snp") {
+  snp <- readRDS("./data/processed/snp_mat.RDS")
+  if (isTRUE(snp_filtr)) {
+    equi_snp_nms <- readRDS("./data/processed/equidistant_snps.RDS")
+    snp <- snp[, match(equi_snp_nms, colnames(snp))]
+  }
+}
+
 
 # Agronomic data
 pheno_fls <- list.files("./data/processed/", 
@@ -75,6 +84,7 @@ Pheno <- rbindlist(y_lst)
 
 
 ## --------------------------------------------------------------------------
+# Collect all existing endophenotypic feature matrices in one list.
 endo_lst <- list()
 for (i in seq_along(predictor)) {
   pred_nm <- predictor[i]
@@ -88,8 +98,10 @@ names(endo_lst) <- predictor
 # Get the intersect of genotypes for which all selected endophenotypic data are
 # available.
 comgeno <- Reduce("intersect", lapply(endo_lst, FUN = rownames))
-mrna <- mrna[match(comgeno, rownames(mrna)), ]
-# Collect all existing endophenotypic feature matrices in one list.
+endo_lst[] <- lapply(seq_along(endo_lst), FUN = function(i) {
+  dat <- endo_lst[[i]]
+  dat[match(comgeno, rownames(dat)), ]
+})
 
 ## ---------------------------------------------------------------------------
 # Ensure data congruency 
@@ -134,7 +146,7 @@ kernels <- lapply(seq_along(endo_lst), FUN = function(i) {
   # subsequent computations and it equivalent to the results from Bayesian
   # Ridge Regression and GBLUP, respectively, if the number of iterations is
   # sufficiently high.
-  if (isTRUE(pred_nm %in% c("mrna", "roots"))) {
+  if (isTRUE(pred_nm %in% c("mrna", "roots", "snp"))) {
     MG_flint <- gmat[[get("g_method")]](M_flint, lambda = 0.01)
     MG_dent <- gmat[[get("g_method")]](M_dent, lambda = 0.01)
     # generate the design matrices from the kernels (this is (MM')^0.5)
