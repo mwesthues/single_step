@@ -8,11 +8,32 @@ pacman::p_load("BGLR", "parallel", "data.table", "matrixStats",
 source("./analysis/snp_functions.R")
 
 # BGLR-parameters
+if (isTRUE(interactive())) {
+  Sys.setenv("MOAB_PROCCOUNT" = "2")
+  Sys.setenv("ITER" = "50000")
+  Sys.setenv("REL_SOURCE" = "snp")
+  Sys.setenv("PREDICTOR" = "roots")
+  Sys.setenv("MODEL" = "BRR_Kernel")
+  Sys.setenv("SNP_FILTER" = "FALSE")
+  Sys.setenv("VCOV" = "RadenII")
+  Sys.setenv("POOL" = "Dent")
+}
+
+# Number of cores to use for computations.
 use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
+# number of MCMC iterations in BGLR
 niter <- as.integer(Sys.getenv("ITER"))
+# Relationship source (pedigree, snp)
+rel_nm <- as.character(Sys.getenv("REL_SOURCE"))
+# which predictor shall be imputed?
+predictor <- as.character(Sys.getenv("PREDICTOR"))
+# algorithms to use (e.g. "BRR_Kernel" for GBLUP, others: BRR, BayesC, etc.)
 hypred_model <- as.character(Sys.getenv("MODEL"))
+# Shall the full set of quality-checked SNPs be used for the prediction?
 snp_filtr <- as.logical(Sys.getenv("SNP_FILTER"))
+# kernel method (only for MODEL=BRR_Kernel), options: Zhang, RadenI, RadenII
 g_method <- as.character(Sys.getenv("VCOV"))
+# for which heterotic group shall the computation be carried out?
 het_grp <- as.character(Sys.getenv("POOL"))
 burnin <- niter / 2
 thinning <- round(niter / 1000)
@@ -21,66 +42,68 @@ if (grepl("Bayes", x = hypred_model)) {
 } else bglr_model <- "BRR"
 
 
-if (isTRUE(interactive())) {
-  use_cores <- 3
-  niter <- 5e+04
-  snp_filtr <- FALSE
-  het_grp <- "Dent"
-  burnin <- niter / 2
-  thinning <- 5
-  hypred_model <- "BRR_Kernel"
-  bglr_model <- "BRR"
-  g_method <- "RadenII"
-}
-
 
 ## --------------------------------------------------------------------------
-# mRNA data
-mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
-mrna <- t(as.matrix(mrna))
- 
-# SNP data
-snp <- readRDS("./data/processed/snp_mat.RDS")
-if (isTRUE(snp_filtr)) {
-  equi_snp <- readRDS("./data/processed/equidistant_snps.RDS")
-  snp <- snp[, match(equi_snp, colnames(snp))]
+#  endophenotypic data
+if (predictor == "mrna") {
+  endo <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+  endo <- t(as.matrix(endo))
+} else if (predictor == "roots") {
+  endo <- readRDS("./data/processed/mpi_imputed_root_blues.RDS")
+  # Rename genotypes in the root data set from their pretty names to their
+  # GTP-IDs.
+
 }
-endo_lst <- list(mrna = mrna, snp = snp)
+ 
+# relationship information source
+if (rel_nm == "snp") {
+  rel_src <- readRDS("./data/processed/snp_mat.RDS")
+  if (isTRUE(snp_filtr)) {
+    equi_snp <- readRDS("./data/processed/equidistant_snps.RDS")
+    rel_src <- rel_src[, match(equi_snp, colnames(rel_src))]
+  }
+} else if (rel_nm == "ped") {
+  rel_src <- readRDS("./data/processed/ped-datafull-GTP.RDS") 
+  rel_src <- as.matrix(rel_src) * 2
+  rel_src[is.na(rel_src)] <- 0
+}
+
+endo_lst <- list(endo = endo, rel_src = rel_src)
 
 # Collect all existing endophenotypic feature matrices in one list.
 # Get the intersect of genotypes for which all selected endophenotypic data are
 # available.
 comgeno <- Reduce("intersect", lapply(endo_lst, FUN = rownames))
-mrna <- mrna[match(comgeno, rownames(mrna)), ]
+endo <- endo[match(comgeno, rownames(endo)), ]
 
 # For each genotyped inbred line without mRNA data, add a new row to the mRNA
 # matrix and fill it with missing values for each mRNA.
 # The missing values are supposed to be imputed based on BGLR later on.
-mrna_na_nms <- rownames(snp)[!rownames(snp) %in% rownames(mrna)]
-mrna_na_mat <- matrix(NA_real_, 
-                      nrow = length(mrna_na_nms),
-                      ncol = ncol(mrna),
-                      dimnames = list(mrna_na_nms,
-                                      colnames(mrna)))
-mrna_aug <- rbind(mrna, mrna_na_mat)
-mrna_aug <- mrna_aug[match(rownames(snp), rownames(mrna_aug)), ]
+endo_na_nms <- rownames(rel_src)[!rownames(rel_src) %in% rownames(endo)]
+endo_na_mat <- matrix(NA_real_, 
+                      nrow = length(endo_na_nms),
+                      ncol = ncol(endo),
+                      dimnames = list(endo_na_nms,
+                                      colnames(endo)))
+endo_aug <- rbind(endo, endo_na_mat)
+endo_aug <- endo_aug[match(rownames(rel_src), rownames(endo_aug)), ]
 
 
 # Load GTP_IDs of Dent and Flint lines, respectively.
 # Select Dent and Flint lines for which both, mRNA and SNP data, are available.
 if (het_grp == "Dent") {
   dent <- readRDS("./data/processed/dent_nms.RDS")
-  comdent <- dent[dent %in% rownames(snp)]
+  comdent <- dent[dent %in% rownames(rel_src)]
   inbred <- comdent 
 } else if (het_grp == "Flint") {
   flint <- readRDS("./data/processed/flint_nms.RDS")
-  comflint <- flint[flint %in% rownames(snp)]
+  comflint <- flint[flint %in% rownames(rel_src)]
   inbred <- comflint
 }
-mrna_aug <- mrna_aug[match(inbred, rownames(mrna_aug)), ]
+endo_aug <- endo_aug[match(inbred, rownames(endo_aug)), ]
 # Build kernels from the raw features for GBLUP.
-M_inbred <- snp[match(inbred, rownames(snp)), ]
-stopifnot(identical(rownames(mrna_aug), rownames(M_inbred)))
+M_inbred <- rel_src[match(inbred, rownames(rel_src)), ]
+stopifnot(identical(rownames(endo_aug), rownames(M_inbred)))
 M_inbred <- M_inbred[, colVars(M_inbred) != 0]
 MG_inbred <- gmat[[g_method]](M_inbred, lambda = 0.01)
 ZL_inbred <- t(chol(MG_inbred))
@@ -101,15 +124,15 @@ ETA <- list(ETA)
 
 ## ---------------------------------------------------------------------------
 ### Run BGLR
-loocv_lst <- mclapply(seq_len(ncol(mrna_aug)), FUN = function(i) {
-  mrna_nm <- colnames(mrna_aug)[i]
+loocv_lst <- mclapply(seq_len(ncol(endo_aug)), FUN = function(i) {
+  endo_nm <- colnames(endo_aug)[i]
   res <- list(mRNA = NA_character_,
               y = NA_complex_,
               yhat = NA_complex_)
 	# make the training set. Exclude any hybrid that has either parent of the 
   # test sample
 	# run the model (GBLUP)
-  mod_BGLR <- BGLR(y = mrna_aug[, mrna_nm],
+  mod_BGLR <- BGLR(y = endo_aug[, endo_nm],
                    ETA = ETA,
                    nIter = niter,
                    burnIn = burnin,
@@ -117,14 +140,15 @@ loocv_lst <- mclapply(seq_len(ncol(mrna_aug)), FUN = function(i) {
                    verbose = FALSE)
               
 	# store results
-  res$mRNA <- mrna_nm
-  res$y <- mrna_aug[, mrna_nm]
+  res$mRNA <- endo_nm
+  res$y <- endo_aug[, endo_nm]
   res$yhat <- mod_BGLR$yHat
   res
 }, mc.cores = use_cores)
 
 out_nm <- paste0("Pool=", het_grp, "_Model=", hypred_model, "_VCOV=", g_method,
-                 "_Iter=", niter, "_SnpFilter=", snp_filtr)
+                 "_Predictor=", predictor, "_Iter=", niter, 
+                 "_SnpFilter=", snp_filtr, "_RelSource=", rel_nm)
 saveRDS(loocv_lst,
-        file = paste0("./data/derived/mrna_imputation-", out_nm, ".RDS"))
+        file = paste0("./data/derived/endo_imputation-", out_nm, ".RDS"))
 
