@@ -57,10 +57,19 @@ echo "Number of cores allocated to job:     $MOAB_PROCCOUNT"
 module load math/R/3.2.1
 
 # Echo input variables
+echo "Trait=${TRAIT}\
+      Predictor=${PREDICTOR}\
+      Iter=${ITER}\
+      Model=${MODEL}\
+      SNP_Filter=${SNP_FILTER}\
+      Imputed=${IMPUTED}\
+      Comparison=${COMPARISON}"
+
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/pheno_prediction.R\
-           ${TRAIT} ${PREDICTOR} ${ITER} ${MODEL} ${SNP_FILTER}"
+           ${TRAIT} ${PREDICTOR} ${ITER} ${MODEL} ${SNP_FILTER} ${IMPUTED}\
+           ${COMPARISON}"
 
 # Start program
 echo $startprog
