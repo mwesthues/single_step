@@ -21,7 +21,9 @@ pheno_dt <- rbindlist(pheno_lst)
 pheno_dt <- pheno_dt[dent.GTP != 0 & flint.GTP != 0, ]
 # Names of parental inbred lines.
 dent <- pheno_dt[, unique(dent.GTP), ]
+saveRDS(dent, compress = FALSE, "./data/processed/dent_nms.RDS")
 flint <- pheno_dt[, unique(flint.GTP), ]
+saveRDS(flint, compress = FALSE, "./data/processed/flint_nms.RDS")
 
 
 # MARKER MATRIX PREPARATION -----------------------------------------------
