@@ -11,7 +11,7 @@
 #MOAB -l pmem=3500mb
 #
 # Estimated wallclock time for job
-#MOAB -l walltime=00:07:00:00
+#MOAB -l walltime=00:02:00:00
 #
 # Job submission directory
 #MOAB -d /pfs/work2/workspace/scratch/ho_westhues-gamazon-0/gamazon
@@ -32,6 +32,10 @@
 ### Add some parameters that will be used inside the R script.
 #
 #MOAB -v ITER=50000
+#
+#MOAB -v REL_SOURCE=snp
+#
+#MOAB -v PREDICTOR=mrna
 #
 #MOAB -v MODEL=BRR_Kernel
 #
@@ -56,6 +60,8 @@ module load math/R/3.2.1
 
 # Echo input variables
 echo "Iter=${ITER} \
+      RelSource=${REL_SOURCE}\
+      Predictor=${PREDICTOR}\
       Model=${MODEL}\
       SNP_FILTER=${SNP_FILTER}\
       VCOV=${VCOV}\
@@ -63,7 +69,7 @@ echo "Iter=${ITER} \
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/mrna_imputation.R\
-           ${ITER} ${MODEL} ${SNP_FILTER} ${VCOV} ${POOL}"
+           ${ITER} ${REL_SOURCE} ${PREDICTOR} ${MODEL} ${SNP_FILTER} ${VCOV} ${POOL}"
 
 # Start program
 echo $startprog

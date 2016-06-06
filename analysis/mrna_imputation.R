@@ -52,7 +52,16 @@ if (predictor == "mrna") {
   endo <- readRDS("./data/processed/mpi_imputed_root_blues.RDS")
   # Rename genotypes in the root data set from their pretty names to their
   # GTP-IDs.
-
+  smp_conv <- data.frame(fread("./data/processed/uhoh_smp_id_P235-update.txt",
+                               sep = "\t"))
+  geno <- unique(rownames(endo))
+  geno <- geno[grep("x|Check", x = geno, invert = TRUE)]
+  geno <- geno[!is.na(smp_conv[match(geno, smp_conv$name.pretty), "id.GTP"])]
+  endo <- endo[match(geno, rownames(endo)), ]
+  gtp_id <- smp_conv[match(geno, smp_conv$name.pretty), "id.GTP"]
+  geno_match <- data.frame(Pretty_Name = geno, GTP_ID = gtp_id)
+  rownames(endo) <- geno_match[match(rownames(endo), geno_match$Pretty_Name),
+                               "GTP_ID"]
 }
  
 # relationship information source

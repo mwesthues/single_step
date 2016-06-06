@@ -7,6 +7,9 @@ from "silomais_pred2015/31_mRNA_BLUE/_results"
 # SNP data (raw)
 from "silomais_pred2015/51_SNP_qc/_input"
 
+# SNP info
+from "silomais_pred2015/51_SNP_qc/_input"
+
 # root metabolite data (BLUEs, imputed)
 from "silomais_pred2015/23_root_metab_BLUE/_results"
 
