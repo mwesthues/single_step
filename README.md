@@ -23,20 +23,26 @@ SNP-coding based on minor-allele frequencies.
 
 Select equi-distant SNPs with approximately 10 SNPs per Mbp.
 
-5.   [./analysis/mrna_imputation.R](./analysis/mrna_imputation.R)
+5.   [./analysis/legarra_kernels.R](./legarra_kernels.R)
 
-Impute mRNAs for inbred lines without mRNA-data using BGLR and genomic kinshipp
-information.
+Generate kernels according to equation (4) in Legarra et al. (2009)
 
-6.   [./analysis/cat_mrna_imputation_results.R](./analysis/cat_mrna_imputation_results.R)
+6.   [./analysis/CV1000_Sampling.R](./analysis/CV1000_Sampling.R)
 
-Concatenate the output from mRNA imputation for further analyses.
+Generate a CV1000 (1,000 rounds of cross validation) scheme.
 
-7.   [./analysis/pheno_prediction.R](./analysis/pheno_prediction.R)
+7.   [./analysis/SS-BLUP.R](./analysis/SS-BLUP.R)
+
+Run single step regression BLUP.
+
+
+
+#### Previous scripts
+a.   [./analysis/pheno_prediction.R](./analysis/pheno_prediction.R)
 
 Prediction of agronomic traits in maize hybrids based on mRNAs, which were
 imputed for genotypes for which only genomic data were available.
 
-8.   [./analysis/pheno_predability.R](./analysis/pheno_predability.R)
+b.   [./analysis/pheno_predability.R](./analysis/pheno_predability.R)
 
 Compute the predictive abilities from the cross-validation runs and plot them.
