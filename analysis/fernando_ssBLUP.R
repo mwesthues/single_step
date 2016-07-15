@@ -19,11 +19,9 @@ source("./analysis/snp_functions.R")
 
 # COLLECT ARGUMENTS -------------------------------------------------------
 if (isTRUE(interactive())) {
-  Sys.setenv("MOAB_PROCCOUNT" = "2")
-  Sys.setenv("CV_RUNS" = "2")
-  Sys.setenv("CV_SCHEME" = "custom")
+  Sys.setenv("MOAB_PROCCOUNT" = "4")
   Sys.setenv("TRAIT" = "GTM")
-  Sys.setenv("ITER" = "50000")
+  Sys.setenv("ITER" = "10000")
   Sys.setenv("MODEL" = "BRR")
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
@@ -31,8 +29,6 @@ if (isTRUE(interactive())) {
 }
 
 use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
-cv_runs <- as.character(Sys.getenv("CV_RUNS"))
-user_cv_scheme <- as.character(Sys.getenv("CV_SCHEME"))
 init_traits <- as.character(Sys.getenv("TRAIT"))
 init_iter <- as.integer(Sys.getenv("ITER"))
 hypred_model <- as.character(Sys.getenv("MODEL"))
@@ -40,36 +36,6 @@ g_method <- as.character(Sys.getenv("VCOV"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.numeric(Sys.getenv("PRIOR_PI_COUNT"))
 
-
-## CV scheme
-# Load the list with test parameters, which was used to estimate the
-# computation time.
-if (length(user_cv_scheme) != 1 || any(grepl(",", x = user_cv_scheme))) {
-  stop("Multiple CV-schemes have to be specified via 'cust_args'!")
-}
-if (user_cv_scheme == "custom") {
-  cust_cv <- readRDS("./data/input/cust_cv.RDS")
-  cv_scheme <- cust_cv
-  expect_gte(length(cv_scheme), expected = 1)
-} else if (user_cv_scheme != "custom") {
-  cv_scheme <- user_cv_scheme
-} 
-cat(cv_scheme, sep = "\n")
-
-
-
-## Number of cross-validation runs
-# In order to speed up computations, the entire process can be split up into
-# multiple subprocesses. Hereto, the possibility of specifying a range for the
-# cross-validation runs was enabled. The range must consist of two numbers that
-# are separated through "-".
-if (isTRUE(unlist(lapply(gregexpr("-", cv_runs), "[[", 1)) != -1)) {
-  cv_start <- as.integer(unlist(strsplit(cv_runs, split = "-"))[1])
-  cv_end <- as.integer(unlist(strsplit(cv_runs, split = "-"))[2])
-  use_runs <- seq(from = cv_start, to = cv_end)
-} else {
-  use_runs <- seq_len(cv_runs)
-}
 
 ## Trait selection
 poss_traits <- c("GTM", "GTS", "ADL", "FETT", "RFA", "RPR", "STA", "XZ", "ADF")
@@ -89,10 +55,8 @@ if (!g_method %in% c("RadenI", "RadenII", "Zhang", "none")) {
 }
 
 
-cat(paste0("CV.Runs=", cv_runs, "\n"),
-    paste0("Trait=", init_traits, "\n"),
+cat(paste0("Trait=", init_traits, "\n"),
     paste0("Iter=", init_iter, "\n"),
-    paste0("CV.Scheme=", cv_scheme, "\n"),
     paste0("Model=", hypred_model, "\n"),
     paste0("VCOV=", g_method, "\n"),
     paste0("Pi=", Pi, "\n"),
@@ -103,17 +67,10 @@ cat(paste0("CV.Runs=", cv_runs, "\n"),
 # Record the start time of the process.
 start_time <- Sys.time()
 
-# Load the cross-validation scheme
-cv_lst <- lapply(seq_along(cv_scheme), FUN = function(i) {
-  readRDS(paste0("./data/processed/", cv_scheme[i]))
-})
-names(cv_lst) <- cv_scheme
-
 # Combine all factor levels and store the values in a data frame so that every
 # possible computation has its own row.
 param_df <- expand.grid(Phenotype = init_traits, 
-                        Iter = init_iter, 
-                        CV_Scheme = cv_scheme)
+                        Iter = init_iter)
 VerboseModel <- FALSE
 
 for (i in 1:ncol(param_df)) param_df[, i] <- as.character(param_df[, i])
@@ -183,8 +140,6 @@ nm2_dent <- nm2[nm2 %in% comdent]
 nm2_flint <- nm2[nm2 %in% comflint]
 # Names of genotypes for which transcriptomic records are missing.
 nm1 <- setdiff(snp_nms, nm2)
-nm1_dent <- nm1[nm1 %in% comdent]
-nm1_flint <- nm1[nm1 %in% comflint]
 
 
 
@@ -192,53 +147,67 @@ nm1_flint <- nm1[nm1 %in% comflint]
 hetgrps <- c("Dent", "Flint")
 ETA <- lapply(hetgrps, FUN = function(hetgrp) {
   if (hetgrp == "Dent") {
-    snp <- snp[match(comdent, rownames(snp)), ]
-    nm1 <- nm1_dent
-    nm2 <- nm2_dent
-    Z1 <- sparse.model.matrix(~-1 + factor(dent[dent %in% nm1]),
-                              drop.unused.levels = FALSE)
-    Z2 <- sparse.model.matrix(~-1 + factor(dent[dent %in% nm2]),
-                              drop.unused.levels = FALSE)
-    dent_nm1 <- as.factor(as.character(ifelse(dent %in% nm1, yes = 1, no = 0)))
-    X <- sparse.model.matrix(~-1 + dent_nm1, drop.unused.levels = FALSE)
+    geno <- dent
   } else if (hetgrp == "Flint") {
-    snp <- snp[match(comflint, rownames(snp)), ]
-    nm1 <- nm1_flint
-    nm2 <- nm2_flint
-    Z1 <- sparse.model.matrix(~-1 + factor(flint[flint%in% nm1]),
-                              drop.unused.levels = FALSE)
-    Z2 <- sparse.model.matrix(~-1 + factor(flint[flint %in% nm2]),
-                              drop.unused.levels = FALSE)
-    flint_nm1 <- as.factor(as.character(ifelse(flint %in% nm1,
-                                               yes = 1, no = 0)))
-    X <- sparse.model.matrix(~-1 + flint_nm1, drop.unused.levels = FALSE)
-
+    geno <- flint
   }
+  grp_nm1 <- nm1[nm1 %in% geno]
+  grp_nm2 <- nm2[nm2 %in% geno]
+  geno1 <- geno[geno %in% nm1]
+  geno2 <- geno[geno %in% nm2]
+  snp <- snp[match(unique(geno), rownames(snp)), ]
+  Z1 <- sparse.model.matrix(~-1 + factor(geno1),
+                            drop.unused.levels = FALSE)
+  colnames(Z1) <- gsub("factor\\(geno1\\)", replacement = "", x = colnames(Z1))
+  Z1 <- Z1[, match(grp_nm1, colnames(Z1))]
+  expect_identical(colnames(Z1), expected = grp_nm1)
+  rownames(Z1) <- geno1
+  Z2 <- sparse.model.matrix(~-1 + factor(geno2),
+                            drop.unused.levels = FALSE)
+  colnames(Z2) <- gsub("factor\\(geno2\\)", replacement = "", x = colnames(Z2))
+  Z2 <- Z2[, match(grp_nm2, colnames(Z2))]
+  expect_identical(colnames(Z2), expected = grp_nm2)
+  rownames(Z2) <- geno2
+  geno_fct <- as.factor(as.character(ifelse(geno %in% geno1, yes = 1, no = 0)))
+  X <- sparse.model.matrix(~-1 + geno_fct, drop.unused.levels = FALSE)
+  rownames(X) <- geno
+
   M2 <- tcrossprod(mrna) / ncol(mrna)
-  M2 <- M2[nm2, nm2]
+  M2 <- M2[grp_nm2, grp_nm2]
   snp <- snp[, colVars(snp) != 0]
   A <- gmat[[get("g_method")]](snp, lambda = 0.01)
-  A11 <- A[nm1, nm1]
-  A12 <- A[nm1, nm2]
-  A21 <- A[nm2, nm1]
-  A22 <- A[nm2, nm2]
+  A11 <- A[grp_nm1, grp_nm1]
+  A12 <- A[grp_nm1, grp_nm2]
+  A21 <- A[grp_nm2, grp_nm1]
+  A22 <- A[grp_nm2, grp_nm2]
   Ainv <- t(chol(A))
-  A_up11 <- Ainv[nm1, nm1]
-  A_up12 <- Ainv[nm1, nm2]
+  A_up11 <- Ainv[grp_nm1, grp_nm1]
+  A_up12 <- Ainv[grp_nm1, grp_nm2]
   # Eq.21
-  M1 <- solve(A_up11, -A_up12 %*% M2)
+  M1 <- A12 %*% solve(A22) %*% M2
+  expect_identical(rownames(M1), grp_nm1)
+  expect_identical(colnames(M1), grp_nm2)
   J2 <- matrix(-1, nrow = ncol(A12), ncol = 1)
   # Eq.22
-  J1 <- solve(A_up11, -A_up12 %*% J2)
+  J1 <- A12 %*% solve(A22) %*% J2
+  expect_identical(rownames(J1), grp_nm1)
   # Eq.10
   epsilon <- A11 - A12 %*% solve(A22) %*% A21
+  expect_identical(rownames(epsilon), grp_nm1)
+  expect_identical(colnames(epsilon), grp_nm1)
   # Eq.20
   W1 <- Z1 %*% M1
   W2 <- Z2 %*% M2
   W <- as.matrix(rbind(W1, W2))
+  W <- W[match(geno, rownames(W)), ]
+  expect_identical(rownames(W), geno)
   U <- as.matrix(rbind(Z1 %*% epsilon, 
-                       matrix(0, nrow = nrow(Z2), ncol = ncol(Z1))))
+                       matrix(0, nrow = nrow(Z2), ncol = ncol(Z1),
+                              dimnames = list(rownames(Z2), colnames(Z1)))))
+  U <- U[match(geno, rownames(U)), ]
+  expect_identical(rownames(U), geno)
   X_prime <- as.matrix(cbind(X, rbind(Z1 %*% J1, Z2 %*% J2)))
+  expect_identical(rownames(X_prime), geno)
   list(X = X_prime, W = W, U = U)
 })
 ETA <- unlist(ETA, recursive = FALSE)
@@ -289,8 +258,7 @@ for (i in seq_len(nrow(param_df))) {
   full_lst
 }
 DT <- rbindlist(full_lst)
-out_nm <- paste0("Pred=", predictor, "_Trait=", init_traits,
-                 "_Model=", hypred_model, "_VCOV=", g_method, "_Iter=", 
-                 niter, "_SnpFilter=", snp_filtr, "_Imputed=", imputed,
-                 "_Comparison=", comparison)
-
+out_nm <- paste0("Trait=", init_traits, "_Iter=", init_iter,
+                 "_Model=", hypred_model, "_VCOV=", g_method, 
+                 "_Pi=", Pi, "_PriorPiCount=", PriorPiCount)
+saveRDS(DT, file = paste0("./data/derived/ssBLUP/", out_nm, ".RDS"))
