@@ -1,134 +1,296 @@
-id1 <- c(3, 5, 6)
-id2 <- c(1, 2, 4)
-Ainv <- matrix(c(1.5, 0, -1, 0.5, 0, 0,
-                 0, 2, 0, -1, -1, 0,
-                 -1, 0, 2, -1, 0, 0, 
-                 0.5, -1, -1, 2.5, 1, -1,
-                 0, -1, 0, 1, 2, -1,
-                 0, 0, 0, -1, -1, 2),
-               nrow = 6, ncol = 6,
-               dimnames = list(c(id1, id2), c(id1, id2)))
-A_up11 <- Ainv[id1, id1]
-A_up22 <- Ainv[id2, id2]
-A_up12 <- Ainv[id1, id2]
-M2 <- matrix(c(1, 2, 1,
-               2, 1, 1,
-               1, 1, 0, 
-               1, 1, 1, 
-               0, 2, 1,
-               0, 0, 0,
-               1, 1, 2,
-               2, 1, 1, 
-               1, 1, 2,
-               0, 1, 1),
-             nrow = 3, ncol = 10,
-             dimnames = list(id2,
-                             paste0("m", seq_len(10))))
-M2 <- scale(M2, center = TRUE, scale = FALSE)
+# Single-step prediction of hybrid performance based on Fernando et al.: A
+# class of Bayesian methods to combine large numbers of genotyped and
+# non-genotyped animals for whole-genome analyses. Genetics Selection Evolution
+# 2014 46:50
+#
+# The approach will be adjusted in a sense that we do have complete genomic
+# instead of complete pedigree data (i.e. A -> G) and that we have incomplete
+# transcriptomic instead of incomplete genomic data (i.e. G -> T).
+#
+#
+#
 
-Pheno <- data.frame(Individual = seq_len(6),
-                    y = c(0, 1.25, -0.34, 1.3, 1.27, 0.46),
-                    stringsAsFactors = FALSE)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("methods", "BGLR", "Matrix", "parallel", "data.table", "plyr",
+               "reshape2", "matrixStats", "testthat")
 
-# Equation 21
-M1 <- solve(A_up11, -A_up12 %*% M2)
+# Load functions (including Zhang, RadenI and RadenII as part of 'gmat'.
+source("./analysis/snp_functions.R")
 
-# Equation 22
-J2 <- matrix(rep(-1, times = ncol(A_up12)), nrow = ncol(A_up12), ncol = 1)
-J1 <- solve(A_up11, -A_up12 %*% J2)
+# COLLECT ARGUMENTS -------------------------------------------------------
+if (isTRUE(interactive())) {
+  Sys.setenv("MOAB_PROCCOUNT" = "2")
+  Sys.setenv("CV_RUNS" = "2")
+  Sys.setenv("CV_SCHEME" = "custom")
+  Sys.setenv("TRAIT" = "GTM")
+  Sys.setenv("ITER" = "50000")
+  Sys.setenv("MODEL" = "BRR")
+  Sys.setenv("VCOV" = "RadenII")
+  Sys.setenv("PI" = "0.5")
+  Sys.setenv("PRIOR_PI_COUNT" = "10")
+}
 
-
-# --- Equation 20
-# y
-y1 <- Pheno[Pheno$Individual %in% id1, "y"]
-y2 <- Pheno[Pheno$Individual %in% id2, "y"]
-y <- c(y1, y2)
-X1 <- matrix(1, nrow = length(id1), ncol = 1)
-X1_prime <- cbind(X1, J1)
-X2 <- matrix(1, nrow = length(id2), ncol = 1)
-X2_prime <- cbind(X2, J2)
-X_prime <- rbind(X1_prime, X2_prime)
-Z1 <- diag(1, nrow = length(id1), ncol = length(id1))
-Z2 <- diag(1, nrow = length(id2), ncol = length(id2))
-W1 <- Z1 %*% M1
-W2 <- Z2 %*% M2
-W <- rbind(W1, W2)
-U <- rbind(Z1, matrix(0, nrow = length(id2), ncol = ncol(Z1)))
+use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
+cv_runs <- as.character(Sys.getenv("CV_RUNS"))
+user_cv_scheme <- as.character(Sys.getenv("CV_SCHEME"))
+init_traits <- as.character(Sys.getenv("TRAIT"))
+init_iter <- as.integer(Sys.getenv("ITER"))
+hypred_model <- as.character(Sys.getenv("MODEL"))
+g_method <- as.character(Sys.getenv("VCOV"))
+Pi <- as.numeric(Sys.getenv("PI"))
+PriorPiCount <- as.numeric(Sys.getenv("PRIOR_PI_COUNT"))
 
 
-# --- Equation 23
-sigma2_g <- 0.2
-sigma2_a <- sigma2_g / 10
-sigma2_e <- 9 * sigma2_g
-# Left hand side
-lhs1 <- cbind(crossprod(X_prime), 
-              crossprod(X_prime, W),
-              crossprod(X1_prime, Z1))
-lhs2 <- cbind(crossprod(W, X_prime),
-              crossprod(W) + diag(1, nrow = ncol(W), 
-                                  ncol = ncol(W)) * sigma2_e / sigma2_a,
-              crossprod(W1, Z1))
-lhs3 <- cbind(crossprod(Z1, X1_prime),
-              crossprod(Z1, W1),
-              crossprod(Z1) + A_up11 * sigma2_e / sigma2_g)
-lhs <- rbind(lhs1, lhs2, lhs3)
-
-# Right hand side
-rhs <- rbind(crossprod(X_prime, y),
-             crossprod(W, y),
-             crossprod(Z1, y1))
-c(solve(lhs, rhs))
+## CV scheme
+# Load the list with test parameters, which was used to estimate the
+# computation time.
+if (length(user_cv_scheme) != 1 || any(grepl(",", x = user_cv_scheme))) {
+  stop("Multiple CV-schemes have to be specified via 'cust_args'!")
+}
+if (user_cv_scheme == "custom") {
+  cust_cv <- readRDS("./data/input/cust_cv.RDS")
+  cv_scheme <- cust_cv
+  expect_gte(length(cv_scheme), expected = 1)
+} else if (user_cv_scheme != "custom") {
+  cv_scheme <- user_cv_scheme
+} 
+cat(cv_scheme, sep = "\n")
 
 
-# -- Equation 32
-P <- diag(1, nrow = nrow(Z1), ncol = ncol(Z1)) - 
-  Z1 %*% solve(crossprod(Z1) + A_up11 * sigma2_e / sigma2_g) %*% t(Z1)
-lhs11 <- crossprod(X1_prime, P) %*% X1_prime + crossprod(X2_prime)
-lhs12 <- crossprod(X1_prime, P) %*% W1 + crossprod(X2_prime, W2)
-lhs21 <- crossprod(W1, P) %*% X1_prime + crossprod(W2, X2_prime)
-lhs22 <- crossprod(W1, P) %*% W1 + crossprod(W2) + 
-  diag(1, nrow = ncol(W1), ncol = ncol(W1)) * sigma2_e / sigma2_a
 
-rhs1 <- crossprod(X1_prime, P) %*% y1 + crossprod(X2_prime, y2)
-rhs2 <- crossprod(W1, P) %*% y1 + crossprod(W2, y2)
-solve(rbind(cbind(lhs11, lhs12), cbind(lhs21, lhs22)),
-      rbind(rhs1, rhs2))
+## Number of cross-validation runs
+# In order to speed up computations, the entire process can be split up into
+# multiple subprocesses. Hereto, the possibility of specifying a range for the
+# cross-validation runs was enabled. The range must consist of two numbers that
+# are separated through "-".
+if (isTRUE(unlist(lapply(gregexpr("-", cv_runs), "[[", 1)) != -1)) {
+  cv_start <- as.integer(unlist(strsplit(cv_runs, split = "-"))[1])
+  cv_end <- as.integer(unlist(strsplit(cv_runs, split = "-"))[2])
+  use_runs <- seq(from = cv_start, to = cv_end)
+} else {
+  use_runs <- seq_len(cv_runs)
+}
+
+## Trait selection
+poss_traits <- c("GTM", "GTS", "ADL", "FETT", "RFA", "RPR", "STA", "XZ", "ADF")
+if (!all(init_traits %in% poss_traits)) {
+  stop("The selected trait does not exist")
+}
+
+## Hybrid prediction model
+if (!hypred_model %in% c("BRR", "BRR_Kernel", "BayesB", "BayesC")) {
+  stop("Choose 'BRR', 'BRR_Kernel', 'BayesB', or 'BayesC' as your model")
+}
+
+# Specify the method with which to calculate the variance covariance matrix of
+# the features.
+if (!g_method %in% c("RadenI", "RadenII", "Zhang", "none")) {
+  stop("VCOV method must be either 'RadenI', 'RadenII', 'none' or 'Zhang'")
+}
 
 
-# ---------------------------------------------------------------------------
-pacman::p_load("cpgen")
-id <- seq_len(6)
-sire <- c(rep(NA, times = 3), rep(1, times = 3))
-dam <- c(rep(NA, times = 3), 2, 2, 3)
-y <- c(NA_real_, 1.25, -0.34, 1.3, 1.27, 0.46)
-dat <- data.frame(id = id, sire = sire, dam = dam, y = y)
-M <- matrix(c(1, 2, 1,
-              2, 1, 1,
-              1, 1, 0, 
-              1, 1, 1, 
-              0, 2, 1,
-              0, 0, 0,
-              1, 1, 2,
-              2, 1, 1, 
-              1, 1, 2,
-              0, 1, 1),
-            nrow = 3, ncol = 10)
-M.id <- seq_len(3)
-var_y <- var(y, na.rm = TRUE)
-var_e <- (10 * var_y / 21)
-var_a <- var_e
-var_m <- var_e / 10
-dfree <- 500
-par_random <- list(list(method = "ridge", scale = var_m, df = dfree),
-                   list(method = "ridge", scale = var_a, df = dfree))
-set_num_threads(1)
-mod <- cSSBR(data = dat,
-             M = M,
-             M.id = M.id,
-             par_random = par_random,
-             scale_e = var_e, 
-             df_e = dfree,
-             niter = 5e+04,
-             burnin = 3e+04)
-print(round(mod$Effect_1$posterior$estimates_mean, digits = 2))
-print(round(mod$SSBR$Breeding_Values, digits = 2))
+cat(paste0("CV.Runs=", cv_runs, "\n"),
+    paste0("Trait=", init_traits, "\n"),
+    paste0("Iter=", init_iter, "\n"),
+    paste0("CV.Scheme=", cv_scheme, "\n"),
+    paste0("Model=", hypred_model, "\n"),
+    paste0("VCOV=", g_method, "\n"),
+    paste0("Pi=", Pi, "\n"),
+    paste0("PriorPiCount=", PriorPiCount, "\n"))
+
+
+########################
+# Record the start time of the process.
+start_time <- Sys.time()
+
+# Load the cross-validation scheme
+cv_lst <- lapply(seq_along(cv_scheme), FUN = function(i) {
+  readRDS(paste0("./data/processed/", cv_scheme[i]))
+})
+names(cv_lst) <- cv_scheme
+
+# Combine all factor levels and store the values in a data frame so that every
+# possible computation has its own row.
+param_df <- expand.grid(Phenotype = init_traits, 
+                        Iter = init_iter, 
+                        CV_Scheme = cv_scheme)
+VerboseModel <- FALSE
+
+for (i in 1:ncol(param_df)) param_df[, i] <- as.character(param_df[, i])
+numParam <- nrow(param_df)
+
+
+
+## - PHENOTYPIC DATA PREPARATION -------------------------------------------
+pheno_fls <- list.files("./data/processed/", 
+                        pattern = "pheno_BLUE")
+y_lst <- lapply(seq_along(pheno_fls), FUN = function(i) {
+  Pheno <- read.table(paste0("./data/processed/", pheno_fls[i]),
+                      header = TRUE)
+  trait_pos <- regexpr("(?<=stage2_)[A-Z]+(?=.txt)", text = pheno_fls[i], 
+                       perl = TRUE)
+  trait_nm <- substring(pheno_fls[i], first = trait_pos,
+                        last = trait_pos + attr(trait_pos, "match.length") - 1)
+  Pheno$trait <- trait_nm 
+  Pheno <- Pheno[Pheno$check == 0 & Pheno$dent.GTP != 0 &
+                 Pheno$flint.GTP != 0, ]
+  Pheno <- droplevels(Pheno)
+  Pheno <- Pheno[grep("DF_", as.character(Pheno$G)), ]
+  Pheno$G <- as.character(Pheno$G)
+  Pheno$dent.GTP <- as.character(Pheno$dent.GTP)
+  Pheno$flint.GTP <- as.character(Pheno$flint.GTP)
+  Pheno
+})
+Pheno <- rbindlist(y_lst)
+
+
+
+## - PREDICTOR DATA PREPARATION ---------------------------------------------
+snp <- readRDS("./data/processed/snp_mat.RDS")
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+mrna <- mrna[rownames(mrna) %in% rownames(snp), ]
+endo_lst <- list(A = snp, M = mrna)
+
+comhybrid <- Pheno[grepl(paste0(rownames(snp), collapse = "|"), 
+                         x = Pheno[, G, ]), unique(G), ]
+ptlhybrid <- Pheno[dent.GTP %in% rownames(snp) & flint.GTP %in% 
+                   rownames(snp), ][, G, ]
+comhybrid <- intersect(comhybrid, ptlhybrid)
+Pheno <- droplevels(Pheno[Pheno$G %in% comhybrid, , ])
+# Store agronomic phenotypes in a matrix.
+Y <- dcast.data.table(Pheno, formula = G ~ trait, value.var = "EST")
+y_mat <- as.matrix(data.frame(Y[, .(ADF, FETT, GTM, GTS, RPR, STA, XZ), ]))
+rownames(y_mat) <- Y[, G, ]
+y_mat <- y_mat[complete.cases(y_mat), ]
+phenotypes <- colnames(y_mat)
+# Extract a vector of parental dent and flint lines, respectively, which have 
+# the same length as the number of hybrids. These vectors will be used 
+# subsequently for the augmentation of the predictor matrices.
+hybrid <- rownames(y_mat)
+dent <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 2)
+comdent <- unique(dent)
+flint <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 3)
+comflint <- unique(flint)
+snp <- snp[rownames(snp) %in% c(comdent, comflint), ]
+snp_nms <- rownames(snp)
+mrna <- mrna[rownames(mrna) %in% c(comdent, comflint), ]
+
+# Names of genotypes for which transcriptomic records exist
+nm2 <- rownames(mrna)
+nm2_dent <- nm2[nm2 %in% comdent]
+nm2_flint <- nm2[nm2 %in% comflint]
+# Names of genotypes for which transcriptomic records are missing.
+nm1 <- setdiff(snp_nms, nm2)
+nm1_dent <- nm1[nm1 %in% comdent]
+nm1_flint <- nm1[nm1 %in% comflint]
+
+
+
+# Build a kernel from the genomic data
+hetgrps <- c("Dent", "Flint")
+ETA <- lapply(hetgrps, FUN = function(hetgrp) {
+  if (hetgrp == "Dent") {
+    snp <- snp[match(comdent, rownames(snp)), ]
+    nm1 <- nm1_dent
+    nm2 <- nm2_dent
+    Z1 <- sparse.model.matrix(~-1 + factor(dent[dent %in% nm1]),
+                              drop.unused.levels = FALSE)
+    Z2 <- sparse.model.matrix(~-1 + factor(dent[dent %in% nm2]),
+                              drop.unused.levels = FALSE)
+    dent_nm1 <- as.factor(as.character(ifelse(dent %in% nm1, yes = 1, no = 0)))
+    X <- sparse.model.matrix(~-1 + dent_nm1, drop.unused.levels = FALSE)
+  } else if (hetgrp == "Flint") {
+    snp <- snp[match(comflint, rownames(snp)), ]
+    nm1 <- nm1_flint
+    nm2 <- nm2_flint
+    Z1 <- sparse.model.matrix(~-1 + factor(flint[flint%in% nm1]),
+                              drop.unused.levels = FALSE)
+    Z2 <- sparse.model.matrix(~-1 + factor(flint[flint %in% nm2]),
+                              drop.unused.levels = FALSE)
+    flint_nm1 <- as.factor(as.character(ifelse(flint %in% nm1,
+                                               yes = 1, no = 0)))
+    X <- sparse.model.matrix(~-1 + flint_nm1, drop.unused.levels = FALSE)
+
+  }
+  M2 <- tcrossprod(mrna) / ncol(mrna)
+  M2 <- M2[nm2, nm2]
+  snp <- snp[, colVars(snp) != 0]
+  A <- gmat[[get("g_method")]](snp, lambda = 0.01)
+  A11 <- A[nm1, nm1]
+  A12 <- A[nm1, nm2]
+  A21 <- A[nm2, nm1]
+  A22 <- A[nm2, nm2]
+  Ainv <- t(chol(A))
+  A_up11 <- Ainv[nm1, nm1]
+  A_up12 <- Ainv[nm1, nm2]
+  # Eq.21
+  M1 <- solve(A_up11, -A_up12 %*% M2)
+  J2 <- matrix(-1, nrow = ncol(A12), ncol = 1)
+  # Eq.22
+  J1 <- solve(A_up11, -A_up12 %*% J2)
+  # Eq.10
+  epsilon <- A11 - A12 %*% solve(A22) %*% A21
+  # Eq.20
+  W1 <- Z1 %*% M1
+  W2 <- Z2 %*% M2
+  W <- as.matrix(rbind(W1, W2))
+  U <- as.matrix(rbind(Z1 %*% epsilon, 
+                       matrix(0, nrow = nrow(Z2), ncol = ncol(Z1))))
+  X_prime <- as.matrix(cbind(X, rbind(Z1 %*% J1, Z2 %*% J2)))
+  list(X = X_prime, W = W, U = U)
+})
+ETA <- unlist(ETA, recursive = FALSE)
+for (i in seq_along(ETA)) {
+  if (names(ETA)[i] == "X") {
+    ETA[[i]] <- list(X = ETA[[i]], model = "FIXED")
+  } else {
+    ETA[[i]] <- list(X = ETA[[i]], model = hypred_model)
+  }
+}
+names(ETA) <- NULL
+
+
+full_lst <- vector(mode = "list", length = nrow(param_df))
+for (i in seq_len(nrow(param_df))) {
+  loocv_lst <- mclapply(seq_len(nrow(y_mat)), FUN = function(j) {
+    trait <- param_df[i, "Phenotype"]
+    res <- data.frame(Phenotype = NA_character_,
+                      Hybrid = NA_character_,
+                      Dent = NA_character_,
+                      Flint = NA_character_,
+                      y = NA_complex_,
+                      yhat = NA_complex_)
+
+	  # make the training set. Exclude any hybrid that has either parent of the 
+    # test sample
+    ctrain <- intersect(grep(dent[j], x = hybrid, invert = TRUE),
+                        grep(flint[j], x = hybrid, invert = TRUE))
+	  y <- y_mat[, trait]
+	  y[-ctrain] <- NA
+
+	  # run the model (GBLUP)
+    mod_BGLR <- BGLR(y = y, 
+                     ETA = ETA,
+                     nIter = init_iter,
+                     burnIn = init_iter / 2,
+                     verbose = VerboseModel)
+    # store results
+    res$Phenotype <- trait
+    res$Hybrid <- hybrid[j]
+    res$Dent <- dent[j]
+    res$Flint <- flint[j]
+    res$y <- y_mat[j, trait]
+    res$yhat <- mod_BGLR$yHat[j]
+    res
+	}, mc.cores = use_cores)
+  full_lst[[i]] <- rbindlist(loocv_lst)
+  full_lst
+}
+DT <- rbindlist(full_lst)
+out_nm <- paste0("Pred=", predictor, "_Trait=", init_traits,
+                 "_Model=", hypred_model, "_VCOV=", g_method, "_Iter=", 
+                 niter, "_SnpFilter=", snp_filtr, "_Imputed=", imputed,
+                 "_Comparison=", comparison)
+
