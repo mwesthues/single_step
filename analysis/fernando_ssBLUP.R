@@ -21,7 +21,7 @@ source("./analysis/snp_functions.R")
 if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "4")
   Sys.setenv("TRAIT" = "GTM")
-  Sys.setenv("ITER" = "10000")
+  Sys.setenv("ITER" = "60000")
   Sys.setenv("MODEL" = "BRR")
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
@@ -136,8 +136,6 @@ mrna <- mrna[rownames(mrna) %in% c(comdent, comflint), ]
 
 # Names of genotypes for which transcriptomic records exist
 nm2 <- rownames(mrna)
-nm2_dent <- nm2[nm2 %in% comdent]
-nm2_flint <- nm2[nm2 %in% comflint]
 # Names of genotypes for which transcriptomic records are missing.
 nm1 <- setdiff(snp_nms, nm2)
 
@@ -151,48 +149,60 @@ ETA <- lapply(hetgrps, FUN = function(hetgrp) {
   } else if (hetgrp == "Flint") {
     geno <- flint
   }
+  # Unique genotypes in current group without transcriptomic records.
   grp_nm1 <- nm1[nm1 %in% geno]
+  # Unique genotypes in current group with transcriptomic records.
   grp_nm2 <- nm2[nm2 %in% geno]
+  # Hybrid parents in current group without transcriptomic records.
   geno1 <- geno[geno %in% nm1]
+  # Hybrid parents in current group with transcriptomic records.
   geno2 <- geno[geno %in% nm2]
   snp <- snp[match(unique(geno), rownames(snp)), ]
+
+  # Design matrix mapping GCA effects from genotypes without transriptomic
+  # records to y1.
   Z1 <- sparse.model.matrix(~-1 + factor(geno1),
                             drop.unused.levels = FALSE)
   colnames(Z1) <- gsub("factor\\(geno1\\)", replacement = "", x = colnames(Z1))
   Z1 <- Z1[, match(grp_nm1, colnames(Z1))]
   expect_identical(colnames(Z1), expected = grp_nm1)
   rownames(Z1) <- geno1
+  # Design matrix mapping GCA effects from genotypes with transcriptomic
+  # records to y2.
   Z2 <- sparse.model.matrix(~-1 + factor(geno2),
                             drop.unused.levels = FALSE)
   colnames(Z2) <- gsub("factor\\(geno2\\)", replacement = "", x = colnames(Z2))
   Z2 <- Z2[, match(grp_nm2, colnames(Z2))]
   expect_identical(colnames(Z2), expected = grp_nm2)
   rownames(Z2) <- geno2
+
+  # Design matrix mapping the fixed effect ("has transcriptomic records or
+  # not") to y.
   geno_fct <- as.factor(as.character(ifelse(geno %in% geno1, yes = 1, no = 0)))
   X <- sparse.model.matrix(~-1 + geno_fct, drop.unused.levels = FALSE)
   rownames(X) <- geno
 
-  M2 <- tcrossprod(mrna) / ncol(mrna)
-  M2 <- M2[grp_nm2, grp_nm2]
+  mrna <- mrna[grp_nm2, ]
+  M2 <- mrna[, colVars(mrna) != 0]
   snp <- snp[, colVars(snp) != 0]
   A <- gmat[[get("g_method")]](snp, lambda = 0.01)
   A11 <- A[grp_nm1, grp_nm1]
   A12 <- A[grp_nm1, grp_nm2]
   A21 <- A[grp_nm2, grp_nm1]
   A22 <- A[grp_nm2, grp_nm2]
-  Ainv <- t(chol(A))
+  Ainv <- solve(A)
+  dimnames(Ainv) <- dimnames(A)
   A_up11 <- Ainv[grp_nm1, grp_nm1]
   A_up12 <- Ainv[grp_nm1, grp_nm2]
   # Eq.21
   M1 <- A12 %*% solve(A22) %*% M2
   expect_identical(rownames(M1), grp_nm1)
-  expect_identical(colnames(M1), grp_nm2)
   J2 <- matrix(-1, nrow = ncol(A12), ncol = 1)
   # Eq.22
   J1 <- A12 %*% solve(A22) %*% J2
   expect_identical(rownames(J1), grp_nm1)
   # Eq.10
-  epsilon <- A11 - A12 %*% solve(A22) %*% A21
+  epsilon <- t(chol(solve(Ainv[grp_nm1, grp_nm1])))
   expect_identical(rownames(epsilon), grp_nm1)
   expect_identical(colnames(epsilon), grp_nm1)
   # Eq.20
@@ -201,15 +211,29 @@ ETA <- lapply(hetgrps, FUN = function(hetgrp) {
   W <- as.matrix(rbind(W1, W2))
   W <- W[match(geno, rownames(W)), ]
   expect_identical(rownames(W), geno)
-  U <- as.matrix(rbind(Z1 %*% epsilon, 
-                       matrix(0, nrow = nrow(Z2), ncol = ncol(Z1),
-                              dimnames = list(rownames(Z2), colnames(Z1)))))
+  U1 <- Z1 %*% epsilon
+  U2 <- Z2 %*% matrix(0, nrow = ncol(Z2), ncol = ncol(U1))
+  expect_true(all(U2 == 0))
+  U <- as.matrix(rbind(U1, U2)) 
   U <- U[match(geno, rownames(U)), ]
   expect_identical(rownames(U), geno)
   X_prime <- as.matrix(cbind(X, rbind(Z1 %*% J1, Z2 %*% J2)))
   expect_identical(rownames(X_prime), geno)
-  list(X = X_prime, W = W, U = U)
+  param_lst <- list(X = X_prime, W = W, U = U)
+
+  # For one last time, check whether all matrices are sorted according to the
+  # order of the agronomic data.
+  if (hetgrp == "Dent") {
+    y_nm <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 2)
+  } else if (hetgrp == "Flint") {
+    y_nm <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 3)
+  }
+  stopifnot(all(unlist(lapply(param_lst, FUN = function(XWU) {
+    identical(rownames(XWU), y_nm)
+  }))))
+  param_lst
 })
+# Add the model-type to each ETA-list element.
 ETA <- unlist(ETA, recursive = FALSE)
 for (i in seq_along(ETA)) {
   if (names(ETA)[i] == "X") {
@@ -221,9 +245,11 @@ for (i in seq_along(ETA)) {
 names(ETA) <- NULL
 
 
+# Run LOOCV.
 full_lst <- vector(mode = "list", length = nrow(param_df))
+y_length <- nrow(y_mat)
 for (i in seq_len(nrow(param_df))) {
-  loocv_lst <- mclapply(seq_len(nrow(y_mat)), FUN = function(j) {
+  loocv_lst <- mclapply(seq_len(y_length), FUN = function(j) {
     trait <- param_df[i, "Phenotype"]
     res <- data.frame(Phenotype = NA_character_,
                       Hybrid = NA_character_,
