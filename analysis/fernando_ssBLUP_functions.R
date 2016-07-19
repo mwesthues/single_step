@@ -175,6 +175,6 @@ create_snp_ETA <- function(snp, grp_geno, hetgrp, bglr_model) {
   # SNP-kernel
   G <- gmat[[get("g_method")]](snp, lambda = 0.01)
   MG <- as(Z %*% G, "matrix")
-  list(X = MG, model = bglr_model)
+  list(list(X = MG, model = bglr_model))
 }
 
