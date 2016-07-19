@@ -40,6 +40,8 @@
 #
 #MOAB -v PRIOR_PI_COUNT=10
 #
+#MOAB -v IMPUTATION=TRUE
+#
 ##### **********************************************************************
 ########### End MOAB header ##########
 
@@ -59,12 +61,14 @@ echo "Trait=${TRAIT}\
       Model=${MODEL}\
       Vcov = ${VCOV}\
       Pi = ${PI}\
-      PriorPiCount = ${PRIOR_PI_COUNT}"
+      PriorPiCount = ${PRIOR_PI_COUNT}\
+      Imputation = ${IMPUTATION}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/fernando_ssBLUP.R\
-           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}"
+           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
+           ${IMPUTATION}"
 
 # Start program
 echo $startprog
