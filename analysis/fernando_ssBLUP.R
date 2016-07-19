@@ -23,12 +23,16 @@ source("./analysis/fernando_ssBLUP_functions.R")
 if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "4")
   Sys.setenv("TRAIT" = "GTM")
-  Sys.setenv("ITER" = "60000")
+  Sys.setenv("ITER" = "10000")
   Sys.setenv("MODEL" = "BRR")
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   Sys.setenv("IMPUTATION" = "FALSE")
+  Sys.setenv("CV_METHOD" = "CV800")
+  if (isTRUE(Sys.getenv("CV_METHOD") == "CV800")) {
+    Sys.setenv("CV_SCHEME" = "custom")
+  }
 }
 
 use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
@@ -39,26 +43,27 @@ g_method <- as.character(Sys.getenv("VCOV"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.numeric(Sys.getenv("PRIOR_PI_COUNT"))
 imputation <- as.logical(Sys.getenv("IMPUTATION"))
+cv_method <- as.character(Sys.getenv("CV_METHOD"))
+if (isTRUE(cv_method == "CV800")) {
+  cv_scheme <- as.character(Sys.getenv("CV_SCHEME"))
+}
 
 
-## Trait selection
+
+# Input tests
 poss_traits <- c("GTM", "GTS", "ADL", "FETT", "RFA", "RPR", "STA", "XZ", "ADF")
-if (!all(init_traits %in% poss_traits)) {
-  stop("The selected trait does not exist")
-}
-
-## Hybrid prediction model
-if (!hypred_model %in% c("BRR", "BRR_Kernel", "BayesB", "BayesC")) {
-  stop("Choose 'BRR', 'BRR_Kernel', 'BayesB', or 'BayesC' as your model")
-}
-
-# Specify the method with which to calculate the variance covariance matrix of
-# the features.
-if (!g_method %in% c("RadenI", "RadenII", "Zhang", "none")) {
-  stop("VCOV method must be either 'RadenI', 'RadenII', 'none' or 'Zhang'")
-}
+test_that("selected trait exists", {
+  expect_true(all(init_traits %in% poss_traits))
+})
+test_that("selected model is part of BGLR", {
+  expect_true(hypred_model %in% c("BRR", "BRR_Kernel", "BayesB", "BayesC"))
+})
+test_that("kernel method is defined", {
+  expect_true(g_method %in% c("RadenI", "RadenII", "Zhang", "none"))
+})
 
 
+# Print selected paramaters to log file.
 cat(paste0("Trait=", init_traits, "\n"),
     paste0("Iter=", init_iter, "\n"),
     paste0("Model=", hypred_model, "\n"),
@@ -73,11 +78,39 @@ cat(paste0("Trait=", init_traits, "\n"),
 start_time <- Sys.time()
 print(start_time)
 
-# Combine all factor levels and store the values in a data frame so that every
-# possible computation has its own row.
-param_df <- expand.grid(Phenotype = init_traits, 
-                        Iter = init_iter)
-VerboseModel <- FALSE
+
+
+## CV scheme
+# If the cross-validation method is not LOOCV specify the CV scheme(s) and load
+# it (them).
+if (exists("cv_scheme")) {
+  test_that("not more than one CV scheme specified at command line", {
+    expect_length(cv_scheme, 1)
+    expect_false(any(grepl(",", x = cv_scheme)))
+  })
+  if (cv_scheme == "custom") {
+    cv_scheme <- readRDS("./data/input/cust_cv.RDS")
+    test_that("CV scheme is specified", {
+      expect_gte(length(cv_scheme), expected = 1)
+    })
+  }  
+  cat(cv_scheme, sep = "\n")
+
+  # Load the cross-validation scheme
+  cv_lst <- lapply(seq_along(cv_scheme), FUN = function(i) {
+    readRDS(paste0("./data/processed/", cv_scheme[i]))
+  })
+  names(cv_lst) <- cv_scheme
+
+  # Combine all factor levels and store the values in a data frame so that 
+  # every possible computation has its own row.
+  param_df <- expand.grid(Phenotype = init_traits, 
+                          Iter = init_iter, 
+                          CV_Scheme = cv_scheme)
+} else if (!exists("cv_scheme")) {
+  param_df <- expand.grid(Phenotype = init_traits, 
+                          Iter = init_iter)
+}
 
 for (i in 1:ncol(param_df)) param_df[, i] <- as.character(param_df[, i])
 numParam <- nrow(param_df)
@@ -158,50 +191,76 @@ ETA <- unlist(ETA, recursive = FALSE)
 
 
 
-# Run LOOCV.
-full_lst <- vector(mode = "list", length = nrow(param_df))
-y_length <- nrow(y_mat)
-for (i in seq_len(nrow(param_df))) {
-  loocv_lst <- mclapply(seq_len(y_length), FUN = function(j) {
+if (isTRUE(cv_method == "LOOCV")) {
+  # Run LOOCV.
+  full_lst <- vector(mode = "list", length = nrow(param_df))
+  for (i in seq_len(nrow(param_df))) {
     trait <- param_df[i, "Phenotype"]
-    res <- data.frame(Phenotype = NA_character_,
-                      Hybrid = NA_character_,
-                      Dent = NA_character_,
-                      Flint = NA_character_,
-                      y = NA_complex_,
-                      yhat = NA_complex_)
+    iter <- param_df[i, "Iter"]
+    full_lst[[i]] <- run_bglr_loocv(Pheno = y_mat, ETA = ETA, trait = trait,
+                                    iter = iter, ncores = use_cores)
+  }
+  DT <- rbindlist(full_lst)
+} else if (isTRUE(cv_method == "CV800")) {
+  # Run CV800
+  full_lst <- vector(mode = "list", length = nrow(param_df))
+  for (i in seq_len(nrow(param_df))) {
+    trait <- as.character(param_df[i, "Phenotype"])
+    iter <- as.integer(param_df[i, "Iter"])
+    cur_cv_nm <- as.character(param_df[i, "CV_Scheme"])
+    burnin <- iter / 2
+    cv <- cv_lst[[cur_cv_nm]]
+    runs <- length(unique(cv$Run))
 
-	  # make the training set. Exclude any hybrid that has either parent of the 
-    # test sample
-    ctrain <- intersect(grep(dent[j], x = hybrid, invert = TRUE),
-                        grep(flint[j], x = hybrid, invert = TRUE))
-	  y <- y_mat[, trait]
-	  y[-ctrain] <- NA
+    # Operations required for input checks.
+    nrow_eta <- unique(vapply(ETA, FUN = function(x) {
+      nrow(x[["X"]])
+    }, FUN.VALUE = integer(1)))
 
-	  # run the model (GBLUP)
-    mod_BGLR <- BGLR(y = y, 
-                     ETA = ETA,
-                     nIter = init_iter,
-                     burnIn = init_iter / 2,
-                     verbose = VerboseModel)
-    # store results
-    res$Phenotype <- trait
-    res$Hybrid <- hybrid[j]
-    res$Dent <- dent[j]
-    res$Flint <- flint[j]
-    res$y <- y_mat[j, trait]
-    res$yhat <- mod_BGLR$yHat[j]
-    res
-	}, mc.cores = use_cores)
-  full_lst[[i]] <- rbindlist(loocv_lst)
-  full_lst
+    # Input testing.
+    test_that("BGLR input is correct", {
+      expect_equal(runs, 800)
+      expect_is(cv, "data.frame")
+      expect_named(cv, c("Sample_ID", "Run", "Set"))
+      expect_type(trait, "character")
+      expect_length(trait, 1)
+      expect_type(iter, "integer")
+      expect_is(y_mat, "matrix")
+      expect_gt(nrow(y_mat), ncol(y_mat))
+      expect_is(ETA, "list")
+      expect_match(rownames(y_mat), regexp = "DF_[0-9]*_[0-9]*")
+      expect_length(nrow_eta, 1)
+      expect_identical(nrow_eta, expected = nrow(y_mat))
+    })
+    bglr_out <- mclapply(seq_len(runs), FUN = function(run) {
+    run_bglr_cv800(Pheno = y_mat, ETA = ETA, trait = trait,
+                   iter = iter, burnin = burnin, 
+                   cv = cv, run = run, out = "./tmp/")
+    }, mc.cores = ncores)
+    scen_DT <- rbindlist(bglr_out)
+    scen_DT[, `:=`(CV_Scheme = cur_cv_nm,
+                   Trait = trait,
+                   Iter = iter,
+                   Model = hypred_model,
+                   VCOV = g_method,
+                   Pi = Pi, 
+                   PriorPiCount = PriorPiCount,
+                   Imputed = imputation), ]
+    full_lst[[i]] <- scen_DT
+  }
+  DT <- rbindlist(full_lst)
 }
-DT <- rbindlist(full_lst)
 
+
+
+# Save the final output to a file.
+if (cv_method == "LOOCV") {
+  cv_scheme <- "loocv"
+}
 out_nm <- paste0("Trait=", init_traits, "_Iter=", init_iter,
                  "_Model=", hypred_model, "_VCOV=", g_method, 
                  "_Pi=", Pi, "_PriorPiCount=", PriorPiCount,
-                 "_Imputed=", imputation)
+                 "_Imputed=", imputation, "_CV_Scheme=", cv_scheme)
 saveRDS(DT, file = paste0("./data/derived/ssBLUP/", out_nm, ".RDS"))
 
 # When did the job finish?
