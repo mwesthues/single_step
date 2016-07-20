@@ -2,7 +2,7 @@
 ########## Begin MOAB/Slurm header ##########
 #
 # Give job a reasonable name
-#MOAB -N pheno_prediction
+#MOAB -N ssBLUP
 #
 # Request number of nodes and CPU cores per node for job
 #MOAB -l nodes=1:ppn=16
@@ -42,6 +42,12 @@
 #
 #MOAB -v IMPUTATION=TRUE
 #
+#MOAB -v CV_METHOD=CV800
+#
+#MOAB -v CV_SCHEME=
+#
+#MOAB -v SPEED_TEST=FALSE
+#
 ##### **********************************************************************
 ########### End MOAB header ##########
 
@@ -62,16 +68,19 @@ echo "Trait=${TRAIT}\
       Vcov = ${VCOV}\
       Pi = ${PI}\
       PriorPiCount = ${PRIOR_PI_COUNT}\
-      Imputation = ${IMPUTATION}"
+      Imputation = ${IMPUTATION}\
+      CV_Method= ${CV_METHOD}\
+      CV_Scheme= ${CV_SCHEME}\
+      Speed_Test= ${SPEED_TEST}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/fernando_ssBLUP.R\
            ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
-           ${IMPUTATION}"
+           ${IMPUTATION} ${CV_METHOD} ${CV_SCHEME} ${SPEED_TEST}"
 
 # Start program
 echo $startprog
-echo $(date)
+echo $date
 exec $startprog
-echo $(date)
+echo $date

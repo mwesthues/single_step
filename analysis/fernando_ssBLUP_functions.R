@@ -15,6 +15,10 @@ impute_ETA <- function(snp, mrna, grp_geno, hetgrp, bglr_model) {
   # hetgrp: vector with string "Dent" or "Flint"
   #
   # bglr_model: algorithm to be used by BGLR
+  require("testthat")
+  require("Matrix")
+  require("matrixStats")
+
 
   # Input tests
   test_that("input is correct", {
@@ -151,6 +155,8 @@ create_snp_ETA <- function(snp, grp_geno, hetgrp, bglr_model) {
   # hetgrp: vector with string "Dent" or "Flint"
   #
   # bglr_model: the algorithm to be used by BGLR
+  require("testthat")
+  require("Matrix")
 
   # Input tests
   test_that("input is correct", {
@@ -196,8 +202,8 @@ create_snp_ETA <- function(snp, grp_geno, hetgrp, bglr_model) {
 
 
 
-run_bglr_loocv <- function(Pheno, ETA, trait, iter, ncores = 1L, 
-                           verbose = FALSE) {
+run_bglr_loocv <- function(Pheno, ETA, trait, iter, ncores = 1L, speed_tst,
+                           run = 1L, verbose = FALSE, out) {
   # Goal: leave-one-out cross-validation implemented in BGLR
   #
   ##### Input
@@ -212,12 +218,20 @@ run_bglr_loocv <- function(Pheno, ETA, trait, iter, ncores = 1L,
   #
   # ncores: number of cores for runs in parallel
   #
+  # speed_tst: logical. shall a speed test be run (TRUE) or do you want to
+  # compute predictive ability (FALSE)?
+  #
+  # run: iteration of the cross-validation.
+  #
   # verbose: logical. shall BGLR-output be printed to stdout?
+  # 
+  # out: location where unwanted BGLR-output will be stored
 
   # Packages
   require("BGLR")
   require("methods")
-  require("parallel")
+  require("testthat")
+  require("data.table")
 
   # Operations required for input checks.
   nrow_eta <- unique(vapply(ETA, FUN = function(x) {
@@ -235,6 +249,7 @@ run_bglr_loocv <- function(Pheno, ETA, trait, iter, ncores = 1L,
     expect_type(trait, "character")
     expect_length(trait, 1)
     expect_type(iter, "integer")
+    expect_is(speed_tst, "logical")
   })
 
   # Hybrid progeny and parent genotypes names for LOOCV-matching.
@@ -244,8 +259,24 @@ run_bglr_loocv <- function(Pheno, ETA, trait, iter, ncores = 1L,
   flint <- vapply(strsplit(hybrid, split = "_"), FUN = "[[", 3, 
                   FUN.VALUE = character(1))
 
-  # BGLR implementation
-  loocv_lst <- mclapply(seq_len(nrow(Pheno)), FUN = function(run) {
+  if (isTRUE(speed_tst)) {
+    tst <- intersect(grep(dent[run], x = hybrid, invert = TRUE),
+                     grep(flint[run], x = hybrid, invert = TRUE))
+	  y <- Pheno[, trait]
+	  y[-tst] <- NA_real_
+    systime <- system.time(replicate(10, BGLR(y = y, 
+                                              ETA = ETA,
+                                              nIter = iter,
+                                              saveAt = out,
+                                              burnIn = iter / 2,
+                                              verbose = verbose)))
+    test_that("output is system time", {
+      expect_is(systime, "proc_time")
+    })
+    systime
+  } else if (!isTRUE(speed_tst)) {
+
+    # BGLR implementation
     res <- data.frame(Phenotype = NA_character_,
                       Hybrid = NA_character_,
                       Dent = NA_character_,
@@ -253,18 +284,19 @@ run_bglr_loocv <- function(Pheno, ETA, trait, iter, ncores = 1L,
                       y = NA_complex_,
                       yhat = NA_complex_)
 
-	  # set-up the training set. Exclude any hybrid that has either parent of the 
+	  # set-up the test set. Exclude any hybrid that has either parent of the 
     # test sample
-    ctrain <- intersect(grep(dent[run], x = hybrid, invert = TRUE),
-                        grep(flint[run], x = hybrid, invert = TRUE))
+    tst <- intersect(grep(dent[run], x = hybrid, invert = TRUE),
+                     grep(flint[run], x = hybrid, invert = TRUE))
 	  y <- Pheno[, trait]
-	  y[-ctrain] <- NA_character_
+	  y[-tst] <- NA_real_
 
 	  # run the model (GBLUP)
     mod_BGLR <- BGLR(y = y, 
                      ETA = ETA,
                      nIter = iter,
                      burnIn = iter / 2,
+                     saveAt = out,
                      verbose = verbose)
 
     # store results
@@ -284,17 +316,17 @@ run_bglr_loocv <- function(Pheno, ETA, trait, iter, ncores = 1L,
 
     # Return results.
     res
-  }, mc.cores = ncores)
-  DT <- rbindlist(loocv_lst)
-  DT[, CV_Scheme := "LOOCV", ]
-  DT
+    DT <- rbindlist(loocv_lst)
+    DT[, CV_Scheme := "LOOCV", ]
+    DT
+  }
 }
 
 
 
 
 run_bglr_cv800 <- function(Pheno, ETA, trait, iter, burnin, cv, 
-                           verbose = FALSE, run = 1L, out) {
+                           verbose = FALSE, run = 1L, speed_tst, out) {
   # Goal: CV800 cross-validation implemented in BGLR
   #
   ##### Input
@@ -314,14 +346,17 @@ run_bglr_cv800 <- function(Pheno, ETA, trait, iter, burnin, cv,
   # verbose: logical. shall BGLR-output be printed to stdout?
   #
   # run: current CV run
+  #
+  # speed_tst: logical. shall a speed test be run (TRUE) or do you want to
+  # compute predictive ability (FALSE)?
   # 
   # out: location where unwanted BGLR-output will be stored
 
   # Packages
   require("BGLR")
   require("methods")
-  require("parallel")
   require("data.table")
+  require("testthat")
 
   # Hybrid progeny and parent genotypes names for LOOCV-matching.
   hybrid <- rownames(Pheno)
@@ -351,21 +386,37 @@ run_bglr_cv800 <- function(Pheno, ETA, trait, iter, burnin, cv,
   # Get the indices of all test-set (T0, T1, T2) hybrids, define another vector 
   # of thenotypic records and set the values of the latter to 'NA' if they belong
   # to a genotype that is part of the test set 'tst'.
+  test_that("CV set levels named correctly", {
+    expect_true(all(cv_curr$Set %in% c("VS0", "VS1", "VS2", "TS")))
+  })
   tst0 <- cv_curr$Set == "VS0"
   tst1 <- cv_curr$Set == "VS1"
   tst2 <- cv_curr$Set == "VS2"
   tst <- as.logical(tst0 + tst1 + tst2)
   y <- yNA <- Pheno[, trait]
   yNA[tst] <- NA_real_
-   
-  # RUN BGLR     
-  mod_BGLR <- BGLR(y = yNA, 
-                   ETA = ETA,
-                   nIter = iter,
-                   burnIn = burnin,
-                   saveAt = out,
-                   verbose = verbose)
-  pred_ability <- cor(y[tst], mod_BGLR$yHat[tst])
-  data.table(Run = run,
-             Pred_Ability = pred_ability)
+
+  if (isTRUE(speed_tst)) {
+    systime <- system.time(replicate(10, BGLR(y = yNA, 
+                                            ETA = ETA,
+                                            nIter = iter,
+                                            burnIn = burnin,
+                                            saveAt = out,
+                                            verbose = verbose)))
+    test_that("output is system time", {
+      expect_is(systime, "proc_time")
+    })
+    systime
+  } else if (!isTRUE(speed_tst)) {
+    # RUN BGLR     
+    mod_BGLR <- BGLR(y = yNA, 
+                     ETA = ETA,
+                     nIter = iter,
+                     burnIn = burnin,
+                     saveAt = out,
+                     verbose = verbose)
+    pred_ability <- cor(y[tst], mod_BGLR$yHat[tst])
+    data.table(Run = run,
+               Pred_Ability = pred_ability)
+  }
 }
