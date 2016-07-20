@@ -32,12 +32,13 @@ if (isTRUE(interactive())) {
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
-  Sys.setenv("IMPUTATION" = "FALSE")
+  Sys.setenv("IMPUTATION" = "TRUE")
   Sys.setenv("CV_METHOD" = "CV800")
   if (isTRUE(Sys.getenv("CV_METHOD") == "CV800")) {
     Sys.setenv("CV_SCHEME" = "custom")
   }
   Sys.setenv("SPEED_TEST" = "FALSE")
+  Sys.setenv("ONLY_PROFILED" = "TRUE")
 }
 
 use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
@@ -53,6 +54,7 @@ speed_tst <- as.logical(Sys.getenv("SPEED_TEST"))
 if (isTRUE(cv_method == "CV800")) {
   cv_scheme <- as.character(Sys.getenv("CV_SCHEME"))
 }
+only_profiled <- as.logical(Sys.getenv("ONLY_PROFILED"))
 test_that("classes of global parameters are correct", {
   expect_is(use_cores, "integer")
   expect_is(init_traits, "character")
@@ -64,6 +66,7 @@ test_that("classes of global parameters are correct", {
   expect_is(imputation, "logical")
   expect_is(cv_method, "character")
   expect_is(speed_tst, "logical")
+  expect_is(only_profiled, "logical")
 })
 
 
@@ -79,16 +82,7 @@ test_that("kernel method is defined", {
   expect_true(g_method %in% c("RadenI", "RadenII", "Zhang", "none"))
 })
 
-
-# Print selected paramaters to log file.
-cat(paste0("Trait=", init_traits, "\n"),
-    paste0("Iter=", init_iter, "\n"),
-    paste0("Model=", hypred_model, "\n"),
-    paste0("VCOV=", g_method, "\n"),
-    paste0("Pi=", Pi, "\n"),
-    paste0("PriorPiCount=", PriorPiCount, "\n"),
-    paste0("Imputation=", imputation, "\n"))
-
+# Print start time to a log file
 start_time <- Sys.time()
 print(start_time)
 
@@ -158,17 +152,14 @@ Pheno <- rbindlist(y_lst)
 
 
 ## --------------------------------------------------------------------------
-## PREDICTOR DATA PREPARATION
+## PREDICTOR AND AGRONOMIC DATA PREPARATION
+# Load predictor data.
 snp <- readRDS("./data/processed/snp_mat.RDS")
-if (isTRUE(imputation)) {
-  mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
-  mrna <- t(mrna)
-  mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
-  mrna <- mrna[rownames(mrna) %in% rownames(snp), ]
-  endo_lst <- list(A = snp, M = mrna)
-} else {
-  endo_lst <- list(A = snp)
-}
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+mrna <- mrna[rownames(mrna) %in% rownames(snp), ]
+endo_lst <- list(A = snp, M = mrna)
 
 comhybrid <- Pheno[grepl(paste0(rownames(snp), collapse = "|"), 
                          x = Pheno[, G, ]), unique(G), ]
@@ -190,6 +181,21 @@ dent <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 2)
 flint <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 3)
 grp_geno <- list(Dent = dent, Flint = flint)
 
+# If specified, keep only the intersect of parents that have both, genomic
+# as well as transcriptomic records.
+if (isTRUE(only_profiled)) {
+  comgeno <- Reduce("intersect", lapply(endo_lst, FUN = rownames))
+  comgeno <- intersect(comgeno, c(dent, flint))
+  endo_lst[] <- lapply(seq_along(endo_lst), FUN = function(i) {
+    dat <- endo_lst[[i]]
+    dat[match(comgeno, rownames(dat)), ]
+  })
+}
+
+# If specified, use only SNP data for prediction.
+if (!isTRUE(imputation)) {
+  endo_lst <- endo_lst[["A"]]
+}
 
 # Build a kernel from the genomic data
 hetgrps <- c("Dent", "Flint")
@@ -229,7 +235,8 @@ if (isTRUE(speed_tst)) {
                            Trait = trait,
                            iter = iter,
                            CV_Method = cv_method,
-                           Imputation = imputation)
+                           Imputation = imputation,
+                           Only_Profiled = only_profiled)
     if (exists("./data/derived/speed_tests.txt")) {
       write.table(speed_df, file = "./data/derived/speed_tests.txt",
                   append = TRUE, sep = "\t", col.names = FALSE)
@@ -262,18 +269,17 @@ if (isTRUE(speed_tst)) {
                            Trait = trait,
                            iter = iter,
                            CV_Method = cv_method,
-                           Imputation = imputation)
-    if (exists("./data/derived/speed_tests.txt")) {
+                           Imputation = imputation,
+                           Only_Profiled = only_profiled)
+    if (file.exists("./data/derived/speed_tests.txt")) {
       write.table(speed_df, file = "./data/derived/speed_tests.txt",
                   append = TRUE, sep = "\t", col.names = FALSE)
     } else {
       write.table(speed_df, file = "./data/derived/speed_tests.txt",
-                  append = FALSE, sep = "\t", col.names = FALSE)
+                  append = FALSE, sep = "\t", col.names = TRUE)
     }
   }
 }
-
-
 
 
 ## ---------------------------------------------------------------------------

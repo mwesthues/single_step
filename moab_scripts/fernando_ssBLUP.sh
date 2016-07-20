@@ -48,6 +48,8 @@
 #
 #MOAB -v SPEED_TEST=FALSE
 #
+#MOAB -v ONLY_PROFILED=FALSE
+#
 ##### **********************************************************************
 ########### End MOAB header ##########
 
@@ -65,19 +67,21 @@ module load math/R/3.2.1
 echo "Trait=${TRAIT}\
       Iter=${ITER}\
       Model=${MODEL}\
-      Vcov = ${VCOV}\
-      Pi = ${PI}\
-      PriorPiCount = ${PRIOR_PI_COUNT}\
-      Imputation = ${IMPUTATION}\
-      CV_Method= ${CV_METHOD}\
-      CV_Scheme= ${CV_SCHEME}\
-      Speed_Test= ${SPEED_TEST}"
+      VCOV=${VCOV}\
+      Pi=${PI}\
+      PriorPiCount=${PRIOR_PI_COUNT}\
+      Imputation=${IMPUTATION}\
+      CV_Method=${CV_METHOD}\
+      CV_Scheme=${CV_SCHEME}\
+      Speed_Test=${SPEED_TEST}\
+      Only_Profiled=${ONLY_PROFILED}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/fernando_ssBLUP.R\
            ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
-           ${IMPUTATION} ${CV_METHOD} ${CV_SCHEME} ${SPEED_TEST}"
+           ${IMPUTATION} ${CV_METHOD} ${CV_SCHEME} ${SPEED_TEST}\
+           ${ONLY_PROFILED}"
 
 # Start program
 echo $startprog
