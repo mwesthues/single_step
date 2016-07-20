@@ -93,15 +93,13 @@ print(start_time)
 # If the cross-validation method is not LOOCV specify the CV scheme(s) and load
 # it (them).
 if (exists("cv_scheme")) {
-  test_that("not more than one CV scheme specified at command line", {
-    expect_equal(cv_scheme, "custom")
-  })
   if (cv_scheme == "custom") {
     cv_scheme <- readRDS("./data/input/cust_cv.RDS")
-    test_that("CV scheme is specified", {
-      expect_gte(length(cv_scheme), expected = 1)
-      expect_true(all(cv_scheme %in% list.files("./data/processed/")))
-    })
+  }
+  test_that("CV scheme is specified", {
+    expect_gte(length(cv_scheme), expected = 1)
+    expect_true(all(cv_scheme %in% list.files("./data/processed/")))
+  })
   }  
   cat(cv_scheme, sep = "\n")
 
@@ -233,10 +231,14 @@ if (isTRUE(speed_tst)) {
                             out = "./tmp/")
     speed_df <- data.frame(Elapsed = speed[["elapsed"]],
                            Trait = trait,
-                           iter = iter,
+                           Iter = iter,
                            CV_Method = cv_method,
                            Imputation = imputation,
-                           Only_Profiled = only_profiled)
+                           Only_Profiled = only_profiled,
+                           VCOV = g_method,
+                           Pi = Pi,
+                           PriorPiCount = PriorPiCount,
+                           Model = hypred_model)
     if (exists("./data/derived/speed_tests.txt")) {
       write.table(speed_df, file = "./data/derived/speed_tests.txt",
                   append = TRUE, sep = "\t", col.names = FALSE)
@@ -267,19 +269,48 @@ if (isTRUE(speed_tst)) {
                             out = "./tmp/")
     speed_df <- data.frame(Elapsed = speed[["elapsed"]],
                            Trait = trait,
-                           iter = iter,
+                           Iter = iter,
                            CV_Method = cv_method,
                            Imputation = imputation,
-                           Only_Profiled = only_profiled)
+                           Only_Profiled = only_profiled,
+                           VCOV = g_method,
+                           Pi = Pi,
+                           PriorPiCount = PriorPiCount,
+                           Model = hypred_model)
     if (file.exists("./data/derived/speed_tests.txt")) {
       write.table(speed_df, file = "./data/derived/speed_tests.txt",
-                  append = TRUE, sep = "\t", col.names = FALSE)
+                  append = TRUE, sep = "\t", col.names = FALSE, 
+                  row.names = FALSE)
     } else {
       write.table(speed_df, file = "./data/derived/speed_tests.txt",
-                  append = FALSE, sep = "\t", col.names = TRUE)
+                  append = FALSE, sep = "\t", col.names = TRUE,
+                  row.names = FALSE)
     }
   }
 }
+
+
+
+use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
+init_traits <- as.character(Sys.getenv("TRAIT"))
+init_iter <- as.integer(Sys.getenv("ITER"))
+hypred_model <- as.character(Sys.getenv("MODEL"))
+g_method <- as.character(Sys.getenv("VCOV"))
+Pi <- as.numeric(Sys.getenv("PI"))
+PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
+imputation <- as.logical(Sys.getenv("IMPUTATION"))
+cv_method <- as.character(Sys.getenv("CV_METHOD"))
+speed_tst <- as.logical(Sys.getenv("SPEED_TEST"))
+if (isTRUE(cv_method == "CV800")) {
+  cv_scheme <- as.character(Sys.getenv("CV_SCHEME"))
+}
+only_profiled <- as.logical(Sys.getenv("ONLY_PROFILED"))
+
+
+
+
+
+
 
 
 ## ---------------------------------------------------------------------------
