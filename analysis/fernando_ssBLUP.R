@@ -100,7 +100,6 @@ if (exists("cv_scheme")) {
     expect_gte(length(cv_scheme), expected = 1)
     expect_true(all(cv_scheme %in% list.files("./data/processed/")))
   })
-  }  
   cat(cv_scheme, sep = "\n")
 
   # Load the cross-validation scheme

@@ -671,3 +671,13 @@ dup.fun <- function(x, map, copy, mdist){
     accMarker <- c(copyMarker, uniqueMarker)
     return(accMarker)
 }
+
+
+pick <- function(value) {
+  # Select the value-th element from a list.
+  function(x) {
+    x[value]
+  }
+}
+
+
