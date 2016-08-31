@@ -32,9 +32,11 @@ imp_eta <- lapply(hetgrps, FUN = function(hetgrp) {
                     geno = geno,
                     bglr_model = "BRR")
   eta[] <- lapply(seq_along(eta), FUN = function(i) {
-    x <- eta[[i]][["X"]]
+    dat <- eta[[i]]
+    x <- dat[["X"]]
     rownames(x) <- genos$Hybrid
-    x
+    dat[["X"]] <- x
+    dat
   })
   eta
 })
@@ -51,9 +53,11 @@ snp_eta <- lapply(hetgrps, FUN = function(hetgrp) {
                       geno = geno, 
                       bglr_model = "BRR")
   eta[] <- lapply(seq_along(eta), FUN = function(i) {
-    x <- eta[[i]][["X"]]
+    dat <- eta[[i]]
+    x <- dat[["X"]]
     rownames(x) <- genos$Hybrid
-    x
+    dat[["X"]] <- x
+    dat
   })
   eta
 })

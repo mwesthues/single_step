@@ -64,6 +64,6 @@ lapply(seq_along(cv_lst), FUN = function(i) {
                 value.name = "Set")
   m_dat$Run <- as.numeric(as.character(m_dat$Run))
   m_dat
-  saveRDS(m_dat, paste0("./data/processed/cv1000_", names(cv_lst[i]), ".RDS"))
+  saveRDS(m_dat, paste0("./data/processed/cv1000_", names(cv_lst[i])))
 })
 
