@@ -57,7 +57,7 @@ lapply(seq_along(cv_lst), FUN = function(i) {
   dat <- cv_lst[[i]]
   dat <- as.data.frame(dat, stringsAsFactors = FALSE)
   colnames(dat) <- seq_len(ncol(dat))
-  dat$Sample_ID <- paste0("DF_", rownames(dat))
+  dat$Sample_ID <- rownames(dat)
   m_dat <- melt(dat, 
                 id.vars = "Sample_ID",
                 variable.name = "Run",

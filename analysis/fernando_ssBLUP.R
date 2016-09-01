@@ -11,13 +11,10 @@
 #
 
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("methods", "BGLR", "Matrix", "parallel", "data.table", "plyr",
-               "reshape2", "matrixStats", "testthat")
-
-# Load functions (including Zhang, RadenI and RadenII as part of 'gmat'.
-source("./analysis/snp_functions.R")
-# Load functions for the creation of BGLR-kernels.
-source("./analysis/fernando_ssBLUP_functions.R")
+pacman::p_load("methods", "BGLR", "Matrix", "parallel", "data.table",
+               "tidyr", "matrixStats", "testthat", "dtplyr", "dplyr")
+devtools::install_github("mwesthues/sspredr", update = TRUE)
+pacman::p_load_gh("mwesthues/sspredr")
 
 
 
@@ -33,10 +30,6 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   Sys.setenv("IMPUTATION" = "TRUE")
-  Sys.setenv("CV_METHOD" = "CV800")
-  if (isTRUE(Sys.getenv("CV_METHOD") == "CV800")) {
-    Sys.setenv("CV_SCHEME" = "custom")
-  }
   Sys.setenv("SPEED_TEST" = "FALSE")
   Sys.setenv("ONLY_PROFILED" = "TRUE")
 }
@@ -49,25 +42,8 @@ g_method <- as.character(Sys.getenv("VCOV"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 imputation <- as.logical(Sys.getenv("IMPUTATION"))
-cv_method <- as.character(Sys.getenv("CV_METHOD"))
 speed_tst <- as.logical(Sys.getenv("SPEED_TEST"))
-if (isTRUE(cv_method == "CV800")) {
-  cv_scheme <- as.character(Sys.getenv("CV_SCHEME"))
-}
 only_profiled <- as.logical(Sys.getenv("ONLY_PROFILED"))
-test_that("classes of global parameters are correct", {
-  expect_is(use_cores, "integer")
-  expect_is(init_traits, "character")
-  expect_is(init_iter, "integer")
-  expect_is(hypred_model, "character")
-  expect_is(g_method, "character")
-  expect_is(Pi, "numeric")
-  expect_is(PriorPiCount, "integer")
-  expect_is(imputation, "logical")
-  expect_is(cv_method, "character")
-  expect_is(speed_tst, "logical")
-  expect_is(only_profiled, "logical")
-})
 
 
 # Input tests
@@ -92,60 +68,28 @@ print(start_time)
 ## LOAD CV SCHEME IF SPECIFIED
 # If the cross-validation method is not LOOCV specify the CV scheme(s) and load
 # it (them).
-if (exists("cv_scheme")) {
-  if (cv_scheme == "custom") {
-    cv_scheme <- readRDS("./data/input/cust_cv.RDS")
-  }
-  test_that("CV scheme is specified", {
-    expect_gte(length(cv_scheme), expected = 1)
-    expect_true(all(cv_scheme %in% list.files("./data/processed/")))
-  })
-  cat(cv_scheme, sep = "\n")
-
-  # Load the cross-validation scheme
-  cv_lst <- lapply(seq_along(cv_scheme), FUN = function(i) {
-    readRDS(paste0("./data/processed/", cv_scheme[i]))
-  })
-  names(cv_lst) <- cv_scheme
-
-  # Combine all factor levels and store the values in a data frame so that 
-  # every possible computation has its own row.
-  param_df <- expand.grid(Phenotype = init_traits, 
-                          Iter = init_iter, 
-                          CV_Scheme = cv_scheme)
-} else if (!exists("cv_scheme")) {
-  param_df <- expand.grid(Phenotype = init_traits, 
-                          Iter = init_iter)
-}
-
-for (i in 1:ncol(param_df)) param_df[, i] <- as.character(param_df[, i])
+cv <- readRDS(paste0("./data/processed/cv1000_ps8081_trn=500_min_", 
+                     "size=60_m=114_f=83.RDS"))
+param_df <- expand.grid(Phenotype = init_traits, 
+                        Iter = init_iter)
+for (i in seq_len(ncol(param_df))) param_df[, i] <- as.character(param_df[, i])
 numParam <- nrow(param_df)
 
 
 
 ## --------------------------------------------------------------------------
 ## PHENOTYPIC DATA PREPARATION 
-pheno_fls <- list.files("./data/processed/", 
-                        pattern = "pheno_BLUE")
-y_lst <- lapply(seq_along(pheno_fls), FUN = function(i) {
-  Pheno <- read.table(paste0("./data/processed/", pheno_fls[i]),
-                      header = TRUE)
-  trait_pos <- regexpr("(?<=stage2_)[A-Z]+(?=.txt)", text = pheno_fls[i], 
-                       perl = TRUE)
-  trait_nm <- substring(pheno_fls[i], first = trait_pos,
-                        last = trait_pos + attr(trait_pos, "match.length") - 1)
-  Pheno$trait <- trait_nm 
-  Pheno <- Pheno[Pheno$check == 0 & Pheno$dent.GTP != 0 &
-                 Pheno$flint.GTP != 0, ]
-  Pheno <- droplevels(Pheno)
-  Pheno <- Pheno[grep("DF_", as.character(Pheno$G)), ]
-  Pheno$G <- as.character(Pheno$G)
-  Pheno$dent.GTP <- as.character(Pheno$dent.GTP)
-  Pheno$flint.GTP <- as.character(Pheno$flint.GTP)
-  Pheno
-})
-Pheno <- rbindlist(y_lst)
-
+pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
+# Common genotypes
+geno <- readRDS("./data/processed/common_genotypes.RDS")
+pheno <- pheno[G %in% geno$Hybrid, .(G, EST, Trait), ]
+pheno <- pheno %>% 
+  spread(Trait, value = EST) %>%
+  select(-ADL)
+pheno <- data.frame(pheno)
+rownames(pheno) <- pheno$G
+pheno$G <- NULL
+pheno <- as.matrix(pheno)
 
 
 ## --------------------------------------------------------------------------
@@ -155,28 +99,70 @@ snp <- readRDS("./data/processed/snp_mat.RDS")
 mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
 mrna <- t(mrna)
 mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
-mrna <- mrna[rownames(mrna) %in% rownames(snp), ]
-endo_lst <- list(A = snp, M = mrna)
+hetgrps <- c(2, 3)
+eta_lst <- lapply(hetgrps, FUN = function(i) {
+  grp_hyb <- vapply(strsplit(geno$Hybrid, split = "_"), FUN = "[[", i,
+                    FUN.VALUE = character(1))
+  grp_snp <- snp[rownames(snp) %in% grp_hyb, ]
+  grp_mrna <- mrna[rownames(mrna) %in% grp_hyb, ]
+  eta <- impute_eta(x = grp_snp, y = grp_mrna, geno = grp_hyb,
+                    bglr_model = hypred_model)
+  eta
+  #unlist(eta, recursive = FALSE)
+})
+names(eta_lst) <- c("Dent", "Flint")
+eta <- unlist(eta_lst, recursive = FALSE)
+eta[] <- lapply(seq_along(eta), FUN = function(i) {
+  dat <- eta[[i]]
+  x <- dat[["X"]]
+  rownames(x) <- geno$Hybrid
+  dat[["X"]] <- x
+  dat
+})
+str(eta)
 
-comhybrid <- Pheno[grepl(paste0(rownames(snp), collapse = "|"), 
-                         x = Pheno[, G, ]), unique(G), ]
-ptlhybrid <- Pheno[dent.GTP %in% rownames(snp) & flint.GTP %in% 
-                   rownames(snp), ][, G, ]
-comhybrid <- intersect(comhybrid, ptlhybrid)
-Pheno <- droplevels(Pheno[Pheno$G %in% comhybrid, , ])
-# Store agronomic phenotypes in a matrix.
-Y <- dcast.data.table(Pheno, formula = G ~ trait, value.var = "EST")
-y_mat <- as.matrix(data.frame(Y[, .(ADF, FETT, GTM, GTS, RPR, STA, XZ), ]))
-rownames(y_mat) <- Y[, G, ]
-y_mat <- y_mat[complete.cases(y_mat), ]
-phenotypes <- colnames(y_mat)
-# Extract a vector of parental dent and flint lines, respectively, which have 
-# the same length as the number of hybrids. These vectors will be used 
-# subsequently for the augmentation of the predictor matrices.
-hybrid <- rownames(y_mat)
-dent <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 2)
-flint <- sapply(strsplit(rownames(y_mat), split = "_"), FUN = "[[", 3)
-grp_geno <- list(Dent = dent, Flint = flint)
+
+# Dent
+hist(eta[[2]][["X"]][upper.tri(eta[[2]][["X"]], diag = FALSE)])
+hist(eta[[3]][["X"]][upper.tri(eta[[3]][["X"]], diag = FALSE)])
+
+hist(eta[[5]][["X"]][upper.tri(eta[[5]][["X"]], diag = FALSE)])
+hist(eta[[6]][["X"]][upper.tri(eta[[6]][["X"]], diag = FALSE)])
+
+
+## --------------------------------------------------------------------------
+## CV1000
+runs <- unique(cv$Run)
+runs <- seq_len(16)
+pred_lst <- mclapply(seq_along(runs), FUN = function(i) {
+  run <- runs[i]
+  pred <- run_cv(Pheno = pheno,
+                 ETA = eta,
+                 cv = cv,
+                 mother_idx = 2,
+                 father_idx = 3, 
+                 split_char = "_",
+                 trait = "GTM",
+                 iter = 2500L,
+                 speed_tst = FALSE,
+                 run = run,
+                 verbose = FALSE,
+                 out_loc = "./tmp/")
+  pred
+}, mc.cores = use_cores)
+rbindlist(pred_lst)
+
+
+
+
+
+
+
+
+
+
+
+
 
 # If specified, keep only the intersect of parents that have both, genomic
 # as well as transcriptomic records.
