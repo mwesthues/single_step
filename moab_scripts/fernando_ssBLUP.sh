@@ -36,6 +36,8 @@
 #
 #MOAB -v VCOV=RadenII
 #
+#MOAB -v CV_MODE=custom
+#
 #MOAB -v PI=0.5
 #
 #MOAB -v PRIOR_PI_COUNT=10
@@ -62,6 +64,7 @@ echo "Trait=${TRAIT}\
       Iter=${ITER}\
       Model=${MODEL}\
       VCOV=${VCOV}\
+      CV_MODE=${CV_MODE}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
       Imputation=${IMPUTATION}\
@@ -70,7 +73,7 @@ echo "Trait=${TRAIT}\
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/fernando_ssBLUP.R\
-           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
+           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${CV_MODE} ${PI} ${PRIOR_PI_COUNT}\
            ${IMPUTATION} ${SPEED_TEST}"
 
 # Start program

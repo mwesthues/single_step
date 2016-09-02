@@ -28,6 +28,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("ITER" = "10000")
   Sys.setenv("MODEL" = "BRR")
   Sys.setenv("VCOV" = "RadenII")
+  Sys.setenv("CV_MODE" = "loocv")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   Sys.setenv("IMPUTATION" = "TRUE")
@@ -43,6 +44,7 @@ init_traits <- as.character(Sys.getenv("TRAIT"))
 init_iter <- as.integer(Sys.getenv("ITER"))
 hypred_model <- as.character(Sys.getenv("MODEL"))
 g_method <- as.character(Sys.getenv("VCOV"))
+cv_mode <- as.character(Sys.getenv("CV_MODE"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 imputation <- as.logical(Sys.getenv("IMPUTATION"))
@@ -60,6 +62,9 @@ test_that("selected model is part of BGLR", {
 test_that("kernel method is defined", {
   expect_true(g_method %in% c("RadenI", "RadenII", "Zhang", "none"))
 })
+test_that("CV mode exists", {
+  expect_true(cv_mode %in% c("custom", "loocv"))
+})
 
 
 
@@ -67,14 +72,13 @@ test_that("kernel method is defined", {
 ## LOAD CV SCHEME IF SPECIFIED
 # If the cross-validation method is not LOOCV specify the CV scheme(s) and load
 # it (them).
-cv_name <- "cv1000_ps8081_trn=500_min_size=60_m=114_f=83.RDS"
-cv <- readRDS(paste0("./data/processed/", cv_name))
-runs <- sort(unique(cv$Run))
-param_df <- expand.grid(Trait = init_traits,
-                        Iter = init_iter,
-                        Run = runs)
-param_df$Trait <- as.character(param_df$Trait)
-
+if (isTRUE(cv_mode == "custom")) {
+  cv_name <- "cv1000_ps8081_trn=500_min_size=60_m=114_f=83.RDS"
+  cv <- readRDS(paste0("./data/processed/", cv_name))
+  runs <- sort(unique(cv$Run))
+} else {
+  cv_name <- "loocv"
+}
 
 
 ## --------------------------------------------------------------------------
@@ -133,26 +137,62 @@ eta[] <- lapply(seq_along(eta), FUN = function(i) {
 
 
 ## --------------------------------------------------------------------------
-## CV1000
-pred_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
-  run <- param_df[i, "Run"]
-  trait <- param_df[i, "Trait"]
-  iter <- param_df[i, "Iter"]
-  pred <- run_cv(Pheno = pheno,
-                 ETA = eta,
-                 cv = cv,
-                 mother_idx = 2,
-                 father_idx = 3, 
-                 split_char = "_",
-                 trait = trait,
-                 iter = iter,
-                 speed_tst = FALSE,
-                 run = run,
-                 verbose = FALSE,
-                 out_loc = "./tmp/")
-  cbind(pred, Trait = trait, Iter = iter, CV = cv_name)
-}, mc.cores = use_cores)
-res <- rbindlist(pred_lst)
+## PREDICTION
+if (isTRUE(cv_mode == "custom")) {
+  param_df <- expand.grid(Trait = init_traits,
+                          Iter = init_iter,
+                          Run = runs)
+  param_df$Trait <- as.character(param_df$Trait)
+  
+  pred_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
+    run <- param_df[i, "Run"]
+    trait <- param_df[i, "Trait"]
+    iter <- param_df[i, "Iter"]
+    pred <- run_cv(Pheno = pheno,
+                   ETA = eta,
+                   cv = cv,
+                   mother_idx = 2,
+                   father_idx = 3, 
+                   split_char = "_",
+                   trait = trait,
+                   iter = iter,
+                   speed_tst = FALSE,
+                   run = run,
+                   verbose = FALSE,
+                   out_loc = "./tmp/")
+    cbind(pred, Trait = trait, Iter = iter, CV = cv_name)
+  }, mc.cores = use_cores)
+  res <- rbindlist(pred_lst)
+
+} else if (isTRUE(cv_mode == "loocv")) {
+
+  param_df <- expand.grid(Trait = init_traits,
+                          Iter = init_iter,
+                          Run = seq_len(nrow(pheno)))
+  param_df$Trait <- as.character(param_df$Trait)
+
+  pred_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
+    run <- param_df[i, "Run"]
+    trait <- param_df[i, "Trait"]
+    iter <- param_df[i, "Iter"]
+    pred <- run_loocv(Pheno = pheno,
+                      ETA = eta,
+                      hybrid = TRUE,
+                      mother_idx = 2,
+                      father_idx = 3, 
+                      split_char = "_",
+                      trait = trait,
+                      iter = iter,
+                      speed_tst = FALSE,
+                      run = run,
+                      verbose = FALSE,
+                      out_loc = "./tmp/")
+    cbind(pred, Iter = iter)
+  }, mc.cores = use_cores)
+  res <- rbindlist(pred_lst)
+  setnames(res, old = "Phenotype", new = "Trait")
+  res[, CV := "LOOCV", ]
+}
 res[, `:=`(Job_ID = job_id,
            BGLR_Model = hypred_model,
            PI = Pi,
