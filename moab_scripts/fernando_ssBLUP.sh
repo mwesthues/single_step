@@ -42,13 +42,7 @@
 #
 #MOAB -v IMPUTATION=TRUE
 #
-#MOAB -v CV_METHOD=CV800
-#
-#MOAB -v CV_SCHEME=
-#
 #MOAB -v SPEED_TEST=FALSE
-#
-#MOAB -v ONLY_PROFILED=FALSE
 #
 ##### **********************************************************************
 ########### End MOAB header ##########
@@ -71,17 +65,13 @@ echo "Trait=${TRAIT}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
       Imputation=${IMPUTATION}\
-      CV_Method=${CV_METHOD}\
-      CV_Scheme=${CV_SCHEME}\
-      Speed_Test=${SPEED_TEST}\
-      Only_Profiled=${ONLY_PROFILED}"
+      Speed_Test=${SPEED_TEST}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/fernando_ssBLUP.R\
            ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
-           ${IMPUTATION} ${CV_METHOD} ${CV_SCHEME} ${SPEED_TEST}\
-           ${ONLY_PROFILED}"
+           ${IMPUTATION} ${SPEED_TEST}"
 
 # Start program
 echo $startprog
