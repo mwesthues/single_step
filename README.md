@@ -7,42 +7,38 @@ weighted by gene expression data.
 
 
 ## Analysis
-1.   [./analysis/snp_qc_pheno.R](./analysis/snp_qc_pheno.R)
+### Common genotypes
+[./analysis/common_genotypes.R](./analysis/common_genotypes.R)
 
-SNP quality checks.
+Determine for which genotypes (inbred lines as well as hybrids) all data are
+available.
 
-2.   [./analysis/snp_impute_pheno.R](./analysis/snp_impute_pheno.R)
+### Genomic data
+[./analysis/snp_preparation.R](./analysis/snp_preparation.R)
 
-SNP imputation using Beagle.
+Apply genomic data pre-processing such as the imputation of missing values.
 
-3.   [./analysis/snp_maf_coded.R](./analysis/snp_maf_coded.R)
+### BGLR input matrices
+[./analysis/create_ETA.R](./analysis/create_ETA.R)
 
-SNP-coding based on minor-allele frequencies.
+Generate a list of input matrices for predictions using the `BGLR` package.
 
-4.   [./analysis/equidistant_snps.R](./analysis/equidistant_snps.R)
+### CV scheme generation
+[./analysis/cv_sampling.R](./analysis/cv_sampling.R)
 
-Select equi-distant SNPs with approximately 10 SNPs per Mbp.
-
-5.   [./analysis/legarra_kernels.R](./legarra_kernels.R)
-
-Generate kernels according to equation (4) in Legarra et al. (2009)
-
-6.   [./analysis/CV1000_Sampling.R](./analysis/CV1000_Sampling.R)
-
-Generate a CV1000 (1,000 rounds of cross validation) scheme.
-
-7.   [./analysis/SS-BLUP.R](./analysis/SS-BLUP.R)
-
-Run single step regression BLUP.
+Generate custom cross-validation schemes as outlined in Westhues et al. (2016).
 
 
+### Hybrid prediction
+[./analysis/fernando_ssBLUP.R](./analysis/fernando_ssBLUP.R)
 
-#### Previous scripts
-a.   [./analysis/pheno_prediction.R](./analysis/pheno_prediction.R)
+Run hybrid prediction models with the `BGLR` package using either leave-one-out
+cross validation (LOOCV) or customized CV schemes from 
+[./analysis/cv_sampling.R].
 
-Prediction of agronomic traits in maize hybrids based on mRNAs, which were
-imputed for genotypes for which only genomic data were available.
 
-b.   [./analysis/pheno_predability.R](./analysis/pheno_predability.R)
+### Model evaluation
+[./analysis/pheno_predability.R](./analysis/pheno_predability.R)
 
-Compute the predictive abilities from the cross-validation runs and plot them.
+Compute and plot predictive abilities.
+
