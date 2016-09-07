@@ -18,19 +18,8 @@ available.
 
 Apply genomic data pre-processing such as the imputation of missing values.
 
-### BGLR input matrices
-[./analysis/create_ETA.R](./analysis/create_ETA.R)
-
-Generate a list of input matrices for predictions using the `BGLR` package.
-
-### CV scheme generation
-[./analysis/cv_sampling.R](./analysis/cv_sampling.R)
-
-Generate custom cross-validation schemes as outlined in Westhues et al. (2016).
-
-
 ### Hybrid prediction
-[./analysis/fernando_ssBLUP.R](./analysis/fernando_ssBLUP.R)
+[./analysis/prediction.R](./analysis/prediction.R)
 
 Run hybrid prediction models with the `BGLR` package using either leave-one-out
 cross validation (LOOCV) or customized CV schemes from 
@@ -41,6 +30,8 @@ cross validation (LOOCV) or customized CV schemes from
 [./analysis/pheno_predability.R](./analysis/pheno_predability.R)
 
 Compute and plot predictive abilities.
+
+
 
 
 ## Helper scripts
@@ -55,3 +46,15 @@ were imputed for none, one or both parents, each for CV1000 and LOOCV.
 [./analysis/helper_loocv_trn_size.R](./analysis/helper_loocv_trn_size.R)
 
 Determine how similar the individual cross-validations rounds in CV1000 are.
+
+
+
+
+## Additional scripts (not required)
+### CV scheme generation
+[./analysis/cv_sampling.R](./analysis/cv_sampling.R)
+
+Generate custom cross-validation schemes as outlined in Westhues et al. (2016).
+
+
+
