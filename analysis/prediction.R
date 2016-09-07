@@ -22,7 +22,7 @@ pacman::p_load_gh("mwesthues/sspredr")
 if (isTRUE(interactive())) {
   # Number of cores
   Sys.setenv("MOAB_PROCCOUNT" = "4")
-  Sys.setenv("TRAIT" = "GTM")
+  Sys.setenv("TRAIT" = "")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "10000")
   # Prediction model in BGLR()
@@ -56,7 +56,10 @@ flint_na_frac <- as.numeric(Sys.getenv("FLINT_NA_FRACTION" ))
 
 
 # Input tests
-poss_traits <- c("GTM", "GTS", "ADL", "FETT", "RFA", "RPR", "STA", "XZ", "ADF")
+poss_traits <- c("GTM", "GTS", "FETT", "RFA", "RPR", "STA", "XZ", "ADF")
+if (isTRUE(nchar(init_traits) == 0)) {
+  init_traits <- poss_traits
+}
 test_that("selected trait exists", {
   expect_true(all(init_traits %in% poss_traits))
 })
@@ -173,7 +176,7 @@ start_time <- Sys.time()
 pred_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
   run <- param_df[i, "Run"]
   trait <- param_df[i, "Trait"]
-  iter <- param_df[i, "Iter"]
+  iter <- as.integer(param_df[i, "Iter"])
   pred <- run_loocv(Pheno = pheno,
                     ETA = eta,
                     hybrid = TRUE,

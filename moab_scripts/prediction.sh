@@ -72,7 +72,7 @@ echo "Trait=${TRAIT}\
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
-           ./analysis/fernando_ssBLUP.R\
+           ./analysis/prediction.R\
            ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
            ${PREDICTOR} ${DENT_NA_FRACTION} ${FLINT_NA_FRACTION}"
 
