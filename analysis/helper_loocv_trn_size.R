@@ -36,3 +36,63 @@ trn_fraction <- vapply(seq_len(nrow(pheno)), FUN = function(run) {
                    grep(father[run], x = geno, invert = TRUE))
   length(tst) / nrow(pheno)
 }, FUN.VALUE = double(1))
+
+
+
+# CV SIMILARITY -----------------------------------------------------------
+cv_scheme <- readRDS(
+  "./data/processed/cv1000_ps8081_trn=500_min_size=50_m=114_f=83.RDS"
+  )
+sets <- c("T0", "T1", "T2", "TRN")
+cv_mat <- cv_scheme %>%
+  as_data_frame() %>%
+  spread(key = Run, value = Set) %>%
+  remove_rownames() %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "Sample_ID") %>%
+  as.matrix()
+# Function for the computation of the absolute correlation between each 
+# cross-validation run, separately for each set (T0, T1, T2, TRN).
+get_set_sim <- function(x, set) {
+  x[x == set] <- "1"
+  x[x != "1"] <- "0"
+  storage.mode(x) <- "numeric"
+  x %>%
+    cor() %>%
+    abs() %>%
+    .[upper.tri(.)] %>%
+    c()
+}
+set_sim_lst <- lapply(sets, FUN = function(set) {
+  get_set_sim(x = cv_mat, set = set)
+})
+names(set_sim_lst) <- sets
+sim_df <- do.call(cbind, set_sim_lst)
+# Histograms of the similarity between CV-runs, separately for each set.
+sim_df %>%
+  as_data_frame() %>%
+  gather(key = Set, value = Similarity) %>%
+  ggplot(aes(x = Similarity)) +
+  geom_histogram() +
+  facet_wrap(~ Set)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -42,3 +42,16 @@ cross validation (LOOCV) or customized CV schemes from
 
 Compute and plot predictive abilities.
 
+
+## Helper scripts
+### Predictive ability
+[./analysis/helper_predability.R](./analysis/helper_predability.R)
+
+Determine predictive abilities for single-step BLUP-based predictions.
+Predictive abilities are plotted separately for hybrids for which mRNA values
+were imputed for none, one or both parents, each for CV1000 and LOOCV.
+
+### CV1000 composition
+[./analysis/helper_loocv_trn_size.R](./analysis/helper_loocv_trn_size.R)
+
+Determine how similar the individual cross-validations rounds in CV1000 are.

@@ -2,14 +2,16 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
                "viridis")
 run_log <- fread("./data/processed/prediction_log/log_list.txt")
-
+geno <- readRDS("./data/processed/common_genotypes.RDS")
+dent_imp_nms <- setdiff(geno$Dent$snp, geno$Dent$mrna)
+flint_imp_nms <- setdiff(geno$Flint$snp, geno$Flint$mrna)
 
 # CV1000
 cv1000_nms <- run_log[CV != "LOOCV", Job_ID, ]
-cv1000 <- lapply(seq_along(cv1000_nms), FUN = function(i) {
+cv1000_lst <- lapply(seq_along(cv1000_nms), FUN = function(i) {
   readRDS(paste0("./data/processed/predictions/", cv1000_nms[i], ".RDS"))
 })
-cv1000 <- rbindlist(cv1000)
+cv1000 <- rbindlist(cv1000_lst)
 cv1000_avg <- cv1000[Set == "T0", 
                      .(Pred_Ability = cor(y, yHat)),
                      by = .(Imputation, Trait)]
