@@ -24,7 +24,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "4")
   Sys.setenv("TRAIT" = "")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "500")
+  Sys.setenv("ITER" = "10000")
   # Prediction model in BGLR()
   Sys.setenv("MODEL" = "BRR")
   # Algorithm to generate variance-covariance matrices.
@@ -56,7 +56,7 @@ flint_na_frac <- as.numeric(Sys.getenv("FLINT_NA_FRACTION" ))
 
 
 # Input tests
-poss_traits <- c("GTM", "GTS", "FETT", "RPR", "STA", "XZ", "ADF")
+poss_traits <- c("GTM", "GTS", "FETT", "RFA", "RPR", "STA", "XZ", "ADF")
 if (isTRUE(nchar(init_traits) == 0)) {
   init_traits <- poss_traits
 }
