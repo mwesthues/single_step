@@ -130,6 +130,9 @@ if (any(c(dent_na_frac, flint_na_frac) != 0)) {
                          replace = FALSE)
   na_nms <- c(dent_na_nms, flint_na_nms)
   mrna <- mrna[!rownames(mrna) %in% na_nms, ]
+} else {
+  dent_na_nms <- vector(mode = "character", length = 0)
+  flint_na_nms <- vector(mode = "character", length = 0)
 }
 
 
