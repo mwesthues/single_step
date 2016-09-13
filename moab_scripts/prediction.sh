@@ -36,15 +36,15 @@
 #
 #MOAB -v VCOV=RadenII
 #
-#MOAB -v CV_MODE=custom
-#
 #MOAB -v PI=0.5
 #
 #MOAB -v PRIOR_PI_COUNT=10
 #
-#MOAB -v IMPUTATION=TRUE
+#MOAB -v PREDICTOR=mrna
 #
-#MOAB -v SPEED_TEST=FALSE
+#MOAB -v DENT_NA_FRACTION=0.05
+#
+#MOAB -v FLINT_NA_FRACTION=0.05
 #
 ##### **********************************************************************
 ########### End MOAB header ##########
@@ -64,17 +64,17 @@ echo "Trait=${TRAIT}\
       Iter=${ITER}\
       Model=${MODEL}\
       VCOV=${VCOV}\
-      CV_MODE=${CV_MODE}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
-      Imputation=${IMPUTATION}\
-      Speed_Test=${SPEED_TEST}"
+      Predictor=${PREDICTOR}\
+      Dent_NA_Fraction=${DENT_NA_FRACTION}\
+      Flint_NA_Fraction=${FLINT_NA_FRACTION}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
-           ./analysis/fernando_ssBLUP.R\
-           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${CV_MODE} ${PI} ${PRIOR_PI_COUNT}\
-           ${IMPUTATION} ${SPEED_TEST}"
+           ./analysis/prediction.R\
+           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
+           ${PREDICTOR} ${DENT_NA_FRACTION} ${FLINT_NA_FRACTION}"
 
 # Start program
 echo $startprog
