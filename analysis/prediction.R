@@ -39,10 +39,6 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "0")
   # 'mrna' or 'snp' 
   Sys.setenv("PREDICTOR" = "mrna")
-  # Which fraction of Dent genotypes shall be set to 'NA' for cross-validation?
-  Sys.setenv("DENT_NA_FRACTION" = "0.00")
-  # Which fraction of Flint genotypes shall be set to 'NA' for cross-validation?
-  Sys.setenv("FLINT_NA_FRACTION" = "0.00")
 }
 
 if (!interactive()) {
@@ -58,8 +54,6 @@ g_method <- as.character(Sys.getenv("VCOV"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 predictor <- as.character(Sys.getenv("PREDICTOR"))
-dent_na_frac <- as.numeric(Sys.getenv("DENT_NA_FRACTION" ))
-flint_na_frac <- as.numeric(Sys.getenv("FLINT_NA_FRACTION" ))
 
 
 # Input tests
@@ -76,13 +70,7 @@ test_that("selected trait exists", {
 test_that("kernel method is defined", {
   expect_true(g_method %in% c("RadenI", "RadenII", "Zhang", "none"))
 })
-if (any(c(dent_na_frac, flint_na_frac) != 0)) {
-  stopifnot(isTRUE(predictor == "mrna"))
-  if (isTRUE(all_pheno)) {
-    stop(paste0("Missing data in parents not allowed when the full set of ", 
-                "hybrids is used"))
-  }
-}
+
 
 
 ## -- DATA SELECTION -----------------------------------------------------
@@ -144,28 +132,12 @@ mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
 mrna <- mrna[rownames(mrna) %in% c(dent, flint), ]
 
 
-# Set transcriptomic data to 'NA' on demand.
-if (any(c(dent_na_frac, flint_na_frac) != 0)) {
-  dent_na_nms <- sample(dent, size = ceiling(length(dent) * dent_na_frac), 
-                        replace = FALSE)
-  flint_na_nms <- sample(flint, size = ceiling(length(flint) * flint_na_frac), 
-                         replace = FALSE)
-  na_nms <- c(dent_na_nms, flint_na_nms)
-  mrna <- mrna[!rownames(mrna) %in% na_nms, ]
-} else {
-  dent_na_nms <- vector(mode = "character", length = 0)
-  flint_na_nms <- vector(mode = "character", length = 0)
-}
-
-
 ## -- GENERATE BGLR() INPUT MATRICES --------------------------------------
 eta_lst <- lapply(hetgrps, FUN = function(i) {
   grp_hyb <- vapply(strsplit(hybrid, split = "_"), FUN = "[[", i,
                     FUN.VALUE = character(1))
   # With imputation
-  if (isTRUE(predictor == "mrna" && 
-             (isTRUE(all_pheno) ||
-              any(c(dent_na_frac, flint_na_frac) != 0)))) {
+  if (isTRUE(predictor == "mrna" && isTRUE(all_pheno))) {
     grp_snp <- snp[rownames(snp) %in% grp_hyb, ]
     grp_mrna <- mrna[rownames(mrna) %in% grp_hyb, ]
     eta <- impute_eta(x = grp_snp, y = grp_mrna, geno = grp_hyb,
@@ -339,10 +311,10 @@ if (hypred_model %in% caret_mod_nms) {
   names(res) <- trait_vec
  
   elapsed_time <- get_elapsed_time(start_time)
-  log_file <- expand.grid(Job_ID = job_id, Elapsed_Time = elapsed_time,
+  log_file <- expand.grid(Job_ID = job_id, All_Pheno = all_pheno, 
+                          Elapsed_Time = elapsed_time,
                           Trait = trait_vec, Iter = 0, CV = "LOOCV",
-                          Model = hypred_model, PI = 0, PriorPiCount = 0,
-                          Dent_NA_Fraction = 0, Flint_NA_Fraction = 0)
+                          Model = hypred_model, PI = 0, PriorPiCount = 0)
 }
 
 
@@ -373,21 +345,17 @@ if (!hypred_model %in% caret_mod_nms) {
     rename(Trait = Phenotype,
            Dent = Mother,
            Flint = Father) %>%
-    mutate(Dent_NA = ifelse(Dent %in% dent_na_nms, yes = "yes", no = "no"),
-           Flint_NA = ifelse(Flint %in% flint_na_nms, yes = "yes", no = "no"),
-           CV = "LOOCV",
+    mutate(CV = "LOOCV",
+           All_Pheno = all_pheno,
            Job_ID = job_id,
            Model = hypred_model,
            PI = Pi,
            PriorPiCount = PriorPiCount,
            Predictor = predictor,
-           Dent_NA_Fraction = dent_na_frac,
-           Flint_NA_Fraction = flint_na_frac,
            Elapsed_Time = elapsed_time)
   
-  log_file <- unique(res[, .(Job_ID, Elapsed_Time, Trait, Iter, CV, Model, 
-                             PI, PriorPiCount, Dent_NA_Fraction,
-                             Flint_NA_Fraction), ])
+  log_file <- unique(res[, .(Job_ID, All_Pheno, Elapsed_Time, Trait, Iter, CV, 
+                             Model, PI, PriorPiCount), ])
 }
 
 

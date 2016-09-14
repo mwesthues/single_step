@@ -44,10 +44,6 @@
 #
 #MOAB -v PREDICTOR=mrna
 #
-#MOAB -v DENT_NA_FRACTION=0.05
-#
-#MOAB -v FLINT_NA_FRACTION=0.05
-#
 ##### **********************************************************************
 ########### End MOAB header ##########
 
@@ -69,16 +65,13 @@ echo "All_Pheno=${ALL_PHENO}\
       VCOV=${VCOV}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
-      Predictor=${PREDICTOR}\
-      Dent_NA_Fraction=${DENT_NA_FRACTION}\
-      Flint_NA_Fraction=${FLINT_NA_FRACTION}"
+      Predictor=${PREDICTOR}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/prediction.R\
            ${ALL_PHENO} ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
-           ${PRIOR_PI_COUNT} ${PREDICTOR} ${DENT_NA_FRACTION}\
-           ${FLINT_NA_FRACTION}"
+           ${PRIOR_PI_COUNT} ${PREDICTOR}"
 
 # Start program
 echo $startprog
