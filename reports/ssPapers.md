@@ -1,5 +1,22 @@
-### Legarra-2009-JournalDairyScience
-#### Goal
+---
+title: "single-step BLUP Paper"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    smooth_scroll: true
+    toc_depth: 3
+    number_sections: true
+    theme: lumen
+    highlight: tango
+    fig_width: 8
+    fig_height: 5
+---
+
+
+
+# Legarra-2009-JournalDairyScience
+## Goal
 It is proposed to condition the genetic value of ungenotyped animals on the
 genetic value of genotypes animals via the selection index (e.g. pedigree
 information), and then use the genomic relationship matrix for the latter. 
@@ -8,21 +25,21 @@ values with a pedigree-genomic relationship matrix $\mathbf{H}$.
 In this matrix, genomic information is trnsmitted to the covariances among all
 ungenotypes individuals.
 
-#### Introduction
+## Introduction
 Although these methods [whole genome regression] are very promising for animal
 breeding, genotyping is not feasible for an entire population because of its
 high cost or logistical constraints.
 
 
-#### Methods
-##### Covariance matrix of breeding values including genomic information
+## Methods
+### Covariance matrix of breeding values including genomic information
 VanRaden [@VanRaden2008] discussed how the expectation of $\mathbf{G}$ is
 $\mathbf{A}$, the regular numerator relationship matrix, and that $\mathbf{G}$
 represents observed, rather than average, relationships.
 Therefore it accounts for Mendelian samplings (*i.e.* it can distinguish
 full-sibs and unknown or far relationships.
 
-###### Plug-in G
+#### Plug-in G
 A simple way to use $\mathbf{G}$ is to plug it into $\mathbf{A}$; this
 results in the following modified $\mathbf{A}$:
 
@@ -48,8 +65,8 @@ positive or semi-positive definite.
 
 
 
-### Fernando-2014-GSE
-#### Introduction
+# Fernando-2014-GSE
+## Introduction
 When $n_{2}$ (the number of genotypes animals) is a few thousands, SSBV-BLUP 
 provides an elegant and convenient method to estimate breeding values (BV) that 
 combines the available phenotype, pedigree and SNP data.
@@ -64,7 +81,7 @@ Our extended MEM will enable BLUP evaluations without having to compute
 $\mathbf{G}$ or its inverse, while combining information from genotyped and
 non-gneotyped animals.
 
-#### Methods
+## Methods
 ##### Marker effect models
 General model:
 
@@ -78,7 +95,7 @@ matrix of marker covariates, $\mathbf{\alpha}$ is the vector of random, partial
 regression coefficients of the marker covariates, and $\mathbf{e}$ is a vector
 of residuals.
 
-##### Breeding value models
+### Breeding value models
 A model that is equivalent to ([@eq:General_Model]) can be written as:
 $$
   \mathbf{y} = \mathbf{X \beta} + \mathbf{g} + \mathbf{e},
