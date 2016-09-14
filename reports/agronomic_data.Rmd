@@ -1,0 +1,65 @@
+# Explore phenotypic data
+Load packages
+```{r packages, message = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
+               "viridis", "tidyr", "gridExtra", "modelr", "caret",
+               "knitr")
+```
+
+Set knitr options
+```{r knitr_options, message = FALSE}
+knitr::opts_knit$set(root.dir = "~/gamazon/")
+```
+
+Load data
+```{r Load_Data}
+pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
+```
+
+
+## All hybrids
+Prepare agronomic data.
+```{r Prepare_agro}
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+hybrid <- genos$Hybrid
+all_pheno <- pheno %>%
+  rename(Observed = EST) %>%
+  as_data_frame() %>%
+  filter(G %in% hybrid) %>%
+  select(G, Observed, Trait) %>%
+  filter(Trait != "ADL") %>%
+  mutate(Trait = fct_recode(Trait, 
+    "FAT" = "FETT",
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "PRO" = "RPR",
+    "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, 
+    c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
+    ))
+```
+  
+Evaluate the skewness of agronomic traits.
+```{r Full_Agro_Skewness}
+all_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2)) %>%
+  arrange(abs(Skewness)) %>%
+  kable(padding = 0)
+```
+
+Evaluate the distribution of agronomic traits via kernel density plots.
+```{r Full_Agro_Distribution}
+all_pheno %>%
+  ggplot(aes(x = Observed)) +
+  geom_density() +
+  facet_wrap(~ Trait, scales = "free") +
+  theme_hc() +
+  ylab("Density")
+```
+
+
+## Hybrids of parents with genomic and transcriptomic data 
+bla bla

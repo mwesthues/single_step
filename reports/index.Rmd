@@ -1,0 +1,25 @@
+---
+title: Single-step Hybrid Predition
+author: Matthias Westhues, Claas Heuer
+date: "`r Sys.Date()`"
+knit: "bookdown::render_book"
+output:
+  bookdown::gitbook: default
+documentclass: book
+bibliography: ["library.bib", "cheuer.bib"]
+biblio-style: apalike
+link-citations: yes
+---
+
+
+# Preface {-}
+This book covers an extension of the methodology of single-step prediction 
+&mdash; which was developed for the imputation of SNP data from pedigree 
+information &mdash; to the imputation of quantitative predictor variables using
+genomic information.
+
+The companion R-package for this analysis is [sspredr](https://github.com/mwesthues/sspredr).
+The development version can be installed from Github:
+```{r Install_sspred, eval = FALSE}
+devtools::install_github("mwesthues/sspredr")
+```

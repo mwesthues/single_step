@@ -1,0 +1,136 @@
+# Introduction
+The integration of different sources of information for the prediction of 
+breeding or production values is one of the major challenges in current genomic 
+prediction research.
+In the early years of genomic prediction, a 2-step procedure was the most 
+intuitive choice for establishing a new selection scheme.
+The first consists of conventionally estimating breeding values based on 
+pedigree relationships and therefore the phenotypes of relatives.
+Individuals with accurate breeding values out of the first step (i.e. high 
+number of offspring), enter the second step in which SNP genotypes are regressed 
+against the conventional breeding values.
+Those markers can then be used to predict genomic breeding values for solely 
+genotyped and potentially very young individuals.
+Considering the two sources of information, pedigree and high density SNP 
+genotypes, the process can be described as follows:
+
+### First Step
+Denote $\mathbf{y}$ as the vector of measured phenotypes for a normally 
+distributed trait for all individuals available in the population.
+The relationship, and therefor the strucure of the additive genetic covariance, 
+across individuals is based on the numerator relationship matrix $\mathbf{A}$.
+In order to obtain breeding values for any individual in the population, we 
+consider the following model:
+
+\begin{equation}
+	\mathbf{y} = \mathbf{Xb} + \mathbf{Za} + \mathbf{e},
+	\label{eq:animal_model}
+\end{equation}
+
+where $\mathbf{X}$ is a design matrix for fixed effects, $\mathbf{b}$ a vector 
+of fixed effects, $\mathbf{Z}$ is the design matrix for the random animal 
+effects, which related observations in $\mathbf{y}$ to elements in $\mathbf{A}$.
+$\mathbf{a}$ is the vector of random animal effects (=breeding values) and
+$\mathbf{e}$ is a vector of iid residual errors wich expectation $0$ and 
+variance $\sigma^2_e$.
+The distribution of the random vector $\mathbf{u}$ is 
+$MVN(0, \mathbf{A}\sigma^2_a)$.
+
+
+
+### Second Step
+In the second step, a subset of the individuals for which conventional breeding 
+values have been estimated, is selected and enters the reference population for 
+training a genomic prediction model.
+That selection includes as necessary condition, that the individual in genotyped 
+and has $\text{PEV}(u_{\text{candidate}}) \leq \text{threshold}$.
+As the breeding values from step one enter the genomic prediction model as 
+phenotypes, one has to be careful about distribution of the residual error of 
+such a model.
+For instance, if the range of the prediction error variances is very broud in 
+the reference population, the residual errors will not be identically 
+distributed anymore, e.g. they should be weighted differently or estimated 
+individually.
+One popular approach to account for that problem is *Deregressing* the breeding 
+values and weighting the residuals according to the prediction error variances 
+[@Garrick2009].
+As the breeding values from step one enter the genomic prediction model as 
+phenotypes, one has to be careful about distribution of the residual error of 
+such a model.
+For instance, if the range of the prediction error variances is very broud in 
+the reference population, the residual errors will not be identically 
+distributed anymore, e.g. they should be weighted differently or estimated 
+individually.
+One popular approach to account for that problem is *Deregressing* the breeding 
+values and weighting the residuals according to the prediction error variances 
+[@Garrick2009].
+
+\begin{equation}
+	\mathbf{\hat{a}} = \mathbf{1'b} + \mathbf{Mu} + \mathbf{e},
+	\label{eq:gblup}
+\end{equation}
+
+where $\mathbf{M}$ is the matrix of marker covariates and $\mathbf{u}$ is a 
+vector of marker effects with iid normal distribution.
+
+Genomic breeding values for any animal in the population can then be obtained 
+by:
+
+\begin{equation}
+	\mathbf{\hat{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
+	\label{eq:gebv}
+\end{equation}
+
+where $\mathbf{p}$ is a row-vector of allele frequencies for all the markers in 
+$\mathbf{M}$ in the base population.
+The prediction error variance of the vector $\mathbf{\hat{g}}$ is usually 
+globally obtained using cross validation.
+Alternatively they could be obtained individually by the posterior distribution 
+of $(\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}}$ when a Bayesian model is used.
+
+
+## Single Step Transciptomic prediction of Breeding Values
+The breeding values in a mRNA prediction model are in general given by:
+\begin{equation}
+	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
+	\label{eq:mrnaebv}
+\end{equation}
+
+where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model 
+equaivalent to equation \@ref(eq:gblup) but using MRNA covariates instead of 
+marker genotypes.
+
+Consider now the situation in which only a subset of the population has 
+transcriptomic information but all have SNP genotypes.
+We can take a similar route as in [@fernando_class_2014] and impute missing
+mRNA data.
+The difference here is, that instead of predicting SNP covariates using 
+pedigree relationship, we impute MRNA covariates using SNP or genomic 
+relationships.
+Let the subscript $1$ denote individuals for which SNP genotypes but no mRNA 
+data is available.
+Individuals with subscript $2$ have both, SNP and mRNA information.
+The covariates in $\mathbf{W}$ are centered.
+The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
+expectation given $\mathbf{g}_2$ and a residual:
+\begin{align}
+	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
+	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
+	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
+	\label{eq:mrna1}
+\end{align}
+
+The distribution of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$.
+
+Using those results from [@legarra_relationship_2009] we can model the breeding 
+values of the individuals for wich no MRNA information is available as expected 
+values from the breeding values in group $2$.
+The structure of the residual imputation/prediction error is known and can 
+therefore be modelled.
+The missing MRNA covariates can be predicted using the expectation of a 
+multivariate normal random vector given correlated observations, which related 
+to the Best Linear Predictor:
+
+The conditional distribution of any column in $\mathbf{\hat{g}_1}$ given
+the $\mathbf{\hat{g}_2}$ is:
+
