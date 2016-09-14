@@ -28,7 +28,7 @@ knitr::opts_knit$set(root.dir = "~/gamazon/")
 
 Load log files and data
 ```{r Load_Data, cache = TRUE}
-run_log <- fread("./data/derived/pred_log.txt")
+run_log <- fread("./data/derived/na_fraction_pred_log.txt")
 
 # LOOCV 
 loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]

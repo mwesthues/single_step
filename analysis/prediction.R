@@ -291,7 +291,8 @@ if (hypred_model %in% caret_mod_nms) {
     if (isTRUE(hypred_model == "gbm")) {
       tune_grid <- expand.grid(interaction.depth = seq(1, to = 7, by = 2),
                                n.trees = seq(100, to = 1000, by = 50),
-                               shrinkage = c(0.01, 0.1))
+                               shrinkage = c(0.01, 0.1),
+                               n.minobsinnode = 10)
       tuned_mod <- train(pred_mat, y,
                          method = "gbm",
                          tuneGrid = tune_grid,
