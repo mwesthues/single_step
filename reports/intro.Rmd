@@ -1,3 +1,6 @@
+---
+output: html_document
+---
 # Introduction
 The integration of different sources of information for the prediction of 
 breeding or production values is one of the major challenges in current genomic 
@@ -66,8 +69,8 @@ values and weighting the residuals according to the prediction error variances
 [@Garrick2009].
 
 \begin{equation}
-	\mathbf{\hat{a}} = \mathbf{1'b} + \mathbf{Mu} + \mathbf{e},
 	\label{eq:gblup}
+	\mathbf{\hat{a}} = \mathbf{1'b} + \mathbf{Mu} + \mathbf{e},
 \end{equation}
 
 where $\mathbf{M}$ is the matrix of marker covariates and $\mathbf{u}$ is a 
@@ -77,8 +80,8 @@ Genomic breeding values for any animal in the population can then be obtained
 by:
 
 \begin{equation}
-	\mathbf{\hat{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
 	\label{eq:gebv}
+	\mathbf{\hat{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
 \end{equation}
 
 where $\mathbf{p}$ is a row-vector of allele frequencies for all the markers in 
@@ -92,8 +95,8 @@ of $(\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}}$ when a Bayesian model is used.
 ## Single Step Transciptomic prediction of Breeding Values
 The breeding values in a mRNA prediction model are in general given by:
 \begin{equation}
-	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
 	\label{eq:mrnaebv}
+	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
 \end{equation}
 
 where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model 
@@ -114,10 +117,10 @@ The covariates in $\mathbf{W}$ are centered.
 The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
 expectation given $\mathbf{g}_2$ and a residual:
 \begin{align}
+	\label{eq:mrna1}
 	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
 	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
 	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
-	\label{eq:mrna1}
 \end{align}
 
 The distribution of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$.
@@ -130,7 +133,4 @@ therefore be modelled.
 The missing MRNA covariates can be predicted using the expectation of a 
 multivariate normal random vector given correlated observations, which related 
 to the Best Linear Predictor:
-
-The conditional distribution of any column in $\mathbf{\hat{g}_1}$ given
-the $\mathbf{\hat{g}_2}$ is:
 

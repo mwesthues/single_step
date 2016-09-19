@@ -18,8 +18,34 @@ This book covers an extension of the methodology of single-step prediction
 information &mdash; to the imputation of quantitative predictor variables using
 genomic information.
 
+Here, we are working with a "full" or "complete" data set &mdash; referring to 
+the maximum number of hybrids for which agronomic and genomic, but not 
+necessarily transcriptomic data are available &mdash; and a "reduced" data set
+with less hybrids but all of their parental inbred lines having complete
+genomic and transcriptomic records.
+
+All our predictive abilities were evaluated using a leave-one-out cross 
+validation (LOOCV) routine.
+
 The companion R-package for this analysis is [sspredr](https://github.com/mwesthues/sspredr).
 The development version can be installed from Github:
 ```{r Install_sspred, eval = FALSE}
 devtools::install_github("mwesthues/sspredr")
 ```
+
+
+## Overview
+Chapter \@ref(introduction) gives a summary of the relevant literature.
+
+Chapter \@ref(data-overview) provides a brief summary of the available data 
+without delving into their properties.
+
+Chapter \@ref(agronomic-data) gives an overview of the distribution of the 
+agronomic traits as well as correlations among them, separately for the full
+set of hybrids as well as the reduced set of hybrids.
+
+Chapter \@ref(prediction-for-reduced-data) deals with the results of hybrid 
+prediction for the reduced set of data.
+
+Chapter \@ref(evaluation-of-loocv-predictive-abilities) examines the influence
+of certain levels of missingness in the transcriptomic data.

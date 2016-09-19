@@ -1,25 +1,24 @@
-# Explore phenotypic data
-Load packages
-```{r packages, message = FALSE}
+# Agronomic Data
+```{r echo = FALSE, message = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
                "viridis", "tidyr", "gridExtra", "modelr", "caret",
                "knitr", "tibble")
+
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = "~/gamazon/",
+                     inline = TRUE)
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, echo = FALSE, 
+                      warning = FALSE, echo = FALSE)
 ```
 
-Set knitr options
-```{r knitr_options, message = FALSE}
-knitr::opts_knit$set(root.dir = "~/gamazon/")
-```
-
-Load data
-```{r Load_Data}
+```{r echo = FALSE}
+# Load data
 pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
-```
 
-
-Prepare agronomic data.
-```{r Prepare_agro}
+# Prepare agronomic data.
 genos <- readRDS("./data/processed/common_genotypes.RDS")
 hybrid <- genos$Hybrid
 all_pheno <- pheno %>%
@@ -72,7 +71,7 @@ $$
 where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ is the predictor
 variable, $n$ is the number of values and $\bar{x}$ is the sample mean of the 
 predictor.
-```{r Agro_Skewness}
+```{r Agro-Skewness, echo = FALSE}
 all_skewness <- all_pheno %>%
   group_by(Trait) %>%
   summarize(Skewness = e1071::skewness(Observed),
@@ -83,12 +82,13 @@ reduced_skewness <- reduced_pheno %>%
             Skewness = round(Skewness, digits = 2))
 full_join(x = all_skewness, y = reduced_skewness,
           by = "Trait",
-          suffix = c("_All", "_Reduced")) %>%
+          suffix = c(" (Full)", " (Reduced)")) %>%
   kable(padding = 0)
 ```
 
+
 ## Distribution
-```{r Full_Agro_Distribution, message = FALSE}
+```{r Agro-Distribution, message = FALSE, echo = FALSE, fig.cap = "Histogram of the distribution of seven agronomic traits. Black bins show the distribution of the reduced set of hybrids whereas light grey bins show the distribtution of the full set of hybrids."}
 ggplot(all_pheno, aes(x = Observed)) +
   geom_histogram(fill = "grey", alpha = 0.5) +
   geom_histogram(data = reduced_pheno, color = "black") +
@@ -98,8 +98,8 @@ ggplot(all_pheno, aes(x = Observed)) +
 
 
 ## Correlation
-```{r Full_Agro_Correlation}
-par(mar = c(0, 2, 0, 0),
+```{r Agro-Correlation, echo = FALSE, fig.cap = "Pairwise correlations among seven agronomic traits for the full set of hybrids and the reduced set of hybrids, respectively."}
+par(mar = c(0, 1, 0, 0),
     mfrow = c(1, 2))
 all_pheno %>%
   select(-Reduced_Data) %>%
@@ -111,12 +111,12 @@ all_pheno %>%
   corrplot::corrplot(col = viridis(256),
                      method = "color",
                      diag = FALSE,
-                     type = "lower",
+                     cl.pos = "b",
+                     tl.pos = "d",
+                     tl.srt = 60,
                      order = "hclust",
-                     tl.srt = 45,
                      addCoef.col = "black",
-                     tl.col = "black",
-                     title = "All hybrids",
+                     title = "Full",
                      mar = c(0, 1, 1, 0))
 reduced_pheno %>%
   filter(Reduced_Data == "yes") %>%
@@ -129,11 +129,11 @@ reduced_pheno %>%
   corrplot::corrplot(col = viridis(256),
                      method = "color",
                      diag = FALSE,
-                     type = "lower",
+                     cl.pos = "b",
+                     tl.pos = "d",
+                     tl.srt = 60,
                      order = "hclust",
-                     tl.srt = 45,
                      addCoef.col = "black",
-                     tl.col = "black",
-                     title = "Reduced hybrids",
+                     title = "Reduced",
                      mar = c(0, 1, 1, 0))
 ```
