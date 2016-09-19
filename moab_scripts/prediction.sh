@@ -8,7 +8,7 @@
 #MOAB -l nodes=1:ppn=16
 #
 # Request memory per process
-#MOAB -l pmem=3000mb
+#MOAB -l pmem=3800mb
 #
 # Estimated wallclock time for job
 #MOAB -l walltime=03:00:00:00

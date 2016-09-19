@@ -30,13 +30,13 @@ if (isTRUE(interactive())) {
   Sys.setenv("ALL_PHENO" = "FALSE")
   Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "0")
+  Sys.setenv("ITER" = "500")
   # Prediction model in BGLR()
-  Sys.setenv("MODEL" = "pls")
+  Sys.setenv("MODEL" = "BRR")
   # Algorithm to generate variance-covariance matrices.
   Sys.setenv("VCOV" = "RadenII")
-  Sys.setenv("PI" = "0")
-  Sys.setenv("PRIOR_PI_COUNT" = "0")
+  Sys.setenv("PI" = "0.5")
+  Sys.setenv("PRIOR_PI_COUNT" = "10")
   # 'mrna' or 'snp' 
   Sys.setenv("PREDICTOR" = "mrna")
 }
@@ -353,7 +353,8 @@ if (!hypred_model %in% caret_mod_nms) {
            PI = Pi,
            PriorPiCount = PriorPiCount,
            Predictor = predictor,
-           Elapsed_Time = elapsed_time)
+           Elapsed_Time = elapsed_time) %>%
+    as.data.table()
   
   log_file <- unique(res[, .(Job_ID, All_Pheno, Elapsed_Time, Trait, Iter, CV, 
                              Model, PI, PriorPiCount), ])

@@ -4,7 +4,7 @@ Load packages
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
                "viridis", "tidyr", "gridExtra", "modelr", "caret",
-               "knitr")
+               "knitr", "tibble")
 ```
 
 Set knitr options
@@ -18,7 +18,6 @@ pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
 ```
 
 
-## All hybrids
 Prepare agronomic data.
 ```{r Prepare_agro}
 genos <- readRDS("./data/processed/common_genotypes.RDS")
@@ -38,28 +37,103 @@ all_pheno <- pheno %>%
          Trait = fct_relevel(Trait, 
     c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
     ))
+
+# Select hybrids for which both parents have genomic as well as transcriptomic
+# records.
+dent <- genos$Dent$mrna
+flint <- genos$Flint$mrna
+hybrid <- genos$Hybrid %>%
+  as_data_frame() %>%
+  separate(value, into = c("DF", "Dent", "Flint")) %>%
+  mutate(Avail_Dent = ifelse(Dent %in% dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% flint, yes = 1, no = 0),
+         Tested_Parents = Avail_Dent + Avail_Flint) %>%
+  filter(Tested_Parents == 2) %>%
+  unite(Hybrid, DF, Dent, Flint) %>%
+  .$Hybrid
+
+# All hybrids
+all_pheno <- all_pheno %>%
+  mutate(Reduced_Data = "no")
+
+# Only hybrids for which parents have both, genomic and transcriptomic data
+reduced_pheno <- all_pheno %>%
+  mutate(Reduced_Data = ifelse(G %in% hybrid, yes = "yes", no = "no")) %>%
+  filter(Reduced_Data == "yes")
 ```
   
-Evaluate the skewness of agronomic traits.
-```{r Full_Agro_Skewness}
-all_pheno %>%
+## Skewness
+A general **rule of thumb** to consider is that skewed data whose ratio of the 
+highest value to the lowest value is greater than 20 have significant skewness.
+The formula for the skewness statistic is
+$$
+\text{skewness}  = \frac{\sum (x_i - \bar{x})^{3}}{(n - 1)v^{3/2}},
+$$
+where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ is the predictor
+variable, $n$ is the number of values and $\bar{x}$ is the sample mean of the 
+predictor.
+```{r Agro_Skewness}
+all_skewness <- all_pheno %>%
   group_by(Trait) %>%
   summarize(Skewness = e1071::skewness(Observed),
-            Skewness = round(Skewness, digits = 2)) %>%
-  arrange(abs(Skewness)) %>%
+            Skewness = round(Skewness, digits = 2))
+reduced_skewness <- reduced_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2))
+full_join(x = all_skewness, y = reduced_skewness,
+          by = "Trait",
+          suffix = c("_All", "_Reduced")) %>%
   kable(padding = 0)
 ```
 
-Evaluate the distribution of agronomic traits via kernel density plots.
-```{r Full_Agro_Distribution}
-all_pheno %>%
-  ggplot(aes(x = Observed)) +
-  geom_density() +
+## Distribution
+```{r Full_Agro_Distribution, message = FALSE}
+ggplot(all_pheno, aes(x = Observed)) +
+  geom_histogram(fill = "grey", alpha = 0.5) +
+  geom_histogram(data = reduced_pheno, color = "black") +
   facet_wrap(~ Trait, scales = "free") +
-  theme_hc() +
-  ylab("Density")
+  theme_bw()
 ```
 
 
-## Hybrids of parents with genomic and transcriptomic data 
-bla bla
+## Correlation
+```{r Full_Agro_Correlation}
+par(mar = c(0, 2, 0, 0),
+    mfrow = c(1, 2))
+all_pheno %>%
+  select(-Reduced_Data) %>%
+  spread(key = Trait, value = Observed) %>%
+  as.data.frame() %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "G") %>%
+  cor() %>%
+  corrplot::corrplot(col = viridis(256),
+                     method = "color",
+                     diag = FALSE,
+                     type = "lower",
+                     order = "hclust",
+                     tl.srt = 45,
+                     addCoef.col = "black",
+                     tl.col = "black",
+                     title = "All hybrids",
+                     mar = c(0, 1, 1, 0))
+reduced_pheno %>%
+  filter(Reduced_Data == "yes") %>%
+  select(-Reduced_Data) %>%
+  spread(key = Trait, value = Observed) %>%
+  as.data.frame() %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "G") %>%
+  cor() %>%
+  corrplot::corrplot(col = viridis(256),
+                     method = "color",
+                     diag = FALSE,
+                     type = "lower",
+                     order = "hclust",
+                     tl.srt = 45,
+                     addCoef.col = "black",
+                     tl.col = "black",
+                     title = "Reduced hybrids",
+                     mar = c(0, 1, 1, 0))
+```
