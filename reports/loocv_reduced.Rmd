@@ -2,7 +2,7 @@
 ```{r message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
-               "viridis", "tidyr", "gridExtra", "modelr", "MASS")
+               "viridis", "tidyr", "modelr")
 
 knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
@@ -10,7 +10,7 @@ knit_hooks$set(inline = function(x) {
 knitr::opts_knit$set(root.dir = "~/gamazon/",
                      inline = TRUE,
                      verbose = FALSE)
-knitr::opts_chunk$set(fig.width = 8, fig.height = 6, echo = FALSE, 
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
                       warning = FALSE, echo = FALSE)
 ```
 
@@ -50,6 +50,9 @@ loocv_clean <- loocv %>%
 Peak at predictive abilities based on non-imputed predictor information and rank
 the results by their predictive ability.
 ```{r Non-Imputed-Pred-Ability, cache = TRUE}
+loocv_tbl_cap <- paste("Predictive abilities for the 'reduced' set of hybrids",
+                       "using two different predictors and seven agronomic",
+                       "traits. Results are ranked by predictive ability.")
 loocv_clean %>%
   filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
   mutate(Predictor = as.factor(Predictor)) %>%
@@ -58,7 +61,7 @@ loocv_clean %>%
   summarize(Pred_Ability = cor(y, yhat)) %>%
   arrange(desc(Pred_Ability)) %>%
   rename("Predictive Ability" = Pred_Ability) %>%
-  knitr::kable()
+  knitr::kable(caption = loocv_tbl_cap, booktabs = TRUE)
 ```
 
 

@@ -2,19 +2,18 @@
 ```{r message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
-               "viridis", "tidyr", "knitr", "tibble", "VennDiagram", "grid",
-               "gridExtra", "purrr", "htmlTable")
+               "viridis", "tidyr", "knitr", "tibble", "purrr")
 
 knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
 })
 knitr::opts_knit$set(root.dir = "~/gamazon/",
                      inline = TRUE)
-knitr::opts_chunk$set(fig.width = 8, fig.height = 6, echo = FALSE, 
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
                       warning = FALSE, echo = FALSE)
 ```
 
-```{r Load_Agro_Data, message = FALSE, echo = FALSE}
+```{r Load-Agro-Data, message = FALSE, cache = TRUE}
 pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
 genos <- readRDS("./data/processed/common_genotypes.RDS")
 
@@ -23,7 +22,7 @@ all_pheno <- pheno %>%
   rename(Observed = EST) %>%
   as_data_frame() %>%
   filter(G %in% full_hybrid) %>%
-  select(G, Observed, Trait) %>%
+  dplyr::select(G, Observed, Trait) %>%
   filter(Trait != "ADL") %>%
   mutate(Trait = fct_recode(Trait, 
     "FAT" = "FETT",
@@ -88,9 +87,9 @@ geno_tab_cap <- paste("Number of genotypes for Dent and Flint parent lines and",
 genos %>% 
   at_depth(.depth = 2, .f = length) %>%
   bind_rows() %>%
-  select(-agro) %>%
+  dplyr::select(-agro) %>%
   mutate(Type = names(genos)) %>%
-  select(Type, snp, mrna) %>%
+  dplyr::select(Type, snp, mrna) %>%
   rename("Genomic Data" = snp,
          "Transcriptomic Data" = mrna) %>%
   knitr::kable(caption = geno_tab_cap, booktabs = TRUE)

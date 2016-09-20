@@ -4,34 +4,46 @@ author: Matthias Westhues, Claas Heuer
 date: "`r Sys.Date()`"
 knit: "bookdown::render_book"
 output:
-  bookdown::gitbook: default
+  bookdown::gitbook:
 documentclass: book
-bibliography: ["library.bib", "cheuer.bib"]
+bibliography: ["cheuer.bib"]
 biblio-style: apalike
 link-citations: yes
 ---
 
 
+
 # Preface {-}
-This book covers an extension of the methodology of single-step prediction 
+This report covers an extension of the methodology of single-step prediction 
 &mdash; which was developed for the imputation of SNP data from pedigree 
 information &mdash; to the imputation of quantitative predictor variables using
 genomic information.
 
-Here, we are working with a "full" or "complete" data set &mdash; referring to 
-the maximum number of hybrids for which agronomic and genomic, but not 
-necessarily transcriptomic data are available &mdash; and a "reduced" data set
-with less hybrids but all of their parental inbred lines having complete
-genomic and transcriptomic records.
+Here, we are working with a "full" data set &mdash; referring to the maximum 
+number of hybrids for which agronomic and genomic, but not necessarily 
+transcriptomic data are available &mdash; and a "reduced" data set with less 
+hybrids but all of their parental inbred lines having complete genomic and 
+transcriptomic records.
 
 All our predictive abilities were evaluated using a leave-one-out cross 
-validation (LOOCV) routine.
+validation (LOOCV) routine and results are displayed for T0-hybrids only.
+Note, that T0-hybrids are defined as hybrids having zero parents that have been
+previously tested in other hybrid combinations.
 
 The companion R-package for this analysis is [sspredr](https://github.com/mwesthues/sspredr).
 The development version can be installed from Github:
 ```{r Install_sspred, eval = FALSE}
 devtools::install_github("mwesthues/sspredr")
 ```
+
+
+## Objectives
+1.    Assess whether transcriptomic data with missing records for some genotypes         can be imputed successfully based on genomic information to improve 
+      prediction of unseen hybrids.
+2.    Explore the utility of various machine learning algorithms for the 
+      prediction of unseen hybrids.^[This is motivated by the fact that the 
+      success of hybrid prediction is a strongly convex function of predictive 
+      ability.]
 
 
 ## Overview
@@ -47,5 +59,8 @@ set of hybrids as well as the reduced set of hybrids.
 Chapter \@ref(prediction-for-reduced-data) deals with the results of hybrid 
 prediction for the reduced set of data.
 
-Chapter \@ref(evaluation-of-loocv-predictive-abilities) examines the influence
-of certain levels of missingness in the transcriptomic data.
+Chapter \@ref(prediction-with-imputed-mrnas) examines the influence of certain levels of missingness 
+in the transcriptomic data.
+
+Chapter \@ref(conclusions-and-outlook) provides a summary of the analyses and 
+provides an outlook for future analyses.

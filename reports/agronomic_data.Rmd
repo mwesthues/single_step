@@ -2,15 +2,14 @@
 ```{r echo = FALSE, message = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
-               "viridis", "tidyr", "gridExtra", "modelr", "caret",
-               "knitr", "tibble")
+               "viridis", "tidyr", "knitr", "tibble")
 
 knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
 })
 knitr::opts_knit$set(root.dir = "~/gamazon/",
                      inline = TRUE)
-knitr::opts_chunk$set(fig.width = 8, fig.height = 6, echo = FALSE, 
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
                       warning = FALSE, echo = FALSE)
 ```
 

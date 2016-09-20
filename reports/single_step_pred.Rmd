@@ -1,0 +1,677 @@
+---
+title: "Single-Step Hybrid Prediction Report"
+author: "Matthias Westhues, Claas Heuer"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    smooth_scroll: true
+    toc_depth: 3
+    number_sections: true
+    theme: lumen
+    highlight: tango
+    fig_width: 8
+    fig_height: 5
+    fig_caption: true
+bibliography: cheuer.bib
+---
+
+
+# Preface <a name="Preface"></a>
+This report covers an extension of the methodology of single-step prediction 
+&mdash; which was developed for the imputation of SNP data from pedigree 
+information &mdash; to the imputation of quantitative predictor variables using
+genomic information.
+
+Here, we are working with a "full" data set &mdash; referring to the maximum 
+number of hybrids for which agronomic and genomic, but not necessarily 
+transcriptomic data are available &mdash; and a "reduced" data set with less 
+hybrids but all of their parental inbred lines having complete genomic and 
+transcriptomic records.
+
+All our predictive abilities were evaluated using a leave-one-out cross 
+validation (LOOCV) routine and results are displayed for T0-hybrids only.
+Note, that T0-hybrids are defined as hybrids having zero parents that have been
+previously tested in other hybrid combinations.
+
+The companion R-package for this analysis is [sspredr](https://github.com/mwesthues/sspredr).
+The development version can be installed from Github:
+```{r Install_sspred, eval = FALSE}
+devtools::install_github("mwesthues/sspredr")
+```
+
+
+## Objectives
+1.    Assess whether transcriptomic data with missing records for some genotypes         can be imputed successfully based on genomic information to improve 
+      prediction of unseen hybrids.
+2.    Explore the utility of various machine learning algorithms for the 
+      prediction of unseen hybrids.^[This is motivated by the fact that the 
+      success of hybrid prediction is a strongly convex function of predictive 
+      ability.]
+
+
+## Overview
+[Chapter 2](#Introduction) gives a summary of the relevant literature.
+
+[Chapter 3](#Data-Overview) provides a brief summary of the available data 
+without delving into their properties.
+
+[Chapter 4](#Agronomic-Data) gives an overview of the distribution of the 
+agronomic traits as well as correlations among them, separately for the full
+set of hybrids as well as the reduced set of hybrids.
+
+[Chapter 5](#Prediction-for-reduced-data) deals with the results of hybrid 
+prediction for the reduced set of data.
+
+[Chapter 6](#Pred-NA) examines the influence of certain levels of missingness 
+in the transcriptomic data.
+
+[Chapter 7](#Full_Prediction) reveals results for predictions using all hybrids.
+
+[Chapter 8](#Conclusions) provides a summary of the analyses and provides an
+outlook for future analyses.
+
+
+
+
+# Introduction <a name="Introduction"></a>
+The integration of different sources of information for the prediction of 
+breeding or production values is one of the major challenges in current genomic 
+prediction research.
+In the early years of genomic prediction, a 2-step procedure was the most 
+intuitive choice for establishing a new selection scheme.
+The first consists of conventionally estimating breeding values based on 
+pedigree relationships and therefore the phenotypes of relatives.
+Individuals with accurate breeding values out of the first step (i.e. high 
+number of offspring), enter the second step in which SNP genotypes are regressed 
+against the conventional breeding values.
+Those markers can then be used to predict genomic breeding values for solely 
+genotyped and potentially very young individuals.
+Considering the two sources of information &mdash; pedigree and high density SNP 
+genotypes &mdash; the process can be described as follows:
+
+### First Step
+Denote $\mathbf{y}$ as the vector of measured phenotypes for a normally 
+distributed trait for all individuals available in the population.
+The relationship &mdash; and therefore the strucure of the additive genetic 
+covariance &mdash; across individuals is based on the numerator relationship 
+matrix $\mathbf{A}$.
+In order to obtain breeding values for any individual in the population, we 
+consider the following model:
+
+$$
+\begin{equation}
+	\mathbf{y} = \mathbf{Xb} + \mathbf{Za} + \mathbf{e},
+	\label{eq:animal_model}
+\end{equation}
+$$
+
+where $\mathbf{X}$ is a design matrix for fixed effects, $\mathbf{b}$ is a 
+vector of fixed effects, $\mathbf{Z}$ is the design matrix for the random animal 
+effects, which associate observations in $\mathbf{y}$ with elements in 
+$\mathbf{A}$, $\mathbf{a}$ is the vector of random animal effects (=breeding 
+values) and $\mathbf{e}$ is a vector of iid residual errors with expectation 
+$0$ and variance $\sigma^2_e$.
+The distribution of the random vector $\mathbf{u}$ is 
+$MVN(0, \mathbf{A}\sigma^2_a)$.
+
+
+
+### Second Step
+In the second step, a subset of the individuals for which conventional breeding 
+values have been estimated, is selected and enters the reference population for 
+training a genomic prediction model.
+That selection requires that the individual is genotyped and has 
+$\text{PEV}(u_{\text{candidate}}) \leq \text{threshold}$.
+As the breeding values from step one enter the genomic prediction model as 
+phenotypes, one has to be careful about the residual error distribution of
+such a model.
+For instance, if the range of the prediction error variances is very broad in 
+the reference population, the residual errors will not be identically 
+distributed anymore, e.g. they should be weighted differently or estimated 
+individually.
+One popular approach to account for that problem is *Deregressing* the breeding 
+values and weighting the residuals according to the prediction error variances 
+[@Garrick2009].
+
+$$
+\begin{equation}
+	\label{eq:gblup}
+	\mathbf{\hat{a}} = \mathbf{1'b} + \mathbf{Mu} + \mathbf{e},
+\end{equation}
+$$
+
+where $\mathbf{M}$ is the matrix of marker covariates and $\mathbf{u}$ is a 
+vector of marker effects with iid normal distribution.
+
+Genomic breeding values for any animal in the population can then be obtained 
+by:
+
+$$
+\begin{equation}
+	\label{eq:gebv}
+	\mathbf{\hat{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
+\end{equation}
+$$
+
+where $\mathbf{p}$ is a row-vector of allele frequencies for all the markers in 
+$\mathbf{M}$ in the base population.
+The prediction error variance of the vector $\mathbf{\hat{g}}$ is usually 
+globally obtained using cross validation.
+Alternatively they could be obtained individually by the posterior distribution 
+of $(\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}}$ when a Bayesian model is used.
+
+
+## Single Step Transciptomic prediction of Breeding Values
+The breeding values in a mRNA prediction model are in general given by:
+$$
+\begin{equation}
+	\label{eq:mrnaebv}
+	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
+\end{equation}
+$$
+
+where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model 
+equaivalent to the GBLUP model but using mRNA covariates instead of 
+marker genotypes.
+
+Consider now the situation in which only a subset of the population has 
+transcriptomic information but all have SNP genotypes.
+We can take a similar route as in @fernando_class_2014 and impute missing
+mRNA data.
+The difference here is that &mdash; instead of predicting SNP covariates using 
+pedigree relationship &mdash; we impute MRNA covariates using SNP or genomic 
+relationships.
+Let the subscript $1$ denote individuals for which SNP genotypes but no mRNA 
+data are available.
+Individuals with subscript $2$ have both, SNP and mRNA information.
+The covariates in $\mathbf{W}$ are centered.
+The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
+expectation given $\mathbf{g}_2$ and a residual error term:
+$$
+\begin{align}
+	\label{eq:mrna1}
+	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
+	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
+	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
+\end{align}
+$$
+
+The distribution of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$.
+
+Using those results from @legarra_relationship_2009 we can model the breeding 
+values of the individuals for wich no mRNA information is available the 
+expectation of the breeding values in group $2$.
+The structure of the residual imputation/prediction error is known and can 
+therefore be modelled.
+The missing mRNA covariates can be predicted using the expectation of a 
+multivariate normal random vector given correlated observations, which related 
+to the Best Linear Predictor.
+
+
+
+
+
+
+# Data Overview <a name="Data-Overview"></a>
+```{r message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
+               "viridis", "tidyr", "knitr", "tibble", "purrr", "modelr",
+               "htmlTable")
+
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = "~/gamazon/",
+                     inline = TRUE)
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE, message = FALSE)
+```
+
+```{r Load-Agro-Data, message = FALSE, cache = TRUE}
+pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+
+full_hybrid <- genos$Hybrid
+all_pheno <- pheno %>%
+  rename(Observed = EST) %>%
+  as_data_frame() %>%
+  filter(G %in% full_hybrid) %>%
+  dplyr::select(G, Observed, Trait) %>%
+  filter(Trait != "ADL") %>%
+  mutate(Trait = fct_recode(Trait, 
+    "FAT" = "FETT",
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "PRO" = "RPR",
+    "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, 
+    c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
+    ))
+traits <- all_pheno %>%
+  .$Trait %>%
+  levels()
+
+# Hybrids of parents with records for both endophenotypes
+red_dent <- Reduce(intersect, genos[["Dent"]][c("snp", "mrna")])
+red_flint <- Reduce(intersect, genos[["Flint"]][c("snp", "mrna")])
+red_hybrid <- genos$Hybrid %>%
+  as_data_frame() %>%
+  separate(value, into = c("DF", "Dent", "Flint")) %>%
+  mutate(Avail_Dent = ifelse(Dent %in% red_dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% red_flint, yes = 1, no = 0),
+         Tested_Parents = Avail_Dent + Avail_Flint) %>%
+  filter(Tested_Parents == 2) %>%
+  unite(Hybrid, DF, Dent, Flint) %>%
+  .$Hybrid
+full_hybrid <- genos$Hybrid
+genos$Hybrid <- NULL
+genos$Hybrid$snp <- full_hybrid
+genos$Hybrid$mrna <- red_hybrid
+```
+
+```{r Feature-Number, echo = FALSE}
+snp <- readRDS("./data/processed/snp_mat.RDS")
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+```
+
+Agronomic data for `r length(traits)` traits (including dry-matter yield (DMY))
+and `r length(full_hybrid)` hybrids are available 
+([Table 1](#Geno-Number-Table)).
+After applying a series of quality checks, `r ncol(snp)` SNPs and 
+best linear unbiased estimates of `r ncol(mrna)` mRNAs were available for 
+further analyses.
+Both, genomic and transcriptomic records, were collected for inbred parent lines
+of `r length(red_hybrid)` hybrids.
+
+<a name="Geno-Number-Table"></a>
+```{r Geno-Number, echo = FALSE}
+geno_tab_cap <- paste("**Table 1:** Number of genotypes for Dent and Flint", 
+                      "parent lines and their hybrid progeny for which genomic",
+                      "and/or transcriptomic data are available.",
+                      "All genotypes for which transcriptomic data are", 
+                      "available, also have genomic data.",
+                      "Agronomic data are available for all 1,521 hybrid",
+                      "genotypes.")
+# Number of genotypes for either SNPs or mRNAs separated by hybrids and their
+# parental Dent and Flint lines, respectively.
+genos %>% 
+  at_depth(.depth = 2, .f = length) %>%
+  bind_rows() %>%
+  dplyr::select(-agro) %>%
+  mutate(Type = names(genos)) %>%
+  dplyr::select(Type, snp, mrna) %>%
+  rename("Genomic Data" = snp,
+         "Transcriptomic Data" = mrna) %>%
+  htmlTable(caption = geno_tab_cap)
+```
+
+
+
+
+
+
+
+# Agronomic Data <a name="Agronomic-Data"></a>
+```{r echo = FALSE}
+# Load data
+pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
+
+# Prepare agronomic data.
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+hybrid <- genos$Hybrid
+all_pheno <- pheno %>%
+  rename(Observed = EST) %>%
+  as_data_frame() %>%
+  filter(G %in% hybrid) %>%
+  select(G, Observed, Trait) %>%
+  filter(Trait != "ADL") %>%
+  mutate(Trait = fct_recode(Trait, 
+    "FAT" = "FETT",
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "PRO" = "RPR",
+    "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, 
+    c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
+    ))
+
+# Select hybrids for which both parents have genomic as well as transcriptomic
+# records.
+dent <- genos$Dent$mrna
+flint <- genos$Flint$mrna
+hybrid <- genos$Hybrid %>%
+  as_data_frame() %>%
+  separate(value, into = c("DF", "Dent", "Flint")) %>%
+  mutate(Avail_Dent = ifelse(Dent %in% dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% flint, yes = 1, no = 0),
+         Tested_Parents = Avail_Dent + Avail_Flint) %>%
+  filter(Tested_Parents == 2) %>%
+  unite(Hybrid, DF, Dent, Flint) %>%
+  .$Hybrid
+
+# All hybrids
+all_pheno <- all_pheno %>%
+  mutate(Reduced_Data = "no")
+
+# Only hybrids for which parents have both, genomic and transcriptomic data
+reduced_pheno <- all_pheno %>%
+  mutate(Reduced_Data = ifelse(G %in% hybrid, yes = "yes", no = "no")) %>%
+  filter(Reduced_Data == "yes")
+```
+  
+## Skewness
+A general rule of thumb to consider is that skewed data &mdash; whose ratio of 
+the highest value to the lowest value is greater than 20 &mdash; have 
+significant skewness.
+The formula for the skewness statistic is
+$$
+\text{skewness}  = \frac{\sum (x_i - \bar{x})^{3}}{(n - 1)v^{3/2}},
+$$
+where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ being the predictor
+variable, $n$ denoting the number of values and $\bar{x}$ denoting the sample 
+mean of the predictor.
+```{r Agro-Skewness, echo = FALSE}
+skew_tab_cap <- paste("**Table 2:** Skewness of seven agronomic traits.")
+all_skewness <- all_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2))
+reduced_skewness <- reduced_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2))
+full_join(x = all_skewness, y = reduced_skewness,
+          by = "Trait",
+          suffix = c(" (Full)", " (Reduced)")) %>%
+  htmlTable(caption = skew_tab_cap)
+```
+
+
+## Distribution
+```{r Agro-Distribution, message = FALSE, echo = FALSE, fig.cap = "**Figure 1:** Histogram of the distribution of seven agronomic traits. Black bins show the distribution of the reduced set of hybrids whereas light grey bins show the distribtution of the full set of hybrids."}
+ggplot(all_pheno, aes(x = Observed)) +
+  geom_histogram(fill = "grey", alpha = 0.5) +
+  geom_histogram(data = reduced_pheno, color = "black") +
+  facet_wrap(~ Trait, scales = "free") +
+  theme_bw()
+```
+
+
+## Correlation
+<a name="Correlation"></a>
+```{r Agro-Correlation, echo = FALSE, fig.cap = "**Figure 2:** Pairwise correlations among seven agronomic traits for the full set of hybrids and the reduced set of hybrids, respectively."}
+par(mar = c(0, 1, 0, 0),
+    mfrow = c(1, 2))
+all_pheno %>%
+  select(-Reduced_Data) %>%
+  spread(key = Trait, value = Observed) %>%
+  as.data.frame() %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "G") %>%
+  cor() %>%
+  corrplot::corrplot(col = viridis(256),
+                     method = "color",
+                     diag = FALSE,
+                     cl.pos = "b",
+                     tl.pos = "d",
+                     tl.srt = 60,
+                     order = "hclust",
+                     addCoef.col = "black",
+                     title = "Full",
+                     mar = c(0, 1, 1, 0))
+reduced_pheno %>%
+  filter(Reduced_Data == "yes") %>%
+  select(-Reduced_Data) %>%
+  spread(key = Trait, value = Observed) %>%
+  as.data.frame() %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "G") %>%
+  cor() %>%
+  corrplot::corrplot(col = viridis(256),
+                     method = "color",
+                     diag = FALSE,
+                     cl.pos = "b",
+                     tl.pos = "d",
+                     tl.srt = 60,
+                     order = "hclust",
+                     addCoef.col = "black",
+                     title = "Reduced",
+                     mar = c(0, 1, 1, 0))
+```
+
+
+# Predictions for Reduced Data <a name="Prediction-for-reduced-data"></a>
+```{r Load-LOOCV-Data, cache = TRUE}
+# Load log files and data
+run_log <- fread("./data/derived/na_fraction_pred_log.txt")
+
+# LOOCV 
+loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
+loocv <- lapply(seq_along(loocv_nms), FUN = function(i) {
+  readRDS(paste0("./data/derived/predictions/", loocv_nms[i], ".RDS"))
+})
+loocv <- rbindlist(loocv)
+```
+
+```{r Rename-Traits, cache = TRUE}
+loocv_clean <- loocv %>%
+  mutate(Trait = fct_recode(Trait, 
+                            "FAT" = "FETT",
+                            "PRO" = "RPR",
+                            "DMY" = "GTM",
+                            "DMC" = "GTS",
+                            "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
+                                      "SUG")),
+         Dent_NA_Fraction = as.factor(as.character(Dent_NA_Fraction)),
+         Flint_NA_Fraction = as.factor(as.character(Flint_NA_Fraction)),
+         Residuals = y - yhat,
+         Predictor = fct_recode(Predictor,
+                                "mRNA" = "mrna",
+                                "SNP" = "snp")
+  )
+```
+
+## Predictive ability for non-imputed data
+<a name="Pred-Table-Non-Imputed"></a>
+```{r Non-Imputed-Pred-Ability, cache = TRUE}
+loocv_tbl_cap <- paste("**Table 3:** Predictive abilities for the 'reduced' set",
+                       "of hybrids using two different predictors and seven",
+                       "agronomic traits.",
+                       "Results are ranked by predictive ability.")
+loocv_clean %>%
+  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
+  mutate(Predictor = as.factor(Predictor)) %>%
+  droplevels() %>%
+  group_by(Predictor, Trait) %>%
+  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
+  arrange(desc(Pred_Ability)) %>%
+  rename("Predictive Ability" = Pred_Ability) %>%
+  htmlTable(caption = loocv_tbl_cap)
+```
+
+<a name="Pred-vs-Residual"></a>
+```{r Complete-Data-Residuals, cache = TRUE, dependson = "Rename-Traits", fig.cap = "**Figure 3:** Predicted values (*x axis*) vs residuals (*y axis*) based on results from LOOCV with the 'reduced' set of hybrids."}
+full_pred_resid <- loocv_clean %>%
+  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
+  group_by(Predictor) %>%
+  do(plot = ggplot(., aes(x = yhat, y = Residuals)) +
+       geom_point(size = 0.5) +
+       geom_ref_line(h = 0) +
+       facet_wrap(~ Trait, nrow = 2, scales = "free") +
+       theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
+       xlab("Predicted") +
+       ylab("Residuals") +
+       ggtitle(.$Predictor))
+invisible(lapply(full_pred_resid$plot, FUN = print))
+```
+
+<a name="Pred-vs-Observed"></a>
+```{r Complete-Data-y-yHat, cache = TRUE, dependson = "Rename-Traits", fig.cap = "**Figure 4:** Observed (*x axis*) vs predicted (*y axis*) values based on results from LOOCV with the 'reduced' set of hybrids."}
+full_y_yhat <- loocv_clean %>%
+  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
+  group_by(Predictor) %>%
+  do(plot = ggplot(., aes(x = y, y = yhat)) +
+       geom_point(size = 0.5) +
+       geom_abline(slope = 1, linetype = "dashed", color = "blue") +
+       facet_wrap(~ Trait, nrow = 2, scales = "free") +
+       theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
+       xlab("Observed") +
+       ylab("Predicted") +
+       ggtitle(.$Predictor))
+invisible(lapply(full_y_yhat$plot, FUN = print))
+```
+
+
+
+
+# Predictions with Missingness in Inbred Parent Lines <a name="Pred-NA"></a> 
+```{r DMY, cache = TRUE, dependson = "Rename-Traits"}
+dmy <- loocv_clean %>%
+  mutate(Dent_NA_Fraction = as.numeric(as.character(Dent_NA_Fraction)),
+         Flint_NA_Fraction = as.numeric(as.character(Flint_NA_Fraction))) %>%
+  filter(Trait == "DMY", Predictor == "mRNA") %>%
+  droplevels() %>%
+  unite(NA_Fraction, Dent_NA_Fraction, Flint_NA_Fraction, sep = "_") %>%
+  group_by(Predictor, Trait, NA_Fraction) %>%
+  summarize(Pred_Ability = cor(y, yhat)) %>%
+  ungroup() %>%
+  arrange(desc(Pred_Ability)) %>%
+  separate(NA_Fraction,
+           into = c("Dent_NA_Fraction", "Flint_NA_Fraction"), 
+           sep = "_") %>%
+  mutate(Dent_NA_Fraction = as.numeric(Dent_NA_Fraction),
+         Flint_NA_Fraction = as.numeric(Flint_NA_Fraction)) %>%
+  rowwise() %>%
+  mutate(Avg_NA = mean(c(Dent_NA_Fraction, Flint_NA_Fraction)))
+```
+
+
+## Some mRNA-BLUEs set as missing
+This first section deals with an initial attempt to show how well single-step 
+hybrid prediction works for different levels of missingness in the mRNA data.
+Hereto, we focussed on the "reduced" set of `r length(red_hybrid)` hybrids.
+Prior to LOOCV, a fraction of existing transcriptomic BLUEs was set to `NA`
+and then imputed using the `sspredr::impute_eta()` function, which is based on
+equation 20 in @fernando_class_2014.
+Unfortunately, the predictive abilities conditioned on different fractions of 
+missingness in Dent and Flint material, are varying to a considerable degree
+([Figure 5](#DMY-NA-Prediction), [Figure 6](#All-Traits-NA-Prediction)).
+Our impression is that &mdash; in order to arrive at estimates unbiased through
+missingness in certain parent lines &mdash; we would have to repeat every
+LOOCV-run with a different parent set to `NA` (with respect to mRNA-BLUEs).
+However, this is computationally prohibitive.
+
+
+<a name="DMY-NA-Prediction"></a>
+```{r DMY-Dent-NA-Flint-NA, message = FALSE, cache = TRUE, dependson = "DMY", fig.cap = "**Figure 5:** Predictive ability as a function of missingness in Dent and missingness in Flint for dry matter yield (DMY). The blue straight line denotes a 'robust linear regression' through all LOOCV-based predictive abilities. The 95% confidence interval around this regression line is indicated as a gray band."}
+library("MASS")
+dmy %>%
+  mutate(Flint_NA_Fraction = as.factor(as.character(Flint_NA_Fraction))) %>%
+  mutate(Flint_NA_Fraction = fct_relevel(Flint_NA_Fraction, 
+                                         "0", "0.1", "0.2", "0.3", "0.4",
+                                         "0.5", "0.6")) %>%
+  arrange(desc(Dent_NA_Fraction)) %>%
+  ggplot(aes(x = Dent_NA_Fraction, y = Pred_Ability, 
+             color = Flint_NA_Fraction)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_smooth(method = "rlm", aes(group = 1)) +
+  theme_light() +
+  ylab("r")
+detach(package:MASS)
+```
+
+
+<a name="All-Traits-NA-Prediction"></a>
+```{r All-Traits-Dent-NA-Flint-NA, cache = TRUE, dependson = "Rename-Trait", fig.cap = "**Figure 6:** Predictive ability as a function of missingness in Dent and missingness in Flint for all traits."} 
+loocv_clean %>%
+  filter(Dent_NA_Fraction != 0, Flint_NA_Fraction != 0) %>%
+  unite(NA_Fraction, Dent_NA_Fraction, Flint_NA_Fraction, sep = "_") %>%
+  group_by(Trait, NA_Fraction) %>%
+  summarize(Pred_Ability = cor(y, yhat)) %>%
+  ungroup() %>%
+  separate(NA_Fraction, into = c("Dent_NA_Fraction",
+                                 "Flint_NA_Fraction"), sep = "_") %>%
+  mutate(Dent_NA_Fraction = as.numeric(Dent_NA_Fraction)) %>%
+  ggplot(aes(x = Dent_NA_Fraction, y = Pred_Ability, 
+             color = Flint_NA_Fraction)) +
+  geom_line() +
+  facet_wrap(~ Trait, scales = "free_x") +
+  theme_light() +
+  scale_color_viridis(discrete = TRUE) +
+  theme(legend.position = "top") +
+  ylab("r")
+```
+
+
+
+
+
+# Single-Step Prediction for the 'full' Set <a name="Full_Prediction"></a>
+<a name="Full-Prediction-Table"></a>
+```{r Imputed-Pred-Ability, cache = TRUE}
+run_log <- fread("./data/processed/prediction_log/log_list.txt")
+
+# LOOCV 
+full_loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
+full_loocv <- lapply(seq_along(full_loocv_nms), FUN = function(i) {
+  readRDS(paste0("./data/processed/predictions/", full_loocv_nms[i], ".RDS"))
+})
+full_loocv <- rbindlist(full_loocv)
+
+full_loocv_clean <- full_loocv %>%
+  mutate(Trait = as.factor(Trait),
+         Trait = fct_recode(Trait, 
+                            "FAT" = "FETT",
+                            "PRO" = "RPR",
+                            "DMY" = "GTM",
+                            "DMC" = "GTS",
+                            "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
+                                      "SUG")),
+         Residuals = y - yhat,
+         Predictor = as.factor(as.character(Imputation)),
+         Predictor = fct_recode(Predictor,
+                                "mRNA" = "TRUE",
+                                "SNP" = "FALSE")
+  )
+full_loocv_tbl_cap <- paste(
+  "**Table 4:** Predictive abilities for the 'full' set of hybrids using two",
+  "different predictors and seven agronomic traits.", 
+  "Results are ranked by predictive ability.")
+full_loocv_clean %>%
+  droplevels() %>%
+  group_by(Predictor, Trait) %>%
+  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
+  arrange(desc(Pred_Ability)) %>%
+  rename("Predictive Ability" = Pred_Ability) %>%
+  htmlTable(caption = full_loocv_tbl_cap)
+```
+
+
+
+# Conclusions and Outlook <a name="Conclusions"></a>
+We have seen that
+
+1.    for the 'reduced' set of hybrids, predictive abilities for the traits 
+      'DMY', 'PRO' and 'FAT' were higher when predicted via mRNA compared to SNP
+      data ([Table 3](#Pred-Table-Non-Imputed)).
+2.    for the 'full' set of hybrids, predictive abilities based on single-step
+      prediction with transcriptomic data still outperformed SNP data for the
+      traits 'DMY' and 'PRO' ([Table 4](#Full-Prediction-Table)).
+2.    an exploration of the effect of different levels of missingness &mdash; 
+      with respect to transcriptomic BLUEs &mdash; in the parents is 
+      computationally prohibitive ([Chapter 6](#Pred-NA)).
+      
+Currently, our primary goal is to demonstrate the utility of imputing missing 
+data in a quantitative predictor (exemplified by transcriptomic data) and 
+using the resulting feature matrix in single-step hybrid prediction.
+
+
+# References
