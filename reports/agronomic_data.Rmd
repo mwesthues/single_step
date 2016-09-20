@@ -1,0 +1,138 @@
+# Agronomic Data
+```{r echo = FALSE, message = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
+               "viridis", "tidyr", "knitr", "tibble")
+
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = "~/gamazon/",
+                     inline = TRUE)
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
+                      warning = FALSE, echo = FALSE)
+```
+
+```{r echo = FALSE}
+# Load data
+pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
+
+# Prepare agronomic data.
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+hybrid <- genos$Hybrid
+all_pheno <- pheno %>%
+  rename(Observed = EST) %>%
+  as_data_frame() %>%
+  filter(G %in% hybrid) %>%
+  select(G, Observed, Trait) %>%
+  filter(Trait != "ADL") %>%
+  mutate(Trait = fct_recode(Trait, 
+    "FAT" = "FETT",
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "PRO" = "RPR",
+    "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, 
+    c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
+    ))
+
+# Select hybrids for which both parents have genomic as well as transcriptomic
+# records.
+dent <- genos$Dent$mrna
+flint <- genos$Flint$mrna
+hybrid <- genos$Hybrid %>%
+  as_data_frame() %>%
+  separate(value, into = c("DF", "Dent", "Flint")) %>%
+  mutate(Avail_Dent = ifelse(Dent %in% dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% flint, yes = 1, no = 0),
+         Tested_Parents = Avail_Dent + Avail_Flint) %>%
+  filter(Tested_Parents == 2) %>%
+  unite(Hybrid, DF, Dent, Flint) %>%
+  .$Hybrid
+
+# All hybrids
+all_pheno <- all_pheno %>%
+  mutate(Reduced_Data = "no")
+
+# Only hybrids for which parents have both, genomic and transcriptomic data
+reduced_pheno <- all_pheno %>%
+  mutate(Reduced_Data = ifelse(G %in% hybrid, yes = "yes", no = "no")) %>%
+  filter(Reduced_Data == "yes")
+```
+  
+## Skewness
+A general **rule of thumb** to consider is that skewed data whose ratio of the 
+highest value to the lowest value is greater than 20 have significant skewness.
+The formula for the skewness statistic is
+$$
+\text{skewness}  = \frac{\sum (x_i - \bar{x})^{3}}{(n - 1)v^{3/2}},
+$$
+where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ is the predictor
+variable, $n$ is the number of values and $\bar{x}$ is the sample mean of the 
+predictor.
+```{r Agro-Skewness, echo = FALSE}
+all_skewness <- all_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2))
+reduced_skewness <- reduced_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2))
+full_join(x = all_skewness, y = reduced_skewness,
+          by = "Trait",
+          suffix = c(" (Full)", " (Reduced)")) %>%
+  kable(padding = 0)
+```
+
+
+## Distribution
+```{r Agro-Distribution, message = FALSE, echo = FALSE, fig.cap = "Histogram of the distribution of seven agronomic traits. Black bins show the distribution of the reduced set of hybrids whereas light grey bins show the distribtution of the full set of hybrids."}
+ggplot(all_pheno, aes(x = Observed)) +
+  geom_histogram(fill = "grey", alpha = 0.5) +
+  geom_histogram(data = reduced_pheno, color = "black") +
+  facet_wrap(~ Trait, scales = "free") +
+  theme_bw()
+```
+
+
+## Correlation
+```{r Agro-Correlation, echo = FALSE, fig.cap = "Pairwise correlations among seven agronomic traits for the full set of hybrids and the reduced set of hybrids, respectively."}
+par(mar = c(0, 1, 0, 0),
+    mfrow = c(1, 2))
+all_pheno %>%
+  select(-Reduced_Data) %>%
+  spread(key = Trait, value = Observed) %>%
+  as.data.frame() %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "G") %>%
+  cor() %>%
+  corrplot::corrplot(col = viridis(256),
+                     method = "color",
+                     diag = FALSE,
+                     cl.pos = "b",
+                     tl.pos = "d",
+                     tl.srt = 60,
+                     order = "hclust",
+                     addCoef.col = "black",
+                     title = "Full",
+                     mar = c(0, 1, 1, 0))
+reduced_pheno %>%
+  filter(Reduced_Data == "yes") %>%
+  select(-Reduced_Data) %>%
+  spread(key = Trait, value = Observed) %>%
+  as.data.frame() %>%
+  remove_rownames() %>%
+  column_to_rownames(var = "G") %>%
+  cor() %>%
+  corrplot::corrplot(col = viridis(256),
+                     method = "color",
+                     diag = FALSE,
+                     cl.pos = "b",
+                     tl.pos = "d",
+                     tl.srt = 60,
+                     order = "hclust",
+                     addCoef.col = "black",
+                     title = "Reduced",
+                     mar = c(0, 1, 1, 0))
+```

@@ -1,0 +1,98 @@
+# Prediction For Reduced Data
+```{r message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
+               "viridis", "tidyr", "modelr")
+
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = "~/gamazon/",
+                     inline = TRUE,
+                     verbose = FALSE)
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+```{r Load-LOOCV-Data, cache = TRUE}
+# Load log files and data
+run_log <- fread("./data/derived/na_fraction_pred_log.txt")
+
+# LOOCV 
+loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
+loocv <- lapply(seq_along(loocv_nms), FUN = function(i) {
+  readRDS(paste0("./data/derived/predictions/", loocv_nms[i], ".RDS"))
+})
+loocv <- rbindlist(loocv)
+```
+
+
+```{r Rename-Traits, cache = TRUE}
+loocv_clean <- loocv %>%
+  mutate(Trait = fct_recode(Trait, 
+                            "FAT" = "FETT",
+                            "PRO" = "RPR",
+                            "DMY" = "GTM",
+                            "DMC" = "GTS",
+                            "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
+                                      "SUG")),
+         Dent_NA_Fraction = as.factor(as.character(Dent_NA_Fraction)),
+         Flint_NA_Fraction = as.factor(as.character(Flint_NA_Fraction)),
+         Residuals = y - yhat,
+         Predictor = fct_recode(Predictor,
+                                "mRNA" = "mrna",
+                                "SNP" = "snp")
+  )
+```
+
+## Predictive ability for non-imputed data
+Peak at predictive abilities based on non-imputed predictor information and rank
+the results by their predictive ability.
+```{r Non-Imputed-Pred-Ability, cache = TRUE}
+loocv_tbl_cap <- paste("Predictive abilities for the 'reduced' set of hybrids",
+                       "using two different predictors and seven agronomic",
+                       "traits. Results are ranked by predictive ability.")
+loocv_clean %>%
+  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
+  mutate(Predictor = as.factor(Predictor)) %>%
+  droplevels() %>%
+  group_by(Predictor, Trait) %>%
+  summarize(Pred_Ability = cor(y, yhat)) %>%
+  arrange(desc(Pred_Ability)) %>%
+  rename("Predictive Ability" = Pred_Ability) %>%
+  knitr::kable(caption = loocv_tbl_cap, booktabs = TRUE)
+```
+
+
+## Predicted vs. residuals
+```{r Complete-Data-Residuals, cache = TRUE, dependson = "Rename-Traits"}
+full_pred_resid <- loocv_clean %>%
+  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
+  group_by(Predictor) %>%
+  do(plot = ggplot(., aes(x = yhat, y = Residuals)) +
+       geom_point(size = 0.5) +
+       geom_ref_line(h = 0) +
+       facet_wrap(~ Trait, nrow = 2, scales = "free") +
+       theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
+       xlab("Predicted") +
+       ylab("Residuals") +
+       ggtitle(.$Predictor))
+invisible(lapply(full_pred_resid$plot, FUN = print))
+```
+
+## Predicted vs. Observed
+```{r Complete-Data-y-yHat, cache = TRUE, dependson = "Rename-Traits"}
+full_y_yhat <- loocv_clean %>%
+  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
+  group_by(Predictor) %>%
+  do(plot = ggplot(., aes(x = y, y = yhat)) +
+       geom_point(size = 0.5) +
+       geom_abline(slope = 1, linetype = "dashed", color = "blue") +
+       facet_wrap(~ Trait, nrow = 2, scales = "free") +
+       theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
+       xlab("Observed") +
+       ylab("Predicted") +
+       ggtitle(.$Predictor))
+invisible(lapply(full_y_yhat$plot, FUN = print))
+```

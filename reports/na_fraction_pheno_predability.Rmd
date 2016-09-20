@@ -1,0 +1,131 @@
+# Prediction with Imputed mRNAs
+```{r message = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
+               "viridis", "tidyr")
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = "~/gamazon/",
+                     inline = TRUE)
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+
+```{r DMY, cache = TRUE, dependson = "Rename-Traits"}
+dmy <- loocv_clean %>%
+  mutate(Dent_NA_Fraction = as.numeric(as.character(Dent_NA_Fraction)),
+         Flint_NA_Fraction = as.numeric(as.character(Flint_NA_Fraction))) %>%
+  filter(Trait == "DMY", Predictor == "mRNA") %>%
+  droplevels() %>%
+  unite(NA_Fraction, Dent_NA_Fraction, Flint_NA_Fraction, sep = "_") %>%
+  group_by(Predictor, Trait, NA_Fraction) %>%
+  summarize(Pred_Ability = cor(y, yhat)) %>%
+  ungroup() %>%
+  arrange(desc(Pred_Ability)) %>%
+  separate(NA_Fraction,
+           into = c("Dent_NA_Fraction", "Flint_NA_Fraction"), 
+           sep = "_") %>%
+  mutate(Dent_NA_Fraction = as.numeric(Dent_NA_Fraction),
+         Flint_NA_Fraction = as.numeric(Flint_NA_Fraction)) %>%
+  rowwise() %>%
+  mutate(Avg_NA = mean(c(Dent_NA_Fraction, Flint_NA_Fraction)))
+```
+
+
+## Some mRNA-BLUEs set as missing
+This first section deals with an initial attempt to show how well single-step 
+hybrid prediction works for different levels of missingness in the mRNA data.
+Hereto, we focussed on the "reduced" set of `r length(red_hybrid)` hybrids.
+Prior to LOOCV, a fraction of existing transcriptomic BLUEs was set to `NA`
+and then imputed using the `sspredr::impute_eta()` function, which is based on
+equation 20 in @fernando_class_2014.
+Unfortunately, the predictive abilities conditioned on different fractions of 
+missingness in Dent and Flint material, are varying to a considerable degree
+(Fig. \@ref(fig:DMY-Dent-NA-Flint-NA), 
+Fig. \@ref(fig:All-Traits-Dent-NA-Flint-NA)).
+Our impression is that &mdash; in order to arrive at estimates unbiased through
+missingness in certain parent lines &mdash; we would have to repeat every
+LOOCV-run with a different parent set to `NA` (with respect to mRNA-BLUEs).
+However, this is computationally prohibitive.
+
+
+```{r DMY-Dent-NA-Flint-NA, cache = TRUE, dependson = "DMY", fig.cap = "Predictive ability as a function of missingness in Dent and missingness in Flint for dry matter yield (DMY). The blue straight line denotes a 'robust linear regression' through all LOOCV-based predictive abilities. The 95% confidence interval around this regression line is indicated as a gray band."}
+library("MASS")
+dmy %>%
+  mutate(Flint_NA_Fraction = as.factor(as.character(Flint_NA_Fraction))) %>%
+  mutate(Flint_NA_Fraction = fct_relevel(Flint_NA_Fraction, 
+                                         "0", "0.1", "0.2", "0.3", "0.4",
+                                         "0.5", "0.6")) %>%
+  arrange(desc(Dent_NA_Fraction)) %>%
+  ggplot(aes(x = Dent_NA_Fraction, y = Pred_Ability, 
+             color = Flint_NA_Fraction)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_smooth(method = "rlm", aes(group = 1)) +
+  theme_light() +
+  ylab("r")
+detach(package:MASS)
+```
+
+
+```{r All-Traits-Dent-NA-Flint-NA, cache = TRUE, dependson = "Rename-Trait", fig.cap = "Predictive ability as a function of missingness in Dent and missingness in Flint for all traits."} 
+loocv_clean %>%
+  filter(Dent_NA_Fraction != 0, Flint_NA_Fraction != 0) %>%
+  unite(NA_Fraction, Dent_NA_Fraction, Flint_NA_Fraction, sep = "_") %>%
+  group_by(Trait, NA_Fraction) %>%
+  summarize(Pred_Ability = cor(y, yhat)) %>%
+  ungroup() %>%
+  separate(NA_Fraction, into = c("Dent_NA_Fraction",
+                                 "Flint_NA_Fraction"), sep = "_") %>%
+  mutate(Dent_NA_Fraction = as.numeric(Dent_NA_Fraction)) %>%
+  ggplot(aes(x = Dent_NA_Fraction, y = Pred_Ability, 
+             color = Flint_NA_Fraction)) +
+  geom_line() +
+  facet_wrap(~ Trait, scales = "free_x") +
+  theme_light() +
+  scale_color_viridis(discrete = TRUE) +
+  theme(legend.position = "top") +
+  ylab("r")
+```
+
+
+## single-step Prediction for the 'full' Set
+```{r Imputed-Pred-Ability, cache = TRUE}
+run_log <- fread("./data/processed/prediction_log/log_list.txt")
+
+# LOOCV 
+full_loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
+full_loocv <- lapply(seq_along(full_loocv_nms), FUN = function(i) {
+  readRDS(paste0("./data/processed/predictions/", full_loocv_nms[i], ".RDS"))
+})
+full_loocv <- rbindlist(full_loocv)
+
+full_loocv_clean <- full_loocv %>%
+  mutate(Trait = as.factor(Trait),
+         Trait = fct_recode(Trait, 
+                            "FAT" = "FETT",
+                            "PRO" = "RPR",
+                            "DMY" = "GTM",
+                            "DMC" = "GTS",
+                            "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
+                                      "SUG")),
+         Residuals = y - yhat,
+         Predictor = as.factor(as.character(Imputation)),
+         Predictor = fct_recode(Predictor,
+                                "mRNA" = "TRUE",
+                                "SNP" = "FALSE")
+  )
+full_loocv_tbl_cap <- paste("Predictive abilities for the 'full' set of hybrids",
+                            "using two different predictors and seven agronomic",
+                            "traits. Results are ranked by predictive ability.")
+full_loocv_clean %>%
+  droplevels() %>%
+  group_by(Predictor, Trait) %>%
+  summarize(Pred_Ability = cor(y, yhat)) %>%
+  arrange(desc(Pred_Ability)) %>%
+  rename("Predictive Ability" = Pred_Ability) %>%
+  knitr::kable(caption = full_loocv_tbl_cap, booktabs = TRUE)
+```

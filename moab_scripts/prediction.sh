@@ -8,10 +8,10 @@
 #MOAB -l nodes=1:ppn=16
 #
 # Request memory per process
-#MOAB -l pmem=3000mb
+#MOAB -l pmem=3800mb
 #
 # Estimated wallclock time for job
-#MOAB -l walltime=01:10:00:00
+#MOAB -l walltime=03:00:00:00
 #
 # Job submission directory
 #MOAB -d /pfs/work2/workspace/scratch/ho_westhues-gamazon-0/gamazon
@@ -28,6 +28,8 @@
 # Write standard output (o) and errors (e) to the same file
 #MOAB -j oe
 #
+#MOAB -v ALL_PHENO=FALSE
+#
 #MOAB -v TRAIT=GTM
 #
 #MOAB -v ITER=50000
@@ -41,10 +43,6 @@
 #MOAB -v PRIOR_PI_COUNT=10
 #
 #MOAB -v PREDICTOR=mrna
-#
-#MOAB -v DENT_NA_FRACTION=0.05
-#
-#MOAB -v FLINT_NA_FRACTION=0.05
 #
 ##### **********************************************************************
 ########### End MOAB header ##########
@@ -60,21 +58,20 @@ echo "Number of cores allocated to job:     $MOAB_PROCCOUNT"
 module load math/R/3.2.1
 
 # Echo input variables
-echo "Trait=${TRAIT}\
+echo "All_Pheno=${ALL_PHENO}\
+      Trait=${TRAIT}\
       Iter=${ITER}\
       Model=${MODEL}\
       VCOV=${VCOV}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
-      Predictor=${PREDICTOR}\
-      Dent_NA_Fraction=${DENT_NA_FRACTION}\
-      Flint_NA_Fraction=${FLINT_NA_FRACTION}"
+      Predictor=${PREDICTOR}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/prediction.R\
-           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT}\
-           ${PREDICTOR} ${DENT_NA_FRACTION} ${FLINT_NA_FRACTION}"
+           ${ALL_PHENO} ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
+           ${PRIOR_PI_COUNT} ${PREDICTOR}"
 
 # Start program
 echo $startprog
