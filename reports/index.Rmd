@@ -5,12 +5,21 @@ date: "`r Sys.Date()`"
 knit: "bookdown::render_book"
 output:
   bookdown::html_document2:
+    toc: true
+    toc_float: true
+    theme: readable
+    highlight: tango
 documentclass: book
 bibliography: ["library.bib", "cheuer.bib"]
 biblio-style: apalike
 link-citations: yes
 ---
 
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
 
 
 # Preface {-}

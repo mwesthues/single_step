@@ -1,3 +1,6 @@
+---
+output: pdf_document
+---
 # Introduction
 The integration of different sources of information for the prediction of 
 breeding or production values is one of the major challenges in current genomic 
@@ -37,7 +40,7 @@ effects, which associate observations in $\mathbf{y}$ with elements in
 $\mathbf{A}$, $\mathbf{a}$ is the vector of random animal effects (=breeding 
 values) and $\mathbf{e}$ is a vector of iid residual errors with expectation 
 $0$ and variance $\sigma^2_e$.
-The distribution of the random vector $\mathbf{u}$ is 
+The distribution of the random vector $\mathbf{a}$ is 
 $MVN(0, \mathbf{A}\sigma^2_a)$.
 
 
@@ -47,7 +50,7 @@ In the second step, a subset of the individuals for which conventional breeding
 values have been estimated, is selected and enters the reference population for 
 training a genomic prediction model.
 That selection requires that the individual is genotyped and has 
-$\text{PEV}(u_{\text{candidate}}) \leq \text{threshold}$.
+$\text{PEV}(a_{\text{candidate}}) \leq \text{threshold}$.
 As the breeding values from step one enter the genomic prediction model as 
 phenotypes, one has to be careful about the residual error distribution of
 such a model.
@@ -64,13 +67,14 @@ by:
 $$
 \begin{equation}
 	\label{eq:gebv}
-	\mathbf{\hat{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
+	\mathbf{\tilde{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
 \end{equation}
 $$
 
-where $\mathbf{p}$ is a row-vector of allele frequencies for all the markers in 
-$\mathbf{M}$ in the base population.
-The prediction error variance of the vector $\mathbf{\hat{g}}$ is usually 
+where $\mathbf{p}$ is a row-vector of allele frequencies in the base population,
+$\mathbf{M}$ is a matrix of marker covariates and $\mathbf{u}$ is a vector of
+marker effects.
+The prediction error variance of the vector $\mathbf{\tilde{g}}$ is usually 
 globally obtained using cross validation. 
 Alternatively they could be obtained individually by the posterior distribution 
 of $(\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}}$ when a Bayesian model is used.
@@ -81,12 +85,12 @@ The breeding values in a mRNA prediction model are in general given by:
 $$
 \begin{equation}
 	\label{eq:mrnaebv}
-	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
+	\mathbf{\tilde{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
 \end{equation}
 $$
 
 where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model 
-equaivalent to the GBLUP model but using mRNA covariates instead of 
+equaivalent to the GBLUP model but using mRNA covariates ($\mathbf{W}$) instead of 
 marker genotypes.
 
 Consider now the situation in which only a subset of the population has 
@@ -94,7 +98,207 @@ transcriptomic information but all have SNP genotypes.
 We can take a similar route as in @fernando_class_2014 and impute missing
 mRNA data.
 The difference here is that &mdash; instead of predicting SNP covariates using 
-pedigree relationship &mdash; we impute MRNA covariates using SNP or genomic 
+pedigree relationship &mdash; we impute mRNA covariates using SNP or genomic 
 relationships.
 Let the subscript $1$ denote individuals for which SNP genotypes but no mRNA 
 data are available.
+Individuals with subscript $2$ have both, SNP and mRNA information.
+The covariates in $\mathbf{W}$ are centered.
+The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
+expectation given $\mathbf{g}_2$ and a residual error term:
+$$
+\begin{align}
+	\label{eq:mrna1}
+	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
+	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
+	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
+\end{align}
+$$
+
+The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$
+[@legarra_relationship_2009].
+
+The structure of the residual imputation/prediction error is known and can 
+therefore be modelled.
+The missing mRNA covariates can be predicted using the expectation of a 
+multivariate normal random vector given correlated observations, which are 
+related to the Best Linear Predictor.
+
+### Extending the single step model
+
+To this point, we have only taken the general idea behind single step genomic prediction and applied
+it to the situation in which the breeding values are defined as the sum of mRNA effects plus an *imputation error*
+term from using genomic relationships to impute missing mRNA data.
+It might also be interesting to include individuals which have neither mRNA nor SNP data available,
+but phenotypes.
+The general mRNA model for that situation could be written as:
+
+$$
+\begin{equation}
+\mathbf{y} = \mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U}_{Ped} \boldsymbol{\epsilon}_{Ped} 
++ \mathbf{U}_{SNP} \boldsymbol{\epsilon}_{SNP}+ \mathbf{e},
+\end{equation}
+$$
+
+with
+
+$$
+\begin{equation}
+\mathbf{X} = 
+\begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix},
+ \mathbf{W} = 
+\begin{bmatrix}
+  Z_0\hat{\mathbf{W}_0} \\
+  Z_1\hat{\mathbf{W}_1} \\
+  \mathbf{W}_2 
+ \end{bmatrix},
+ \mathbf{U}_{Ped} = 
+\begin{bmatrix}
+  Z_0 \\
+  0 \\
+  0 
+ \end{bmatrix},
+ \mathbf{U}_{SNP} = 
+\begin{bmatrix}
+  0 \\
+  Z_1 \\
+  0 
+ \end{bmatrix},
+ \end{equation}
+$$
+
+The subscript 0 denotes animals with Pedigree information and neither
+SNP nor mRNA data, 1 individuals with SNP but no mRNA data and 2 individuals with mRNA data.
+
+Following the notation in @fernando_class_2014 the phenotypes can be untangled like this:
+
+$$
+\begin{align}
+\begin{bmatrix}
+  y_0 \\
+  y_1 \\
+  y_2 
+ \end{bmatrix}
+& =
+ \begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_0 & 0 & 0 \\
+  0 & Z_1 & 0 \\
+  0 & 0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  g_0 \\
+  g_1 \\
+  g_2 
+ \end{bmatrix}
+  + \mathbf{e} \\
+    & = 
+ \begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_0 & 0 & 0 \\
+  0 & Z_1 & 0 \\
+  0 & 0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  \mathbf{A}_{02}\mathbf{A}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{Ped} \\
+  \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{SNP}  \\
+  \mathbf{W}_2\boldsymbol{\alpha} \\
+ \end{bmatrix}
+  + \mathbf{e} \\
+    & = 
+ \begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_0 & 0 & 0 \\
+  0 & Z_1 & 0 \\
+  0 & 0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  \hat{\mathbf{W}_0}\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{Ped} \\
+  \hat{\mathbf{W}_1}\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{SNP} \\
+  \mathbf{W}_2\boldsymbol{\alpha} \\
+ \end{bmatrix}
+  + \mathbf{e} \\
+\end{align}
+$$
+
+The breeding values from that model are:
+
+$$
+\begin{equation}
+\tilde{\mathbf{g}} = 
+ \begin{bmatrix}
+  \hat{\mathbf{W}_0} \\
+  \hat{\mathbf{W}_1} \\
+  \mathbf{W}_2 
+ \end{bmatrix}
+ \hat{\boldsymbol{\alpha}}
+ + 
+ \begin{bmatrix}
+  \mathbf{Z}_0 \\
+  0 \\
+  0
+ \end{bmatrix}
+ \hat{\boldsymbol{\epsilon}}_{Ped}
+ + 
+ \begin{bmatrix}
+  0 \\
+  \mathbf{Z}_1 \\
+  0
+ \end{bmatrix}
+ \hat{\boldsymbol{\epsilon}}_{SNP} 
+ \end{equation}
+ $$
+
+
+
+
+
+
+When dealing with hybrid performance as phenotypes, we are interested in estimating
+general combining abilitiy (GCA) for every line of a specific subpopulation.
+In our case, the subpopulations comprise *dent* and *flint*.
+Hence, our final model looks like this:
+
+$$
+\begin{align}
+\mathbf{y} &= \mathbf{Xb} \\ 
+  &+ \mathbf{Z}_{dent}\mathbf{W}_{dent} \boldsymbol{\alpha}_{dent} + \mathbf{Z}_{dent}\mathbf{U}_{dent_{Ped}} \boldsymbol{\epsilon}_{dent_{Ped}}
++ \mathbf{Z}_{dent}\mathbf{U}_{dent_{SNP}} \boldsymbol{\epsilon}_{dent_{SNP}} \\
+  &+ \mathbf{Z}_{flint}\mathbf{W}_{flint} \boldsymbol{\alpha}_{flint} + \mathbf{Z}_{flint}\mathbf{U}_{flint_{Ped}} \boldsymbol{\epsilon}_{flint_{Ped}}
++ \mathbf{Z}_{flint}\mathbf{U}_{flint_{SNP}} \boldsymbol{\epsilon}_{flint_{SNP}} \\
+  &+ \mathbf{e},
+\end{align}
+$$
+
+where $\mathbf{Z}_{dent}$ and $\mathbf{Z}_{flint}$ are design matrices that map hybrids to their respective
+parents in the dent and flint lines.
+The obtained GCA effects for the inbred lines represent half their breeding values.
+The predicted hybrid performance is:
+
+$$
+\begin{equation}
+\tilde{\mathbf{h}} = \mathbf{Z}_{dent}\tilde{\mathbf{g}}_{dent} + \mathbf{Z}_{flint}\tilde{\mathbf{g}}_{flint} 
+\end{equation}
+$$
+
+
+

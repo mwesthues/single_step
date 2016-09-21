@@ -17,6 +17,11 @@ output:
 bibliography: cheuer.bib
 ---
 
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+});
+</script>
 
 # Preface <a name="Preface"></a>
 This report covers an extension of the methodology of single-step prediction 

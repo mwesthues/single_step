@@ -124,7 +124,7 @@ full_loocv_tbl_cap <- paste("Predictive abilities for the 'full' set of hybrids"
 full_loocv_clean %>%
   droplevels() %>%
   group_by(Predictor, Trait) %>%
-  summarize(Pred_Ability = cor(y, yhat)) %>%
+  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
   arrange(desc(Pred_Ability)) %>%
   rename("Predictive Ability" = Pred_Ability) %>%
   knitr::kable(caption = full_loocv_tbl_cap, booktabs = TRUE)

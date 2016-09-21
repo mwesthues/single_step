@@ -67,9 +67,9 @@ The formula for the skewness statistic is
 $$
 \text{skewness}  = \frac{\sum (x_i - \bar{x})^{3}}{(n - 1)v^{3/2}},
 $$
-where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ is the predictor
-variable, $n$ is the number of values and $\bar{x}$ is the sample mean of the 
-predictor.
+where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ denoting the 
+predictor variable, $n$ denoting the number of values and $\bar{x}$ denoting the 
+sample mean of the predictor.
 ```{r Agro-Skewness, echo = FALSE}
 skew_tab_cap <- paste(
   "Skewness of seven agronomic traits for the full set of hybrids and the",
@@ -86,12 +86,12 @@ reduced_skewness <- reduced_pheno %>%
 full_join(x = all_skewness, y = reduced_skewness,
           by = "Trait",
           suffix = c(" (Full)", " (Reduced)")) %>%
-  kable(caption = skew_tab_cap, booktable = TRUE)
+  kable(caption = skew_tab_cap, booktabs = TRUE)
 ```
 
 
 ## Distribution
-```{r Agro-Distribution, message = FALSE, echo = FALSE, fig.cap = "Histogram of the distribution of seven agronomic traits. Black bins show the distribution of the reduced set of hybrids whereas light grey bins show the distribtution of the full set of hybrids."}
+```{r Agro-Distribution, message = FALSE, echo = FALSE, fig.cap = "Histogram of the distribution of seven agronomic traits. Black bins show the distribution of the reduced set of hybrids whereas light grey bins show the distribution of the full set of hybrids."}
 ggplot(all_pheno, aes(x = Observed)) +
   geom_histogram(fill = "grey", alpha = 0.5) +
   geom_histogram(data = reduced_pheno, color = "black") +

@@ -58,7 +58,7 @@ loocv_clean %>%
   mutate(Predictor = as.factor(Predictor)) %>%
   droplevels() %>%
   group_by(Predictor, Trait) %>%
-  summarize(Pred_Ability = cor(y, yhat)) %>%
+  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
   arrange(desc(Pred_Ability)) %>%
   rename("Predictive Ability" = Pred_Ability) %>%
   knitr::kable(caption = loocv_tbl_cap, booktabs = TRUE)
