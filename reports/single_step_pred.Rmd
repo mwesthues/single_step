@@ -91,6 +91,7 @@ genotyped and potentially very young individuals.
 Considering the two sources of information &mdash; pedigree and high density SNP 
 genotypes &mdash; the process can be described as follows:
 
+
 ### First Step
 Denote $\mathbf{y}$ as the vector of measured phenotypes for a normally 
 distributed trait for all individuals available in the population.
@@ -134,17 +135,6 @@ individually.
 One popular approach to account for that problem is *Deregressing* the breeding 
 values and weighting the residuals according to the prediction error variances 
 [@Garrick2009].
-
-$$
-\begin{equation}
-	\label{eq:gblup}
-	\mathbf{\hat{a}} = \mathbf{1'b} + \mathbf{Mu} + \mathbf{e},
-\end{equation}
-$$
-
-where $\mathbf{M}$ is the matrix of marker covariates and $\mathbf{u}$ is a 
-vector of marker effects with iid normal distribution.
-
 Genomic breeding values for any animal in the population can then be obtained 
 by:
 
@@ -158,7 +148,7 @@ $$
 where $\mathbf{p}$ is a row-vector of allele frequencies for all the markers in 
 $\mathbf{M}$ in the base population.
 The prediction error variance of the vector $\mathbf{\hat{g}}$ is usually 
-globally obtained using cross validation.
+globally obtained using cross validation. 
 Alternatively they could be obtained individually by the posterior distribution 
 of $(\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}}$ when a Bayesian model is used.
 
@@ -185,31 +175,6 @@ pedigree relationship &mdash; we impute MRNA covariates using SNP or genomic
 relationships.
 Let the subscript $1$ denote individuals for which SNP genotypes but no mRNA 
 data are available.
-Individuals with subscript $2$ have both, SNP and mRNA information.
-The covariates in $\mathbf{W}$ are centered.
-The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
-expectation given $\mathbf{g}_2$ and a residual error term:
-$$
-\begin{align}
-	\label{eq:mrna1}
-	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
-	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
-	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
-\end{align}
-$$
-
-The distribution of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$.
-
-Using those results from @legarra_relationship_2009 we can model the breeding 
-values of the individuals for wich no mRNA information is available the 
-expectation of the breeding values in group $2$.
-The structure of the residual imputation/prediction error is known and can 
-therefore be modelled.
-The missing mRNA covariates can be predicted using the expectation of a 
-multivariate normal random vector given correlated observations, which related 
-to the Best Linear Predictor.
-
-
 
 
 

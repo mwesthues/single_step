@@ -61,7 +61,7 @@ reduced_pheno <- all_pheno %>%
 ```
   
 ## Skewness
-A general **rule of thumb** to consider is that skewed data whose ratio of the 
+A general rule of thumb to consider is that skewed data whose ratio of the 
 highest value to the lowest value is greater than 20 have significant skewness.
 The formula for the skewness statistic is
 $$
@@ -71,6 +71,10 @@ where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ is the predictor
 variable, $n$ is the number of values and $\bar{x}$ is the sample mean of the 
 predictor.
 ```{r Agro-Skewness, echo = FALSE}
+skew_tab_cap <- paste(
+  "Skewness of seven agronomic traits for the full set of hybrids and the",
+  "reduced set of hybrids, respectively."
+)
 all_skewness <- all_pheno %>%
   group_by(Trait) %>%
   summarize(Skewness = e1071::skewness(Observed),
@@ -82,7 +86,7 @@ reduced_skewness <- reduced_pheno %>%
 full_join(x = all_skewness, y = reduced_skewness,
           by = "Trait",
           suffix = c(" (Full)", " (Reduced)")) %>%
-  kable(padding = 0)
+  kable(caption = skew_tab_cap, booktable = TRUE)
 ```
 
 

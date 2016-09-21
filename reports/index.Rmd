@@ -4,7 +4,7 @@ author: Matthias Westhues, Claas Heuer
 date: "`r Sys.Date()`"
 knit: "bookdown::render_book"
 output:
-  bookdown::gitbook:
+  bookdown::html_document2:
 documentclass: book
 bibliography: ["library.bib", "cheuer.bib"]
 biblio-style: apalike
