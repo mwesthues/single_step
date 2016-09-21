@@ -1,0 +1,59 @@
+```{r message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("knitr")
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+# Additional Information
+## Gamazon et al. (Nature Genetics, 2015)
+## Rationale
+*    Proposition: directly test the molecular mechanisms through which genomic 
+     information affect phenotypic traits.
+*    Gene regulation information is missing for some genotypes whereas genomic 
+     information are complete.
+     The latter was used to to impute missing gene expression information.
+*    A major advantage of this approach is that less (imputed) features can be 
+     used as surrogates for genomic information in phenotype prediction, thereby
+     alleviating the multiple testing problem.
+*    Estimate genetically regulated gene expression (GReX), which constitute 
+     multiple-SNP prediction of expression levels.
+*    Use GReX to impute missing transcriptomic data.
+
+### Shortcomings
+"We are aware of the attenuation bias that arises because of the error in the 
+estimation of GRex.
+This is a subject to be investigated in the future, but the bias does not 
+invalidate our analysis as we only use the estimate of GReX as a discovery 
+tool."
+
+## Method
+The additive model of gene expression is
+$$
+T = \sum_{k=1}^{K} w_{k} X_{k} + \epsilon,
+$$
+where $T$ denotes the vector of gene expression values, $k$ denotes the SNP
+marker, $X_{k}$ is the number of reference alleles for $k$ and $w_{k}$ is the
+coefficient of the model to be fitted.
+$\mathbf{w}$ was estimated using LASSO and elastic net.
+
+Missing gene expression values (GReX) are then imputed by multiplying the matrix 
+of reference alleles for SNPs with the coefficients $\mathbf{w}$ from the 
+training set.
+Finally, GReX and the trait of interested are correlated.
+
+
+
+
+## Garrick, Taylor and Fernando (2009)
+1.    We do not have true genetic values at our disposal.
+2.    The approach of @Gamazon2015 does not account for the non-diagonal 
+      variance-covariance structure of the residuals.
+      
+Issues with BLUP:
+1.    Superior genotypes tend to be underevaluated (i.e. have negative 
+      prediction errors) whereas inferior animals tend to be overevaluated.
+2.    Observations are shrunken towards the mean while the extent of shrinkage
+      depends upon the amount of information, i.e. the reliability.
+3.    Training genotypes, which were selected according to their estimated 
+      breeding values, comprise individuals with varying reliability.

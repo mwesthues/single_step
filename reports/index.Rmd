@@ -6,7 +6,7 @@ knit: "bookdown::render_book"
 output:
   bookdown::gitbook:
 documentclass: book
-bibliography: ["cheuer.bib"]
+bibliography: ["library.bib", "cheuer.bib"]
 biblio-style: apalike
 link-citations: yes
 ---

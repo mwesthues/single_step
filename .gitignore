@@ -1,3 +1,4 @@
+
 # Ignore everything
 *
 /data
@@ -20,3 +21,26 @@ analysis/prediction_arguments.R
 
 .Rproj.user
 .Rproj
+
+
+
+###### GitBook
+# Node rules:
+## Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+## Dependency directory
+## Commenting this out is preferred by some people, see
+## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
+reports/node_modules
+
+# Book build output
+reports/_book
+
+# GitBook cache
+reports/_bookdown_files/ssHypred_Book_cache*
+
+# eBook build output
+*.epub
+*.mobi
+*.pdf
