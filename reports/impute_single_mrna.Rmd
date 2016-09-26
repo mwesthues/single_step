@@ -1,9 +1,64 @@
 # Genotype-Wise mRNA-Imputation
+```{r echo = FALSE}
+pacman::p_load("sspredr", "tidyverse", "caret", "e1071", "viridis")
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", small.mark = ".", digits = 2)
+})
+knitr::opts_knit$set(root.dir = "~/gamazon/", inline = TRUE)
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
+                      warning = FALSE, message = FALSE)
+```
+
+
+
+```{r Predictor-Data, cache = TRUE}
+# Common genotypes
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+dent <- as.character(genos$Dent$mrna)
+flint <- as.character(genos$Flint$mrna)
+
+# Remove the 'Group' variable after splitting Dent and Flint data.
+rm_grp <- function(x) {
+  x$Group <- NULL
+  x
+}
+
+# mRNA
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+mrna_lst <- mrna %>%
+  as_data_frame() %>%
+  mutate(G = rownames(mrna)) %>%
+  mutate(Group = ifelse(G %in% dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(~as.matrix(.))
+
+# SNPs
+snp <- readRDS("./data/processed/snp_mat.RDS")
+snp_lst <- snp %>%
+  as_data_frame() %>%
+  mutate(G = rownames(snp)) %>%
+  filter(G %in% c(dent, flint)) %>%
+  mutate(Group = ifelse(G %in% dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(~as.matrix(.))
+```
+
+
 
 ## Function for the imputation of a single mRNA.
 ```{r Impute-mRNA-Function}
 ## Function for the imputation of a single mRNA
-impute_one_mrna <- function(x, y) {
+impute_mrna_genotype <- function(x, y) {
   geno <- rownames(x)
   # Names of genotypes for which transcriptomic records exist
   nm2 <- rownames(y)
@@ -53,13 +108,52 @@ impute_one_mrna <- function(x, y) {
 ```
 
 
-Plot the distribution of correlations between vectors of original and imputed
-mRNAs.
-```{r Correlation-Imputed-vs-NonImputed}
-#imp_mrna <- vapply(seq_len(nrow(y)), FUN = function(i) {
-#  z <- y[-i, ]
-#  imp_mrna <- impute_one_mrna(x, z)
-#  cor(y[i, ], imp_mrna)
-#}, FUN.VALUE = numeric(1))
-#hist(imp_mrna)
+## Correlations between vectors of original and imputed mRNAs.
+```{r Compute-Correlation-Imputed-vs-NonImputed, cache = TRUE}
+# Wrapper function for the imputation of single genotypes.
+imp_loop <- function(x, y) {
+  vapply(seq_len(nrow(y)), FUN = function(i) {
+    z <- y[-i, ]
+    imp_mrna <- impute_mrna_genotype(x = x, y = z)
+    cor(y[i, ], imp_mrna)
+  }, FUN.VALUE = numeric(1))
+}
+# Separately for each heterotic group, compute the correlation between each 
+# original mRNA-genotype and the corresponding imputed mRNA-genotype.
+imp_correlations <- map2(.x = snp_lst, .y = mrna_lst, .f = imp_loop)
 ```
+
+
+```{r Plot-Correlation-Imputed-vs-NonImputed, cache = TRUE, fig.cap = "Distribution of Pearson correlation coefficients between original and imputed mRNA genotypes for two heterotic groups."}
+# Plot the distribution of the resulting Pearson correlation coefficients.
+imp_correlations %>%
+  stack() %>%
+  rename(Value = values,
+         Group = ind) %>%
+  ggplot(aes(x = Value)) +
+  geom_density() +
+  geom_rug() +
+  facet_grid(. ~ Group) +
+  ylab("Density")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
