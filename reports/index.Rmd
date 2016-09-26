@@ -65,6 +65,9 @@ Chapter \@ref(agronomic-data) gives an overview of the distribution of the
 agronomic traits as well as correlations among them, separately for the full
 set of hybrids as well as the reduced set of hybrids.
 
+Chapter \@ref(transcriptomic-data) explores the distribution and correlations
+of/among transcriptomic predictors for "raw" and transformed mRNA BLUEs.
+
 Chapter \@ref(prediction-for-reduced-data) deals with the results of hybrid 
 prediction for the reduced set of data.
 

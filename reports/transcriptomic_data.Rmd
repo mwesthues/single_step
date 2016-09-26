@@ -1,0 +1,138 @@
+# Transcriptomic Data
+Keep only genotypes for which both, transcriptomic and genomic data are 
+available.
+```{r echo = FALSE}
+pacman::p_load("sspredr", "tidyverse", "caret", "e1071", "viridis")
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", small.mark = ".", digits = 2)
+})
+knitr::opts_knit$set(root.dir = "~/gamazon/", inline = TRUE)
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
+                      warning = FALSE, message = FALSE)
+```
+
+```{r mRNA-Data, cache = TRUE}
+# Common genotypes
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+dent <- as.character(genos$Dent$mrna)
+flint <- as.character(genos$Flint$mrna)
+
+# mRNA
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+mrna_df <- mrna %>%
+  as_data_frame() %>%
+  mutate(G = rownames(mrna)) %>%
+  mutate(Group = ifelse(G %in% dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  select(-G)
+```
+
+Separately for each heterotic group, run a principal component analysis (PCA) on 
+the "raw" mRNA-BLUEs and return the importance of the first three PCs.
+```{r Raw-PCA, cache = TRUE}
+rm_grp <- function(x) {
+  x$Group <- NULL
+  x
+}
+pca_var_imp <- function(x) {
+  var_imp <- x$sd ^ 2 / sum(x$sd ^ 2) * 100
+  sum(var_imp[1:3])
+}
+# Variable importance in PCA (first three PCs)
+raw_varimp <- mrna_df %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(prcomp) %>%
+  map(pca_var_imp) %>%
+  bind_rows(.id = "Type") %>%
+  mutate(Type = "Raw")
+```
+
+
+## Data pre-processing
+Pre-process the data in the following order:
+
+1.    Near-zero-variance filtering.
+2.    Box-Cox tranformation
+3.    Centering
+4.    Scaling
+```{r Transform-Data, cache = TRUE}
+mrna_lst <- mrna_df %>% 
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(~as.matrix(.))
+
+# Data transformation
+trans_lst <- mrna_lst %>%
+  map(preProcess,
+      method = c("BoxCox", "center", "scale", "nzv")) %>%
+  map2(.y = mrna_lst, .f = predict)
+
+# Variable importance in PCA (first three PCs)
+trans_varimp <- trans_lst %>%
+  map(prcomp) %>%
+  map(pca_var_imp) %>%
+  bind_rows(.id = "Type") %>%
+  mutate(Type = "Trans")
+
+# Compare variable importances for raw and transformed mRNA data.
+rbind(raw_varimp, trans_varimp) %>%
+  knitr::kable(caption = "Importance of the first three PCs (in %)",
+               digits = 2)
+```
+
+
+## Tidy-up data
+```{r Tidy-Data, cache = TRUE}
+mrna_lst <- list(Raw = mrna_lst, Trans = trans_lst)
+tidy_mrna <- mrna_lst %>% 
+  at_depth(.depth = 2, .f = ~as.data.frame(.)) %>%
+  at_depth(.depth = 1, .f = ~bind_rows(., .id = "Group")) %>%
+  bind_rows(.id = "Type") %>%
+  as_tibble() %>%
+  gather(key = "mRNA", value = "Expression", -Group, -Type) %>%
+  mutate(Type = as.factor(Type),
+         Group = as.factor(Group))
+```
+
+
+## Skewness
+Compute the skewness and the Shapiro-Wilk test of normality for each mRNA
+```{r Check-Normality, cache = TRUE}
+mrna_skew <- tidy_mrna %>%
+  group_by(Group, Type, mRNA) %>%
+  summarize(Skewness = e1071::skewness(Expression),
+            Shapiro = stats::shapiro.test(Expression)$statistic)
+```
+
+
+Plot the distribution of skewness values across all mRNAs
+```{r, mRNA-Skewness, cache = TRUE}
+mrna_skew %>%
+  ggplot(aes(x = Skewness, fill = Type)) +
+  geom_density(alpha = 0.2) +
+  facet_grid(. ~ Group) +
+  theme(legend.position = "top")
+
+mrna_skew %>%
+  ggplot(aes(x = Skewness, fill = Type)) +
+  xlim(c(-2, 2)) +
+  geom_density(alpha = 0.2) +
+  facet_grid(. ~ Group) +
+  theme(legend.position = "top")
+```
+
+Find the least skewed/non-normally distributed mRNAs.
+```{r Association-Shapiro-Wilks-Skewness, cache = TRUE}
+mrna_skew %>%
+  mutate(Abs_Skewness = abs(Skewness)) %>%
+  ggplot(aes(x = Shapiro, y = Abs_Skewness)) +
+  xlim(c(0.8, 1)) +
+  ylim(c(0, 2)) +
+  geom_point() +
+  facet_grid(Group ~ Type) +
+  xlab("Shapiro-Wilks Test Statistic") +
+  ylab("Absolute Skewness")
+```
