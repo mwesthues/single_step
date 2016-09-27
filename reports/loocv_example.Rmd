@@ -1,0 +1,91 @@
+# Efficient LOOCV With Prediction Errors
+
+The following code snippet is taken from the [BGLR Vignette](https://github.com/gdlc/BGLR-R/blob/master/inst/md/hyperparameters.md).
+```{r Fit-BGLR-Model, cache = TRUE}
+pacman::p_load("BGLR")
+data("mice")
+X <- scale(mice.X[, 1:2000])
+h2 <- 0.5
+QTL <- seq(from = 50, to = ncol(X), length = 20)
+nQTL <- length(QTL)
+n <- nrow(X)
+b <- rep(1, nQTL) * sqrt(h2 / nQTL)
+signal <- X[, QTL] %*% b
+error <- rnorm(n, sd = sqrt(1 - h2))
+y <- signal + error
+
+## Using a flat prior
+fm1 <- BGLR(y = y, ETA = list(list(X = X, model = "BayesB", counts0 = 1,
+                                   counts1 = 1)), 
+            nIter = 5000, burnIn = 500, verbose = FALSE)
+```
+
+All formulae are from Cheng, Garrick and Fernando (2016, unpublished):
+"Efficient Strategies for Leave-one-out Cross Validation for Genomic Best Linear
+Unbiased Prediction".
+
+$$
+\mathbf{X}^{*} = 
+  \begin{bmatrix}
+    \mathbf{1} & \mathbf{X}
+  \end{bmatrix}
+$$
+```{r X-prime}
+X_prime <- cbind(matrix(1, nrow = nrow(X), ncol = 1),
+                 X)
+```
+
+$$
+\hat{\beta}^{*} =
+  \begin{bmatrix}
+    \hat{\mu} \\
+    \hat{\beta}
+  \end{bmatrix}
+$$
+```{r}
+b_hat <- fm1$ETA[[1]]$b
+mu_hat <- fm1$mu
+b_hat_prime <- matrix(c(mu_hat, b_hat), ncol = 1)
+```
+
+$\lambda = \frac{\sigma_{e}^{2}}{\sigma_{\beta}^{2}}$
+```{r}
+lambda <- c(fm1$varE / fm1$ETA[[1]]$varB, 1)
+```
+
+Diagonal matrix $\mathbf{D}_{[(p + 1) \times (p + 1)]}$.
+```{r}
+Diag <- cbind(diag(nrow = ncol(X), ncol = ncol(X)),
+              matrix(1, nrow = ncol(X), ncol = 1))
+Diag <- rbind(Diag,
+              matrix(1, nrow = 1, ncol = ncol(Diag)))
+```
+
+$\mathbf{H} = \mathbf{X}^{*}(\mathbf{X}^{*'}\mathbf{X}^{*} +
+\mathbf{D}\lambda)^{-1}\mathbf{X}^{*'}$
+```{r H, cache = TRUE}
+H <- X_prime %*% solve(t(X_prime) %*% X_prime + Diag * lambda) %*% t(X_prime)
+```
+
+$\hat{e_{j}} = \frac{y_{j} - 
+\mathbf{x^{*'}}_{j}\hat{\beta}^{*}}{1-\mathbf{H_{jj}}}$
+```{r LOOCV-Residuals}
+e_hat <- vapply(seq_len(nrow(X_prime)), FUN = function(j) {
+  t_x_prime <- X_prime[j, , drop = FALSE]
+  numerator <- as.numeric(y[j] - t_x_prime %*% b_hat_prime)
+  denominator <- 1 - H[j, j]
+  numerator / denominator
+}, FUN.VALUE = numeric(1))
+```
+
+$\text{PRESS} = \sum_{i=1}^{n} \hat{e}_{j}^{2}$
+```{r LOOCV-Output-Summary}
+press <- sum(e_hat ^ 2)
+rmse <- sqrt(press / length(e_hat))
+y_hat <- y - e_hat
+# Leave-one-out prediction accuracy
+r <- cor(y, y_hat)
+```
+
+The LOOCV-RMSE is `r round(rmse, digits = 2)` and the prediction accuracy is 
+`r round(r, digits = 2)`.

@@ -1,18 +1,12 @@
 # Genotype-Wise mRNA-Imputation
-```{r echo = FALSE}
-pacman::p_load("sspredr", "tidyverse", "caret", "e1071", "viridis",
-               "forcats", "knitr", "rmarkdown", "purrr", "rprojroot",
-               "methods", "parallel")
-knitr::knit_hooks$set(inline = function(x) {
-  prettyNum(x, big.mark = ",", small.mark = ".", digits = 2)
-})
-knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
-knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
-                      warning = FALSE, message = FALSE, echo = TRUE)
-```
+pacman::p_load("sspredr", "tidyverse", "forcats", "purrr", "methods", 
+               "parallel")
+if (isTRUE(interactive())) {
+  use_cores <- 3L
+} else {
+  use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
+}  
 
-
-```{r Predictor-Data, cache = TRUE}
 # Common genotypes
 genos <- readRDS("./data/processed/common_genotypes.RDS")
 dent <- as.character(genos$Dent$mrna)
@@ -52,13 +46,9 @@ snp_lst <- snp %>%
   split(.$Group) %>%
   map(rm_grp) %>%
   map(~as.matrix(.))
-```
-
 
 
 ## Function for the imputation of a single mRNA.
-```{r Impute-mRNA-Function}
-## Function for the imputation of a single mRNA
 impute_mrna_genotype <- function(x, y) {
   geno <- rownames(x)
   # Names of genotypes for which transcriptomic records exist
@@ -123,46 +113,21 @@ shuffled_imputation <- function(x, y) {
     rownames_to_column(var = "Number_NA_Geno") %>%
     rename(Value = value)
 }
-```
 
 
 ## Correlations between vectors of original and imputed mRNAs.
 ### General idea:
-*    Impute transcriptomic data for different numbers of genotypes (from 1 to
-     number of genotypes with transcriptomic data).
-*    For each number of genotypes without transcriptomic data, randomly sample 
-     1000 sets of genotypes, which will be imputed.
-     This will allow us to aggregate and summarize the correlation between 
-     observed and imputed mRNAs with high confidence.
-
-
-The computations were run using multiple cores with 
-[this script](../analysis/impute_single_mrna.R).
-The additional code snippet, which was run in parallel, is as follows:
-```{r Shuffle-Genotypes-Correlate-Imputation, eval = FALSE}
+#  Impute transcriptomic data for different numbers of genotypes (from 1 to
+#  number of genotypes with transcriptomic data).
+#  For each number of genotypes without transcriptomic data, randomly sample 
+#  100 sets of genotypes, which will be imputed.
+#  This will allow us to aggregate and summarize the correlation between 
+#  observed and imputed mRNAs with high confidence.
 repl <- 1000
 par_lst <- vector(mode = "list", length = repl)
 names(par_lst) <- paste0("Replication_", seq_len(repl))
 par_lst[] <- mclapply(par_lst, FUN = function(iter, ...) {
-  map2(.x = snp_lst, .y = mrna_lst, .f = shuffled_imputation)
+  try(map2(.x = snp_lst, .y = mrna_lst, .f = shuffled_imputation))
 }, mc.cores = use_cores)
-```
-
-
-
-```{r Plot-Correlation-Imputed-vs-NonImputed, cache = TRUE, fig.width = 12, fig.cap = "Pearson correlation coefficients between original and imputed mRNA genotypes for two heterotic groups."}
-par_lst <- readRDS("./data/derived/impute_single_mrna.RDS")
-par_lst %>%
-  discard(~class(.x) == "try-error") %>%
-  transpose() %>%
-  map(~bind_rows(., .id = "Replication")) %>%
-  bind_rows(.id = "Group") %>%
-  mutate(Number_NA_Geno = as.factor(Number_NA_Geno)) %>%
-  mutate(Number_NA_Geno = fct_inorder(Number_NA_Geno)) %>%
-  ggplot(aes(x = Number_NA_Geno, y = Value)) +
-  geom_boxplot() +
-  facet_wrap(~ Group) +
-  theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
-  xlab("Number of Genotypes Without mRNA-Data") +
-  ylab("Correlation Between Original and Imputed mRNA BLUEs")
-```
+saveRDS(par_lst, 
+        file = "./data/derived/impute_single_mrna.RDS")

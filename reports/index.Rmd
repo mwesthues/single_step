@@ -68,8 +68,16 @@ set of hybrids as well as the reduced set of hybrids.
 Chapter \@ref(transcriptomic-data) explores the distribution and correlations
 of/among transcriptomic predictors for "raw" and transformed mRNA BLUEs.
 
-Chapter \@ref(prediction-for-reduced-data) deals with the results of hybrid 
-prediction for the reduced set of data.
+Chapter \@ref(genotype-wise-mrna-imputation) examines the correlation between
+the original and imputed transcriptomic BLUEs.
+
+Chapter \@ref(loocv-prediction-without-prediction-error-estimates) deals with 
+the results of hybrid prediction for the reduced set of data and a comparison
+of predictive abilities with the full data set.
+
+Chapter \@ref(efficient-loocv-with-prediction-errors) is a first implementation
+of the approach suggested by Cheng, Garrick and Fernando (2016, unpublished)
+using a data set from the `BGLR` package.
 
 Chapter \@ref(prediction-with-imputed-mrnas) examines the influence of certain levels of missingness 
 in the transcriptomic data.

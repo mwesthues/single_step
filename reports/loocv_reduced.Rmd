@@ -1,10 +1,10 @@
-# Prediction For Reduced Data
+# LOOCV-Prediction Without Prediction Error Estimates
 ```{r message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
                "viridis", "tidyr", "modelr")
 
-knit_hooks$set(inline = function(x) {
+knitr::knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
 })
 knitr::opts_knit$set(root.dir = "~/gamazon/",
@@ -46,26 +46,9 @@ loocv_clean <- loocv %>%
   )
 ```
 
-## Predictive ability for non-imputed data
-Peak at predictive abilities based on non-imputed predictor information and rank
-the results by their predictive ability.
-```{r Non-Imputed-Pred-Ability, cache = TRUE}
-loocv_tbl_cap <- paste("Predictive abilities for the 'reduced' set of hybrids",
-                       "using two different predictors and seven agronomic",
-                       "traits. Results are ranked by predictive ability.")
-loocv_clean %>%
-  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
-  mutate(Predictor = as.factor(Predictor)) %>%
-  droplevels() %>%
-  group_by(Predictor, Trait) %>%
-  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
-  arrange(desc(Pred_Ability)) %>%
-  rename("Predictive Ability" = Pred_Ability) %>%
-  knitr::kable(caption = loocv_tbl_cap, booktabs = TRUE)
-```
 
-
-## Predicted vs. residuals
+## Reduced Data
+### Predicted vs. residuals
 ```{r Complete-Data-Residuals, cache = TRUE, dependson = "Rename-Traits"}
 full_pred_resid <- loocv_clean %>%
   filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
@@ -81,7 +64,7 @@ full_pred_resid <- loocv_clean %>%
 invisible(lapply(full_pred_resid$plot, FUN = print))
 ```
 
-## Predicted vs. Observed
+### Predicted vs. Observed
 ```{r Complete-Data-y-yHat, cache = TRUE, dependson = "Rename-Traits"}
 full_y_yhat <- loocv_clean %>%
   filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
@@ -95,4 +78,63 @@ full_y_yhat <- loocv_clean %>%
        ylab("Predicted") +
        ggtitle(.$Predictor))
 invisible(lapply(full_y_yhat$plot, FUN = print))
+```
+
+
+## Predictive Ability for 'Full' vs 'Reduced' Data
+```{r Non-Imputed-Pred-Ability, cache = TRUE}
+loocv_tbl_cap <- paste("Predictive abilities for the 'reduced' set of hybrids",
+                       "using two different predictors and seven agronomic",
+                       "traits. Results are ranked by predictive ability.")
+pred_reduced <- loocv_clean %>%
+  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
+  mutate(Predictor = as.factor(Predictor)) %>%
+  droplevels() %>%
+  group_by(Predictor, Trait) %>%
+  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
+  spread(key = "Predictor", value = "Pred_Ability") %>%
+  rename(Reduced_mRNA = mRNA,
+         Reduced_SNP = SNP)
+```
+
+
+```{r Imputed-Pred-Ability, cache = TRUE}
+run_log <- fread("./data/processed/prediction_log/log_list.txt")
+
+# LOOCV 
+full_loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
+full_loocv <- lapply(seq_along(full_loocv_nms), FUN = function(i) {
+  readRDS(paste0("./data/processed/predictions/", full_loocv_nms[i], ".RDS"))
+})
+full_loocv <- rbindlist(full_loocv)
+
+full_loocv_clean <- full_loocv %>%
+  mutate(Trait = as.factor(Trait),
+         Trait = fct_recode(Trait, 
+                            "FAT" = "FETT",
+                            "PRO" = "RPR",
+                            "DMY" = "GTM",
+                            "DMC" = "GTS",
+                            "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
+                                      "SUG")),
+         Residuals = y - yhat,
+         Predictor = as.factor(as.character(Imputation)),
+         Predictor = fct_recode(Predictor,
+                                "mRNA" = "TRUE",
+                                "SNP" = "FALSE")
+  )
+full_loocv_tbl_cap <- paste(
+  "Predictive abilities for the 'full' and the 'reduced' set of hybrids using",
+  "two different predictors and seven agronomic traits."
+  )
+full_loocv_clean %>%
+  droplevels() %>%
+  group_by(Predictor, Trait) %>%
+  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
+  spread(key = "Predictor", value = "Pred_Ability") %>%
+  rename(Full_mRNA = mRNA,
+         Full_SNP = SNP) %>%
+  full_join(y = pred_reduced, by = "Trait") %>%
+  knitr::kable(caption = full_loocv_tbl_cap, booktabs = TRUE)
 ```

@@ -3,7 +3,7 @@
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
                "viridis", "tidyr")
-knit_hooks$set(inline = function(x) {
+knitr::knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
 })
 knitr::opts_knit$set(root.dir = "~/gamazon/",
@@ -88,44 +88,4 @@ loocv_clean %>%
   scale_color_viridis(discrete = TRUE) +
   theme(legend.position = "top") +
   ylab("r")
-```
-
-
-## single-step Prediction for the 'full' Set
-```{r Imputed-Pred-Ability, cache = TRUE}
-run_log <- fread("./data/processed/prediction_log/log_list.txt")
-
-# LOOCV 
-full_loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
-full_loocv <- lapply(seq_along(full_loocv_nms), FUN = function(i) {
-  readRDS(paste0("./data/processed/predictions/", full_loocv_nms[i], ".RDS"))
-})
-full_loocv <- rbindlist(full_loocv)
-
-full_loocv_clean <- full_loocv %>%
-  mutate(Trait = as.factor(Trait),
-         Trait = fct_recode(Trait, 
-                            "FAT" = "FETT",
-                            "PRO" = "RPR",
-                            "DMY" = "GTM",
-                            "DMC" = "GTS",
-                            "SUG" = "XZ"),
-         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
-                                      "SUG")),
-         Residuals = y - yhat,
-         Predictor = as.factor(as.character(Imputation)),
-         Predictor = fct_recode(Predictor,
-                                "mRNA" = "TRUE",
-                                "SNP" = "FALSE")
-  )
-full_loocv_tbl_cap <- paste("Predictive abilities for the 'full' set of hybrids",
-                            "using two different predictors and seven agronomic",
-                            "traits. Results are ranked by predictive ability.")
-full_loocv_clean %>%
-  droplevels() %>%
-  group_by(Predictor, Trait) %>%
-  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
-  arrange(desc(Pred_Ability)) %>%
-  rename("Predictive Ability" = Pred_Ability) %>%
-  knitr::kable(caption = full_loocv_tbl_cap, booktabs = TRUE)
 ```
