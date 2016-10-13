@@ -89,3 +89,58 @@ r <- cor(y, y_hat)
 
 The LOOCV-RMSE is `r round(rmse, digits = 2)` and the prediction accuracy is 
 `r round(r, digits = 2)`.
+
+
+
+
+
+# Claas Heuer, October 2016
+#
+# Fast implementation of leave-one-out cross-validation
+# without reestimating variance components in a ridge
+# regression framework.
+# Based on Rohan's paper
+
+library(pacman)
+p_load(rrBLUP, Matrix)
+
+LOOCVFast <- function(y, M) {
+
+	if(!is.vector(y) | !is.numeric(y)) stop("y has to be a numeric vector")
+	if(anyNA(y)) stop("no NAs allowed in y")
+	if(nrow(M) != length(y)) stop("dimensions for y and M dont match")
+	if(anyNA(M)) stop("no NAs allowed in M")
+
+	# check dimensions for most efficient scheme
+	if(nrow(M) < ncol(M)) {
+
+	G <- tcrossprod(M)
+	L <- t(chol(G))
+
+	} else {
+
+		L <- M
+
+	}
+
+	mod <- mixed.solve(y = y, Z = L)
+
+	bs <- c(mod$beta, mod$u)
+
+	vA <- mod$Vu
+	vE <- mod$Ve
+	lambda <- vE / vA
+	D <- c(0, rep(lambda, ncol(L)))
+
+	X <- cbind(1, L)
+	Htemp <- crossprod(X)
+	diag(Htemp) <- diag(Htemp) + D
+	H <- X %*% solve(Htemp) %*% t(X)
+
+	E <- (y - X %*% bs) / (1 - diag(H))
+	yhat <- y - as.numeric(E)
+
+	return(list(y = y, yhat = yhat, e = as.numeric(E), cor = cor(y, yhat)))
+
+}
+
