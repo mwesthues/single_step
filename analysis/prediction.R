@@ -12,7 +12,7 @@
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("mwesthues/sspredr", update = TRUE)
-pacman::p_load("BGLR","data.table", "parallel", "tidyverse")
+pacman::p_load("BGLR","data.table", "parallel", "tidyverse", "testthat")
 pacman::p_load_gh("mwesthues/sspredr")
 
 
@@ -71,36 +71,35 @@ test_that("kernel method is defined", {
 })
 
 
-
 ## -- DATA SELECTION -----------------------------------------------------
-genos <- readRDS("./data/processed/common_genotypes.RDS")
-if (isTRUE(all_pheno)) {
-  dent <- genos$Dent$snp
-  flint <- genos$Flint$snp
-} else {
-  if (length(setdiff(genos$Dent$mrna, genos$Dent$snp)) == 0) {
-    dent <- genos$Dent$mrna
-  } else stop("Not all genotypes have SNP data")
-  if (length(setdiff(genos$Flint$mrna, genos$Flint$snp)) == 0) {
-    flint <- genos$Flint$mrna
-  } else stop("Not all genotypes have SNP data")
-}
+# Load the predictor data.
+pred_nms <- list(pred1 = pred1, pred2 = pred2, pred3 = pred3)
+pred_lst <- pred_nms %>%
+  keep(~nchar(.) != 0) %>%
+  map(~paste0("./data/derived/predictor_subsets/", ., ".RDS")) %>%
+  map(readRDS)
 
-if (isTRUE(all_pheno)) {
-  hybrid <- genos$Hybrid
-} else {
-  # Select hybrids for which both parents have genomic as well as transcriptomic
-  # records.
-  hybrid <- genos$Hybrid %>%
-    as_data_frame() %>%
-    separate(value, into = c("DF", "Dent", "Flint")) %>%
-    mutate(Avail_Dent = ifelse(Dent %in% dent, yes = 1, no = 0),
-           Avail_Flint = ifelse(Flint %in% flint, yes = 1, no = 0),
-           Tested_Parents = Avail_Dent + Avail_Flint) %>%
-    filter(Tested_Parents == 2) %>%
-    unite(Hybrid, DF, Dent, Flint) %>%
-    .$Hybrid
-}
+# Names of inbred lines for which at least one predictor type has records.
+pred_geno_nms <- pred_lst %>%
+  map(rownames) %>%
+  reduce(union)
+
+# Select hybrids for whose parent lines at least one predictor has records.
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+hybrid <- genos %>%
+  filter(Pool == "Hybrid") %>%
+  mutate(G = stringr::str_replace(G, pattern = "DF_", replacement = "")) %>%
+  separate(G, into = c("Dent", "Flint"), sep = "_") %>%
+  filter(Dent %in% pred_geno_nms, Flint %in% pred_geno_nms) %>%
+  unite(col = Hybrid, Dent, Flint, sep = "_", remove = FALSE) %>%
+  mutate(Hybrid = paste0("DF_", Hybrid))
+
+# Store the names of all Dent and Flint hybrid parents in a list in order to
+# correctly augment the predictor matrices with their help.
+hybrid_parent_nms <- hybrid %>%
+  gather(key = "Group", value = "G", Dent, Flint) %>%
+  split(.$Group) %>%
+  map("G")
 
 
 ## -- PREDICTOR AND AGRONOMIC DATA PREPARATION ----------------------------
@@ -108,7 +107,7 @@ if (isTRUE(all_pheno)) {
 pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
 pheno <- pheno %>%
   as_data_frame() %>%
-  filter(G %in% hybrid) %>%
+  filter(G %in% hybrid$Hybrid) %>%
   dplyr::select(G, EST, Trait) %>%
   spread(key = Trait, value = EST) %>%
   dplyr::select(-ADL) %>%
@@ -117,49 +116,52 @@ pheno <- pheno %>%
   column_to_rownames(var = "G") %>%
   as.matrix
 
-# Position of Dent in rownames(pheno): 2
-# Position of Flint in rownames(pheno): 3
-hetgrps <- c(2, 3)
+# Split the predictor matrices into Dent and Flint.
+pred_lst <- pred_lst %>%
+  map(as.data.frame) %>%
+  map(rownames_to_column, var = "G") %>%
+  map(as_tibble) %>%
+  map(~left_join(x = .,
+                 y = genos %>% 
+                       select(G, Pool) %>%
+                       distinct(G, .keep_all = TRUE),
+                 by = "G")) %>%
+  map(~split(., .$Pool)) %>%
+  transpose() %>%
+  at_depth(.depth = 2, ~select(., -Pool)) %>%
+  at_depth(.depth = 2, .f = as.data.frame) %>%
+  at_depth(.depth = 2, .f = column_to_rownames, var = "G") %>%
+  at_depth(.depth = 2, as.matrix)
+pred_lst[["Dent"]][["geno"]] <- hybrid_parent_nms$Dent
+pred_lst[["Flint"]][["geno"]] <- hybrid_parent_nms$Flint
 
-
-# Endophenotypes
-snp <- readRDS("./data/processed/snp_mat.RDS")
-snp <- snp[rownames(snp) %in% c(dent, flint), ]
-mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
-mrna <- t(mrna)
-mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
-mrna <- mrna[rownames(mrna) %in% c(dent, flint), ]
-
+  
 
 ## -- GENERATE BGLR() INPUT MATRICES --------------------------------------
-eta_lst <- lapply(hetgrps, FUN = function(i) {
-  grp_hyb <- vapply(strsplit(hybrid, split = "_"), FUN = "[[", i,
-                    FUN.VALUE = character(1))
-  # With imputation
-  if (isTRUE(predictor == "mrna" && isTRUE(all_pheno))) {
-    grp_snp <- snp[rownames(snp) %in% grp_hyb, ]
-    grp_mrna <- mrna[rownames(mrna) %in% grp_hyb, ]
-    eta <- impute_eta(x = grp_snp, y = grp_mrna, geno = grp_hyb,
-                      bglr_model = "BRR")
-    # Without imputation 
-  } else if (isTRUE(predictor == "mrna")) {
-    grp_mrna <- snp[rownames(mrna) %in% grp_hyb, ]
-    eta <- complete_eta(x = mrna, geno = grp_hyb, bglr_model = "BRR")
-  } else if (isTRUE(predictor == "snp")) {
-    grp_snp <- snp[rownames(snp) %in% grp_hyb, ]
-    eta <- complete_eta(x = snp, geno = grp_hyb, bglr_model = "BRR")
-  }
-  eta
-})
-names(eta_lst) <- c("Dent", "Flint")
-eta <- unlist(eta_lst, recursive = FALSE)
-eta[] <- lapply(seq_along(eta), FUN = function(i) {
-  dat <- eta[[i]]
-  x <- dat[["X"]]
-  rownames(x) <- hybrid
-  dat[["X"]] <- x
-  dat
-})
+# Number of predictors used.
+n_pred <- pred_nms %>%
+  keep(~nchar(.) != 0) %>%
+  as_vector() %>%
+  length()
+
+if (isTRUE(n_pred == 1)) {
+
+  eta_lst <- pred_lst %>%
+    map(~complete_eta(., x = .$pred1, geno = .$geno, bglr_model = "BRR"))
+
+} else if (isTRUE(n_pred == 2)) {
+
+  eta_lst <- pred_lst %>%
+    map(~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
+                    bglr_model = "BRR"))
+
+} else if (isTRUE(n_pred == 3)) {
+
+  eta_lst <- pred_lst %>%
+    map(~impute2(ped = .$pred1, snp = .$pred2, mrna = .$pred3, geno = .$geno,
+                 bglr_model = "BRR"))
+}
+eta_lst <- flatten(eta_lst)
 
 
 ## --------------------------------------------------------------------------
@@ -227,7 +229,6 @@ saveRDS(res,
         compress = FALSE)
                      
 # Log file
-
 log_location <- "./data/derived/pred_log.txt"
 write.table(log_file,
             file = log_location,
