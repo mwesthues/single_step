@@ -12,11 +12,7 @@
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("mwesthues/sspredr", update = TRUE)
-pacman::p_load("BGLR", "caret", "corrplot", "Cubist", "data.table", "doMC", 
-               "dplyr", "e1071", "earth", "elasticnet", "gbm", "kernlab", 
-               "MASS", "Matrix", "matrixStats", "methods", "nnet", "parallel", 
-               "party", "partykit", "pls", "randomForest", "rpart", "RWeka", 
-               "testthat", "tibble", "tidyr")
+pacman::p_load("BGLR","data.table", "parallel", "tidyverse")
 pacman::p_load_gh("mwesthues/sspredr")
 
 
@@ -25,9 +21,6 @@ pacman::p_load_gh("mwesthues/sspredr")
 if (isTRUE(interactive())) {
   # Number of cores
   Sys.setenv("MOAB_PROCCOUNT" = "4")
-  # If TRUE, all agronomic data will be used, otherwise only agronomic data of
-  # hybrids whose parents have both, mrna and snp data, will be used.
-  Sys.setenv("ALL_PHENO" = "FALSE")
   Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "500")
@@ -37,8 +30,13 @@ if (isTRUE(interactive())) {
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
-  # 'mrna' or 'snp' 
-  Sys.setenv("PREDICTOR" = "mrna")
+  # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
+  # place.
+  Sys.setenv("PRED1" = "ped100")
+  # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
+  Sys.setenv("PRED2" = "snp77")
+  # If not empty, this predictor will be imputed.
+  Sys.setenv("PRED3" = "mrna42")
 }
 
 if (!interactive()) {
@@ -46,14 +44,15 @@ if (!interactive()) {
 } else job_id <- "interactive_00"
 
 use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
-all_pheno <- as.logical(Sys.getenv("ALL_PHENO"))
 init_traits <- as.character(Sys.getenv("TRAIT"))
 init_iter <- as.integer(Sys.getenv("ITER"))
 hypred_model <- as.character(Sys.getenv("MODEL"))
 g_method <- as.character(Sys.getenv("VCOV"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
-predictor <- as.character(Sys.getenv("PREDICTOR"))
+pred1 <- as.character(Sys.getenv("PRED1"))
+pred2 <- as.character(Sys.getenv("PRED2"))
+pred3 <- as.character(Sys.getenv("PRED3"))
 
 
 # Input tests
@@ -180,145 +179,6 @@ param_df <- expand.grid(Trait = init_traits,
                         Run = seq_len(nrow(pheno)))
 param_df$Trait <- as.character(param_df$Trait)
 start_time <- Sys.time()
-
-### CARET-PREDICTION
-caret_mod_nms <- c("avNNet", "cubist", "earth", "enet", "gbm", "knn", "lm", 
-                   "M5", "pls", "rf", "ridge", "rlm", "rpart2", "svmLinear", 
-                   "svmPoly", "svmRadial", "treebag")
-
-if (hypred_model %in% caret_mod_nms) {
-  registerDoMC(use_cores)
-  # Concatenate all individual predictor matrices to one big predictor matrix.
-  pred_lst <- eta %>%
-    unlist(recursive = FALSE) %>%
-    .[grep(".model", x = names(.), invert = TRUE)] %>%
-    .[grep("1", x = names(.), invert = TRUE)]
-  # In order to avoid duplicated column names (which would otherwise be the 
-  # case when concatenating Dent and Flint predictors), add the first letter
-  # of the heterotic group to the predictor name.
-  pred_lst[] <- lapply(seq_along(pred_lst), FUN = function(i) {
-    x <- pred_lst[[i]]
-    element_nm <- substr(names(pred_lst[i]), start = 1, stop = 1)
-    colnames(x) <- paste0(element_nm, "_", colnames(x))
-    x
-  })
-  pred_mat <- pred_lst %>%
-    do.call(cbind, .)
-  if (anyDuplicated(colnames(pred_mat))) stop("Duplicated predictor names")
-  
-  trait_vec <- param_df %>%
-    dplyr::select(Trait) %>%
-    unique.data.frame() %>%
-    mutate(Trait = as.character(Trait)) %>%
-    .$Trait
-  
-  
-  res <- lapply(seq_len(nrow(param_df)), FUN = function(i) {
-    trait <- trait_vec[i]
-    y <- pheno[, trait]
-    stopifnot(all.equal(names(y), rownames(pred_mat)))
-    
-    if (isTRUE(hypred_model == "pls")) {
-      tuned_mod <- train(pred_mat, y,
-                         method = "pls",
-                         preProc = c("BoxCox", "center", "scale"),
-                         tuneLength = 20,
-                         trControl = trainControl(method = "LOOCV"))
-    }
-    if (isTRUE(hypred_model == "ridge")) {
-      tune_grid <- data.frame(.lambda = seq(0, to = 1, length = 15))
-      tuned_mod <- train(pred_mat, y,
-                         method = "ridge",
-                         preProc = c("BoxCox", "center", "scale"),
-                         tuneGrid = tune_grid,
-                         trControl = trainControl(method = "LOOCV"))
-    }
-    if (isTRUE(hypred_model == "enet")) {
-      tune_grid <- data.frame(.lambda = seq(0, 0.01, 0.1),
-                              .fraction = seq(0.05, to = 1, length = 20))
-      tuned_mod <- train(pred_mat, y,
-                         method = "enet",
-                         preProc = c("BoxCox", "center", "scale"),
-                         tuneGrid = tune_grid,
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    if (isTRUE(hypred_model == "earth")) {
-      tune_grid <- expand.grid(.degree = seq_len(2),
-                               .nprune = 2:38)
-      tuned_mod <- train(pred_mat, y,
-                         method = "earth",
-                         preProc = c("BoxCox"),
-                         tuneGrid = tune_grid,
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    if (isTRUE(hypred_model == "svmRadial")) {
-     tuned_mod <- train(pred_mat, y,
-                        method = "svmRadial",
-                        preProc = c("center", "scale"),
-                        tuneLength = 5,
-                        trControl = trainControl(method = "LOOCV"))
-    }
-    if (isTRUE(hypred_model == "knn")) {
-      tune_grid <- data.frame(.k = seq_len(20))
-      tuned_mod <- train(pred_mat, y,
-                         method = "knn",
-                         preProc = c("BoxCox", "center", "scale", "nzv"),
-                         tuneGrid = tune_grid,
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    if (isTRUE(hypred_model == "M5")) {
-      tuned_mod <- train(pred_mat, y,
-                         method = "M5",
-                         control = Weka_control(M = 10),
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    if (isTRUE(hypred_model == "treebag")) {
-      tuned_mod <- train(pred_mat, y,
-                         method = "treebag",
-                         nbagg = 50,
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    if (isTRUE(hypred_model == "rf")) {
-      tune_grid <- data.frame(mtry = floor(seq(10, to = ncol(training), 
-                                               length = 10)))
-      tuned_mod <- train(pred_mat, y,
-                         method = "rf",
-                         tuneGrid = tune_grid,
-                         ntree = 1000,
-                         importance = TRUE,
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    if (isTRUE(hypred_model == "gbm")) {
-      tune_grid <- expand.grid(interaction.depth = seq(1, to = 7, by = 2),
-                               n.trees = seq(100, to = 1000, by = 50),
-                               shrinkage = c(0.01, 0.1),
-                               n.minobsinnode = 10)
-      tuned_mod <- train(pred_mat, y,
-                         method = "gbm",
-                         tuneGrid = tune_grid,
-                         verbose = FALSE,
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    if (isTRUE(hypred_model == "cubist")) {
-      tune_grid <- expand.grid(committees = c(1:10, 20, 50, 75, 100),
-                               neighbors = c(0, 1, 5, 9))
-      tuned_mod <- train(pred_mat, y,
-                         method = "cubist",
-                         tuneGrid = tune_grid,
-                         trControl = trainControl(method = "LOOCV"))
-    }   
-    tuned_mod
-  })
-  names(res) <- trait_vec
- 
-  elapsed_time <- get_elapsed_time(start_time)
-  log_file <- expand.grid(Job_ID = job_id, All_Pheno = all_pheno, 
-                          Elapsed_Time = elapsed_time,
-                          Trait = trait_vec, Iter = 0, CV = "LOOCV",
-                          Model = hypred_model, PI = 0, PriorPiCount = 0)
-}
-
-
 
 # Keep track of how long a job is running.
 if (!hypred_model %in% caret_mod_nms) {
