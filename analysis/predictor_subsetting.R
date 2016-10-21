@@ -102,6 +102,7 @@ snp42 <- snp100 %>%
 # Store the new objects
 storage_dir <- "./data/derived/predictor_subsets/"
 ls() %>%
+  .[. != "snp35"] %>%
   .[stringr::str_detect(., pattern = "[:digit:]")] %>%
   as.list() %>%
   map_if(.p = ~get(.) %>% is.matrix,
