@@ -1,16 +1,16 @@
 # Genotype-Wise mRNA-Imputation
 pacman::p_load("sspredr", "tidyverse", "forcats", "purrr", "methods", 
                "parallel")
-if (isTRUE(interactive())) {
-  use_cores <- 3L
-} else {
-  use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
-}  
+use_cores <- 3L
 
 # Common genotypes
 genos <- readRDS("./data/processed/common_genotypes.RDS")
-dent <- as.character(genos$Dent$mrna)
-flint <- as.character(genos$Flint$mrna)
+dent <- genos %>% 
+  filter(Pool == "Dent", Data_Type == "mrna") %>%
+  .$G
+flint <- genos %>%
+  filter(Pool == "Flint", Data_Type == "mrna") %>%
+  .$G
 
 # Remove the 'Group' variable after splitting Dent and Flint data.
 rm_grp <- function(x) {
@@ -46,6 +46,25 @@ snp_lst <- snp %>%
   split(.$Group) %>%
   map(rm_grp) %>%
   map(~as.matrix(.))
+
+# Pedigree
+ped <- readRDS("./data/processed/ped-datafull-GTP.RDS")
+ped_lst <- ped %>%
+  mutate(G = rownames(ped)) %>%
+  filter(G %in% c(dent, flint)) %>%
+  mutate(Group = ifelse(G %in% dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(as.matrix) %>%
+  map(function(x) x[, match(rownames(x), colnames(x))]) %>%
+  map(function(x) x * 2) %>%
+  map(function(x) {
+    x[is.na(x)] <- 0
+    x
+  })
 
 
 ## Function for the imputation of a single mRNA.
@@ -124,10 +143,17 @@ shuffled_imputation <- function(x, y) {
 #  This will allow us to aggregate and summarize the correlation between 
 #  observed and imputed mRNAs with high confidence.
 repl <- 1000
-par_lst <- vector(mode = "list", length = repl)
-names(par_lst) <- paste0("Replication_", seq_len(repl))
-par_lst[] <- mclapply(par_lst, FUN = function(iter, ...) {
-  try(map2(.x = snp_lst, .y = mrna_lst, .f = shuffled_imputation))
-}, mc.cores = use_cores)
-saveRDS(par_lst, 
+donors <- c("snp_lst", "ped_lst")
+imp_lst <- lapply(donors, FUN = function(type) {
+  par_lst <- vector(mode = "list", length = repl)
+  names(par_lst) <- paste0("Replication_", seq_len(repl))
+  par_lst[] <- mclapply(par_lst, FUN = function(iter, ...) {
+    try(map2(.x = get(type), .y = mrna_lst, .f = shuffled_imputation))
+  }, mc.cores = use_cores)
+  par_lst
+})
+names(imp_lst) <- donors
+
+saveRDS(imp_lst, 
         file = "./data/derived/impute_single_mrna.RDS")
+

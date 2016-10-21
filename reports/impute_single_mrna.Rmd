@@ -8,15 +8,17 @@ knitr::knit_hooks$set(inline = function(x) {
 })
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
-                      warning = FALSE, message = FALSE, echo = TRUE)
+                      warning = FALSE, message = FALSE, echo = FALSE)
 ```
 
 
 ```{r Predictor-Data, cache = TRUE}
 # Common genotypes
 genos <- readRDS("./data/processed/common_genotypes.RDS")
-dent <- as.character(genos$Dent$mrna)
-flint <- as.character(genos$Flint$mrna)
+mrna_inbreds <- genos %>%
+  filter(Data_Type == "mrna") %>%
+  split(.$Pool) %>%
+  map("G")
 
 # Remove the 'Group' variable after splitting Dent and Flint data.
 rm_grp <- function(x) {
@@ -31,7 +33,7 @@ mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
 mrna_lst <- mrna %>%
   as_data_frame() %>%
   mutate(G = rownames(mrna)) %>%
-  mutate(Group = ifelse(G %in% dent, yes = "Dent", no = "Flint"),
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
          Group = as.factor(Group)) %>%
   as.data.frame() %>%
   column_to_rownames(var = "G") %>%
@@ -44,19 +46,37 @@ snp <- readRDS("./data/processed/snp_mat.RDS")
 snp_lst <- snp %>%
   as_data_frame() %>%
   mutate(G = rownames(snp)) %>%
-  filter(G %in% c(dent, flint)) %>%
-  mutate(Group = ifelse(G %in% dent, yes = "Dent", no = "Flint"),
+  filter(G %in% (mrna_inbreds %>% flatten_chr())) %>%
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
          Group = as.factor(Group)) %>%
   as.data.frame() %>%
   column_to_rownames(var = "G") %>%
   split(.$Group) %>%
   map(rm_grp) %>%
   map(~as.matrix(.))
+
+# Pedigree
+ped <- readRDS("./data/processed/ped-datafull-GTP.RDS")
+ped_lst <- ped %>%
+  mutate(G = rownames(ped)) %>%
+  filter(G %in% (mrna_inbreds %>% flatten_chr())) %>%
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(as.matrix) %>%
+  map(function(x) x[, match(rownames(x), colnames(x))]) %>%
+  map(function(x) x * 2) %>%
+  map(function(x) {
+    x[is.na(x)] <- 0
+    x
+  })
 ```
 
 
 
-## Function for the imputation of a single mRNA.
 ```{r Impute-mRNA-Function}
 ## Function for the imputation of a single mRNA
 impute_mrna_genotype <- function(x, y) {
@@ -138,30 +158,37 @@ shuffled_imputation <- function(x, y) {
 
 The computations were run using multiple cores with 
 [this script](../analysis/impute_single_mrna.R).
-The additional code snippet, which was run in parallel, is as follows:
 ```{r Shuffle-Genotypes-Correlate-Imputation, eval = FALSE}
 repl <- 1000
-par_lst <- vector(mode = "list", length = repl)
-names(par_lst) <- paste0("Replication_", seq_len(repl))
-par_lst[] <- mclapply(par_lst, FUN = function(iter, ...) {
-  map2(.x = snp_lst, .y = mrna_lst, .f = shuffled_imputation)
-}, mc.cores = use_cores)
+donors <- c("snp_lst", "ped_lst")
+imp_lst <- lapply(donors, FUN = function(type) {
+  par_lst <- vector(mode = "list", length = repl)
+  names(par_lst) <- paste0("Replication_", seq_len(repl))
+  par_lst[] <- mclapply(par_lst, FUN = function(iter, ...) {
+    try(map2(.x = get(type), .y = mrna_lst, .f = shuffled_imputation))
+  }, mc.cores = use_cores)
+  par_lst
+})
+names(imp_lst) <- donors
 ```
 
 
 
-```{r Plot-Correlation-Imputed-vs-NonImputed, cache = TRUE, fig.width = 12, fig.cap = "Pearson correlation coefficients between original and imputed mRNA genotypes for two heterotic groups."}
+```{r Plot-Correlation-Imputed-vs-NonImputed, cache = TRUE, fig.width = 12, fig.height = 12, fig.cap = "Pearson correlation coefficients between original and imputed mRNA genotypes for two heterotic groups and two sources of information (i.e. genomic and pedigree)."}
 par_lst <- readRDS("./data/derived/impute_single_mrna.RDS")
 par_lst %>%
-  discard(~class(.x) == "try-error") %>%
-  transpose() %>%
+  map(~keep(., is_list)) %>%
+  at_depth(.depth = 2, ~bind_rows(., .id = "Group")) %>%
   map(~bind_rows(., .id = "Replication")) %>%
-  bind_rows(.id = "Group") %>%
+  bind_rows(.id = "Data_Type") %>%
+  mutate(Data_Type = fct_recode(Data_Type,
+                                Genomic = "snp_lst",
+                                Pedigree = "ped_lst")) %>%
   mutate(Number_NA_Geno = as.factor(Number_NA_Geno)) %>%
   mutate(Number_NA_Geno = fct_inorder(Number_NA_Geno)) %>%
   ggplot(aes(x = Number_NA_Geno, y = Value)) +
   geom_boxplot() +
-  facet_wrap(~ Group) +
+  facet_wrap(Data_Type ~ Group) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
   xlab("Number of Genotypes Without mRNA-Data") +
   ylab("Correlation Between Original and Imputed mRNA BLUEs")

@@ -1,5 +1,5 @@
 # Efficient LOOCV With Prediction Errors
-pacman::p_load("BGLR")
+pacman::p_load("BGLR", "tidyverse")
 data("mice")
 X <- scale(mice.X)
 h2 <- 0.5
@@ -11,10 +11,20 @@ signal <- X[, QTL] %*% b
 error <- rnorm(n, sd = sqrt(1 - h2))
 y <- signal + error
 
+G <- X %>%
+  list() %>%
+  map(~tcrossprod(scale(.)) / ncol(.)) %>%
+  map(chol) %>%
+  map(t) %>%
+  .[[1]]
+
 ## Using a flat prior
-fm1 <- BGLR(y = y, ETA = list(list(X = t(chol(tcrossprod(X))),
-                                   model = "BRR")), 
-            nIter = 10000, burnIn = 2000, verbose = TRUE)
+system.time(fm1 <- BGLR(y = y, 
+                        ETA = list(list(X = G, model = "BRR")), 
+                        nIter = 30000, 
+                        burnIn = 15000,
+                        verbose = FALSE,
+                        saveAt = "./tmp/"))
 X_prime <- cbind(matrix(1, nrow = nrow(X), ncol = 1),
                  X)
 b_hat <- fm1$ETA[[1]]$b

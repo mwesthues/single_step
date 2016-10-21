@@ -1,6 +1,3 @@
----
-output: pdf_document
----
 # Introduction
 The integration of different sources of information for the prediction of 
 breeding or production values is one of the major challenges in current genomic 

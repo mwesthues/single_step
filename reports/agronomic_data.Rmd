@@ -2,13 +2,12 @@
 ```{r echo = FALSE, message = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
-               "viridis", "tidyr", "knitr", "tibble")
+               "viridis", "tidyr", "knitr", "tibble", "purrr")
 
 knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
 })
-knitr::opts_knit$set(root.dir = "~/gamazon/",
-                     inline = TRUE)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
                       warning = FALSE, echo = FALSE)
 ```
@@ -19,7 +18,9 @@ pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
 
 # Prepare agronomic data.
 genos <- readRDS("./data/processed/common_genotypes.RDS")
-hybrid <- genos$Hybrid
+hybrid <- genos %>%
+  filter(Data_Type == "agro", Pool == "Hybrid") %>%
+  .$G
 all_pheno <- pheno %>%
   rename(Observed = EST) %>%
   as_data_frame() %>%
@@ -38,13 +39,15 @@ all_pheno <- pheno %>%
 
 # Select hybrids for which both parents have genomic as well as transcriptomic
 # records.
-dent <- genos$Dent$mrna
-flint <- genos$Flint$mrna
-hybrid <- genos$Hybrid %>%
+mrna_inbreds <- genos %>%
+  filter(Pool != "Hybrid", Data_Type == "mrna") %>%
+  split(.$Pool) %>%
+  map("G")
+hybrid <- hybrid %>%
   as_data_frame() %>%
   separate(value, into = c("DF", "Dent", "Flint")) %>%
-  mutate(Avail_Dent = ifelse(Dent %in% dent, yes = 1, no = 0),
-         Avail_Flint = ifelse(Flint %in% flint, yes = 1, no = 0),
+  mutate(Avail_Dent = ifelse(Dent %in% mrna_inbreds$Dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% mrna_inbreds$Flint, yes = 1, no = 0),
          Tested_Parents = Avail_Dent + Avail_Flint) %>%
   filter(Tested_Parents == 2) %>%
   unite(Hybrid, DF, Dent, Flint) %>%

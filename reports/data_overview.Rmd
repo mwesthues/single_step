@@ -7,8 +7,7 @@ pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats",
 knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
 })
-knitr::opts_knit$set(root.dir = "~/gamazon/",
-                     inline = TRUE)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
                       warning = FALSE, echo = FALSE)
 ```
@@ -17,7 +16,9 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
 pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
 genos <- readRDS("./data/processed/common_genotypes.RDS")
 
-full_hybrid <- genos$Hybrid
+full_hybrid <- genos %>%
+  filter(Pool == "Hybrid") %>%
+  .$G
 all_pheno <- pheno %>%
   rename(Observed = EST) %>%
   as_data_frame() %>%
@@ -38,21 +39,27 @@ traits <- all_pheno %>%
   levels()
 
 # Hybrids of parents with records for both endophenotypes
-red_dent <- Reduce(intersect, genos[["Dent"]][c("snp", "mrna")])
-red_flint <- Reduce(intersect, genos[["Flint"]][c("snp", "mrna")])
-red_hybrid <- genos$Hybrid %>%
+red_inbreds <- genos %>% 
+  filter(Pool != "Hybrid", Data_Type %in% c("snp", "mrna")) %>%
+  split(.$Pool) %>%
+  map(~split(., .$Data_Type)) %>%
+  at_depth(.depth = 2, "G") %>%
+  map(function(x) intersect(x$mrna, x$snp))
+
+red_hybrid <- full_hybrid %>%
   as_data_frame() %>%
   separate(value, into = c("DF", "Dent", "Flint")) %>%
-  mutate(Avail_Dent = ifelse(Dent %in% red_dent, yes = 1, no = 0),
-         Avail_Flint = ifelse(Flint %in% red_flint, yes = 1, no = 0),
+  mutate(Avail_Dent = ifelse(Dent %in% red_inbreds$Dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% red_inbreds$Flint, yes = 1, no = 0),
          Tested_Parents = Avail_Dent + Avail_Flint) %>%
   filter(Tested_Parents == 2) %>%
   unite(Hybrid, DF, Dent, Flint) %>%
   .$Hybrid
-full_hybrid <- genos$Hybrid
-genos$Hybrid <- NULL
-genos$Hybrid$snp <- full_hybrid
-genos$Hybrid$mrna <- red_hybrid
+genos <- genos %>%
+  rbind(tibble(G = red_hybrid,
+               Pool = "Hybrid",
+               Data_Type = "mrna")
+        )
 ```
 
 ```{r Feature-Number, echo = FALSE}
@@ -70,8 +77,8 @@ and `r length(full_hybrid)` hybrids are available
 After applying a series of quality checks, `r ncol(snp)` SNPs and 
 best linear unbiased estimates of `r ncol(mrna)` were available for further 
 analyses.
-Both, genomic and transcriptomic records, were collected for inbred parent lines
-of `r length(red_hybrid)` hybrids.
+Genomic, pedigree and transcriptomic records, were collected for inbred parent 
+lines of `r length(red_hybrid)` hybrids.
 
 
 ```{r Geno-Number, echo = FALSE}
@@ -85,12 +92,13 @@ geno_tab_cap <- paste("Number of genotypes for Dent and Flint parent lines and",
 # Number of genotypes for either SNPs or mRNAs separated by hybrids and their
 # parental Dent and Flint lines, respectively.
 genos %>% 
-  at_depth(.depth = 2, .f = length) %>%
-  bind_rows() %>%
-  dplyr::select(-agro) %>%
-  mutate(Type = names(genos)) %>%
-  dplyr::select(Type, snp, mrna) %>%
-  rename("Genomic Data" = snp,
-         "Transcriptomic Data" = mrna) %>%
+  mutate(Data_Type = fct_recode(Data_Type,
+                                Agronomic = "agro",
+                                Transcriptomic = "mrna",
+                                Genomic = "snp",
+                                Pedigree = "ped")) %>%
+  group_by(Pool, Data_Type) %>%
+  count() %>%
+  rename(`Data Type` = Data_Type) %>%
   knitr::kable(caption = geno_tab_cap, booktabs = TRUE)
 ```

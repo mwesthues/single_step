@@ -16,11 +16,23 @@ snp_geno <- id_gtp %>%
   filter(id_GTP %in% snp$id.GTP) %>%
   mutate(Data_Type = "snp")
 
-# Pedigree data
+# There is only one genotype for which we have pedigree records that does not
+# also have genomic records. Hence, there is almost no difference between 
+# the extent of both datasets and we will reduce the pedigree data set to its
+# intersection with the genomic data set to alleviate further coding.
 ped <- readRDS("./data/processed/ped-datafull-GTP.RDS") 
 ped_geno <- id_gtp %>%
   filter(id_GTP %in% rownames(ped)) %>%
   mutate(Data_Type = "ped")
+split_pred <- snp_geno %>%
+  rbind(ped_geno) %>%
+  split(.$Data_Type) 
+common_snp_ped <- split_pred %>% map("id_GTP") %>%
+  reduce(intersect)
+snp_ped <- split_pred %>%
+  map(function(x) x[x$id_GTP %in% common_snp_ped, ]) %>%
+  bind_rows() %>%
+  as_tibble()
 
 
 # Transcriptomic data
@@ -30,7 +42,7 @@ mrna_geno <- id_gtp %>%
   mutate(Data_Type = "mrna")
 
 # Concatenate predictor data 
-pred_geno <- rbindlist(list(snp_geno, ped_geno, mrna_geno))
+pred_geno <- rbindlist(list(snp_ped, mrna_geno))
 pred_geno <- pred_geno %>%
   rename(G = id_GTP,
          Pool = pool_2) %>%
@@ -43,7 +55,10 @@ pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
 # Keep only factorial hybrids and unique records for each trait.
 agro_hybrid <- pheno %>%
   as_tibble() %>%
-  filter(Trait %in% traits, check == 0, dent.GTP != 0, flint.GTP != 0) %>%
+  filter(Trait %in% traits, 
+         check == 0,
+         dent.GTP %in% (pred_geno %>% filter(Pool == "Dent") %>% .$G),
+         flint.GTP %in% (pred_geno %>% filter(Pool == "Flint") %>% .$G)) %>%
   select(G, Trait) %>%
   split(.$Trait) %>%
   map("G") %>%

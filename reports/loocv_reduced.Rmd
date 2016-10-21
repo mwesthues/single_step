@@ -7,9 +7,7 @@ pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats",
 knitr::knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
 })
-knitr::opts_knit$set(root.dir = "~/gamazon/",
-                     inline = TRUE,
-                     verbose = FALSE)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
                       warning = FALSE, echo = FALSE)
 ```
@@ -41,8 +39,8 @@ loocv_clean <- loocv %>%
          Flint_NA_Fraction = as.factor(as.character(Flint_NA_Fraction)),
          Residuals = y - yhat,
          Predictor = fct_recode(Predictor,
-                                "mRNA" = "mrna",
-                                "SNP" = "snp")
+                                "Transcriptomic" = "mrna",
+                                "Genomic" = "snp")
   )
 ```
 
@@ -93,8 +91,8 @@ pred_reduced <- loocv_clean %>%
   group_by(Predictor, Trait) %>%
   summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
   spread(key = "Predictor", value = "Pred_Ability") %>%
-  rename(Reduced_mRNA = mRNA,
-         Reduced_SNP = SNP)
+  rename(Reduced_Transcriptomic = Transcriptomic,
+         Reduced_Genomic = Genomic)
 ```
 
 
@@ -121,8 +119,8 @@ full_loocv_clean <- full_loocv %>%
          Residuals = y - yhat,
          Predictor = as.factor(as.character(Imputation)),
          Predictor = fct_recode(Predictor,
-                                "mRNA" = "TRUE",
-                                "SNP" = "FALSE")
+                                "Transcriptomic" = "TRUE",
+                                "Genomic" = "FALSE")
   )
 full_loocv_tbl_cap <- paste(
   "Predictive abilities for the 'full' and the 'reduced' set of hybrids using",
@@ -133,8 +131,8 @@ full_loocv_clean %>%
   group_by(Predictor, Trait) %>%
   summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
   spread(key = "Predictor", value = "Pred_Ability") %>%
-  rename(Full_mRNA = mRNA,
-         Full_SNP = SNP) %>%
+  rename(Full_Transcriptomic = Transcriptomic,
+         Full_Genomic = Genomic) %>%
   full_join(y = pred_reduced, by = "Trait") %>%
   knitr::kable(caption = full_loocv_tbl_cap, booktabs = TRUE)
 ```

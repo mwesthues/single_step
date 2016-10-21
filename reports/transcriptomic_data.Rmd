@@ -6,16 +6,18 @@ pacman::p_load("sspredr", "tidyverse", "caret", "e1071", "viridis")
 knitr::knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", small.mark = ".", digits = 2)
 })
-knitr::opts_knit$set(root.dir = "~/gamazon/", inline = TRUE)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
-                      warning = FALSE, message = FALSE, echo = TRUE)
+                      warning = FALSE, message = FALSE, echo = FALSE)
 ```
 
 ```{r mRNA-Data, cache = TRUE}
 # Common genotypes
 genos <- readRDS("./data/processed/common_genotypes.RDS")
-dent <- as.character(genos$Dent$mrna)
-flint <- as.character(genos$Flint$mrna)
+mrna_inbreds <- genos %>%
+  filter(Pool != "Hybrid", Data_Type == "mrna") %>%
+  split(.$Pool) %>%
+  map("G")
 
 # mRNA
 mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
@@ -24,7 +26,7 @@ mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
 mrna_df <- mrna %>%
   as_data_frame() %>%
   mutate(G = rownames(mrna)) %>%
-  mutate(Group = ifelse(G %in% dent, yes = "Dent", no = "Flint"),
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
          Group = as.factor(Group)) %>%
   select(-G)
 ```
@@ -84,7 +86,6 @@ rbind(raw_varimp, trans_varimp) %>%
 ```
 
 
-## Tidy-up data
 ```{r Tidy-Data, cache = TRUE}
 mrna_lst <- list(Raw = mrna_lst, Trans = trans_lst)
 tidy_mrna <- mrna_lst %>% 
@@ -99,7 +100,6 @@ tidy_mrna <- mrna_lst %>%
 
 
 ## Skewness
-Compute the skewness and the Shapiro-Wilk test of normality for each mRNA
 ```{r Check-Normality, cache = TRUE}
 mrna_skew <- tidy_mrna %>%
   group_by(Group, Type, mRNA) %>%
@@ -108,24 +108,17 @@ mrna_skew <- tidy_mrna %>%
 ```
 
 
-Plot the distribution of skewness values across all mRNAs
-```{r, mRNA-Skewness, cache = TRUE}
-mrna_skew %>%
-  ggplot(aes(x = Skewness, fill = Type)) +
-  geom_density(alpha = 0.2) +
-  facet_grid(. ~ Group) +
-  theme(legend.position = "top")
-
+```{r, mRNA-Skewness, cache = TRUE, fig.cap = "Distribution of skewness values across all mRNAs, separately for transformed and raw BLUEs."}
 mrna_skew %>%
   ggplot(aes(x = Skewness, fill = Type)) +
   xlim(c(-2, 2)) +
   geom_density(alpha = 0.2) +
   facet_grid(. ~ Group) +
-  theme(legend.position = "top")
+  theme(legend.position = "top") +
+  ylab("Density")
 ```
 
-Find the least skewed/non-normally distributed mRNAs.
-```{r Association-Shapiro-Wilks-Skewness, cache = TRUE}
+```{r Association-Shapiro-Wilks-Skewness, cache = TRUE, fig.cap = "Shapiro-Wilks Test Statistic vs absolute skewness for transcriptomic BLUEs depending on whether the BLUEs were transformed or not."}
 mrna_skew %>%
   mutate(Abs_Skewness = abs(Skewness)) %>%
   ggplot(aes(x = Shapiro, y = Abs_Skewness)) +
