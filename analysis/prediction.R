@@ -12,7 +12,9 @@
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("mwesthues/sspredr", update = TRUE)
-pacman::p_load("BGLR","data.table", "parallel", "tidyverse", "testthat")
+pacman::p_load("BGLR","data.table", "parallel", "magrittr", "dplyr", "tidyr",
+               "purrr", "testthat", "methods", "tibble", "ggplot2", "stringr",
+               "stringi", "lubridate", "readr")
 pacman::p_load_gh("mwesthues/sspredr")
 
 
@@ -23,7 +25,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "4")
   Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "500")
+  Sys.setenv("ITER" = "15000")
   # Prediction model in BGLR()
   Sys.setenv("MODEL" = "BRR")
   # Algorithm to generate variance-covariance matrices.
@@ -34,9 +36,11 @@ if (isTRUE(interactive())) {
   # place.
   Sys.setenv("PRED1" = "ped100")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "snp77")
+  Sys.setenv("PRED2" = "")
   # If not empty, this predictor will be imputed.
-  Sys.setenv("PRED3" = "mrna42")
+  Sys.setenv("PRED3" = "")
+  # Number of genotypes to predict (only for testing!)
+  Sys.setenv("RUNS" = "")
 }
 
 if (!interactive()) {
@@ -53,6 +57,7 @@ PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
 pred3 <- as.character(Sys.getenv("PRED3"))
+runs <- as.integer(Sys.getenv("RUNS"))
 
 
 # Input tests
@@ -147,21 +152,41 @@ n_pred <- pred_nms %>%
 if (isTRUE(n_pred == 1)) {
 
   eta_lst <- pred_lst %>%
-    map(~complete_eta(., x = .$pred1, geno = .$geno, bglr_model = "BRR"))
+    map(., ~complete_eta(x = .$pred1, geno = .$geno, 
+                         as_kernel = TRUE,
+                         bglr_model = "BRR"))
 
 } else if (isTRUE(n_pred == 2)) {
 
   eta_lst <- pred_lst %>%
-    map(~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
-                    bglr_model = "BRR"))
+    map(., ~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
+                       bglr_model = "BRR"))
 
 } else if (isTRUE(n_pred == 3)) {
 
   eta_lst <- pred_lst %>%
-    map(~impute2(ped = .$pred1, snp = .$pred2, mrna = .$pred3, geno = .$geno,
-                 bglr_model = "BRR"))
+    map(., ~impute2(ped = .$pred1, snp = .$pred2, mrna = .$pred3, 
+                    geno = .$geno,
+                    bglr_model = "BRR"))
 }
-eta_lst <- flatten(eta_lst)
+eta <- flatten(eta_lst)
+
+# Substitute hybrid names for the current names of the hybrid parents in the
+# ETA objects. This is required for the cross-validation function to detect
+# correct sorting of genotypes in the variance-covariance matrices with respect
+# to the phenotypic traits.
+hybrid_names <- eta_lst %>%
+  map(~transpose(.)) %>%
+  map("X") %>%
+  at_depth(.depth = 2, rownames) %>%
+  map(1) %>%
+  reduce(.f = paste, sep = "_") %>%
+  paste0("DF_", .)
+
+eta <- lapply(eta, FUN = function(x) {
+  rownames(x$X) <- hybrid_names
+  x
+})
 
 
 ## --------------------------------------------------------------------------
@@ -180,47 +205,58 @@ param_df <- expand.grid(Trait = init_traits,
                         Iter = init_iter,
                         Run = seq_len(nrow(pheno)))
 param_df$Trait <- as.character(param_df$Trait)
+if (!is.na(runs)) {
+  param_df <- param_df[sample(seq_len(nrow(param_df)), size = runs), ]
+} else {
+  runs <- "all"
+}
 start_time <- Sys.time()
 
+
 # Keep track of how long a job is running.
-if (!hypred_model %in% caret_mod_nms) {
-  pred_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
-    run <- param_df[i, "Run"]
-    trait <- param_df[i, "Trait"]
-    iter <- as.integer(param_df[i, "Iter"])
-    pred <- run_loocv(Pheno = pheno,
-                      ETA = eta,
-                      hybrid = TRUE,
-                      mother_idx = 2,
-                      father_idx = 3, 
-                      split_char = "_",
-                      trait = trait,
-                      iter = iter,
-                      speed_tst = FALSE,
-                      run = run,
-                      verbose = FALSE,
-                      out_loc = "./tmp/")
-    cbind(pred, Iter = iter)
-  }, mc.cores = use_cores)
-  res <- rbindlist(pred_lst)
-  elapsed_time <- get_elapsed_time(start_time)
-  res <- res %>%
-    rename(Trait = Phenotype,
-           Dent = Mother,
-           Flint = Father) %>%
-    mutate(CV = "LOOCV",
-           All_Pheno = all_pheno,
-           Job_ID = job_id,
-           Model = hypred_model,
-           PI = Pi,
-           PriorPiCount = PriorPiCount,
-           Predictor = predictor,
-           Elapsed_Time = elapsed_time) %>%
-    as.data.table()
-  
-  log_file <- unique(res[, .(Job_ID, All_Pheno, Elapsed_Time, Trait, Iter, CV, 
-                             Model, PI, PriorPiCount), ])
-}
+yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
+  run <- param_df[i, "Run"]
+  trait <- param_df[i, "Trait"]
+  iter <- as.integer(param_df[i, "Iter"])
+  pred <- run_loocv(Pheno = pheno,
+                    ETA = eta,
+                    hybrid = TRUE,
+                    mother_idx = 2,
+                    father_idx = 3, 
+                    split_char = "_",
+                    trait = trait,
+                    iter = iter,
+                    speed_tst = FALSE,
+                    run = run,
+                    verbose = FALSE,
+                    out_loc = "./tmp/")
+  cbind(pred, Iter = iter)
+}, mc.cores = use_cores)
+res <- rbindlist(yhat_lst)
+elapsed_time <- get_elapsed_time(start_time)
+pred_nms <- pred_nms %>% 
+  map_if(., .p = nchar(.) == 0, .f = function(x) {
+    x <- "none"
+    x
+  }) %>%
+  flatten_chr()
+res <- res %>%
+  rename(Trait = Phenotype,
+         Dent = Mother,
+         Flint = Father) %>%
+  mutate(CV = "LOOCV",
+         Pred1 = pred_nms[1],
+         Pred2 = pred_nms[2],
+         Pred3 = pred_nms[3],
+         Job_ID = job_id,
+         Runs = runs,
+         Model = hypred_model,
+         PI = Pi,
+         PriorPiCount = PriorPiCount,
+         Elapsed_Time = elapsed_time) %>%
+  as.data.table()
+log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Elapsed_Time, Trait, 
+                           Iter, CV, Model, PI, PriorPiCount), ])
 
 
 # Prediction results file
