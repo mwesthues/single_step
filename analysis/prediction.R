@@ -22,10 +22,10 @@ pacman::p_load_gh("mwesthues/sspredr")
 ## COLLECT AND CHECK ARGUMENTS 
 if (isTRUE(interactive())) {
   # Number of cores
-  Sys.setenv("MOAB_PROCCOUNT" = "4")
+  Sys.setenv("MOAB_PROCCOUNT" = "3")
   Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "15000")
+  Sys.setenv("ITER" = "500")
   # Prediction model in BGLR()
   Sys.setenv("MODEL" = "BRR")
   # Algorithm to generate variance-covariance matrices.
@@ -36,11 +36,11 @@ if (isTRUE(interactive())) {
   # place.
   Sys.setenv("PRED1" = "ped100")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "")
+  Sys.setenv("PRED2" = "snp77")
   # If not empty, this predictor will be imputed.
   Sys.setenv("PRED3" = "")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "")
+  Sys.setenv("RUNS" = "6")
 }
 
 if (!interactive()) {
@@ -149,18 +149,34 @@ n_pred <- pred_nms %>%
   as_vector() %>%
   length()
 
-if (isTRUE(n_pred == 1)) {
+# If pedigree data constituted the first specified predictor, don't generate
+# a kernel from them but use a simple Cholesky decomposition instead.
+pedigree_first <- pred_nms %>%
+  .[[1]] %>%
+  str_detect(., pattern = "ped")
 
-  eta_lst <- pred_lst %>%
-    map(., ~complete_eta(x = .$pred1, geno = .$geno, 
-                         as_kernel = TRUE,
-                         bglr_model = "BRR"))
+if (isTRUE(n_pred == 1)) {
+  if (isTRUE(pedigree_first)) {
+    eta_lst <- pred_lst %>%
+      map(., ~complete_eta(x = .$pred1, geno = .$geno, 
+                           as_kernel = FALSE,
+                           bglr_model = "BRR"))
+  } else {
+    eta_lst <- pred_lst %>%
+      map(., ~complete_eta(x = .$pred1, geno = .$geno, 
+                           as_kernel = TRUE,
+                           bglr_model = "BRR"))
+  }
 
 } else if (isTRUE(n_pred == 2)) {
-
-  eta_lst <- pred_lst %>%
-    map(., ~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
-                       bglr_model = "BRR"))
+  if (isTRUE(pedigree_first)) {
+    eta_lst <- pred_lst %>%
+      map(., ~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
+                         as_kernel = FALSE, bglr_model = "BRR"))
+  }
+    eta_lst <- pred_lst %>%
+      map(., ~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
+                         as_kernel = TRUE, bglr_model = "BRR"))
 
 } else if (isTRUE(n_pred == 3)) {
 
@@ -253,10 +269,11 @@ res <- res %>%
          Model = hypred_model,
          PI = Pi,
          PriorPiCount = PriorPiCount,
-         Elapsed_Time = elapsed_time) %>%
+         Elapsed_Time = elapsed_time,
+         Date = as.character(Sys.time())) %>%
   as.data.table()
 log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Elapsed_Time, Trait, 
-                           Iter, CV, Model, PI, PriorPiCount), ])
+                           Iter, CV, Model, PI, PriorPiCount, Date), ])
 
 
 # Prediction results file
