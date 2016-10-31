@@ -36,11 +36,11 @@ if (isTRUE(interactive())) {
   # place.
   Sys.setenv("PRED1" = "ped100")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "snp77")
+  Sys.setenv("PRED2" = "mrna42")
   # If not empty, this predictor will be imputed.
   Sys.setenv("PRED3" = "")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "6")
+  Sys.setenv("RUNS" = "7-12")
 }
 
 if (!interactive()) {
@@ -57,7 +57,7 @@ PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
 pred3 <- as.character(Sys.getenv("PRED3"))
-runs <- as.integer(Sys.getenv("RUNS"))
+runs <- as.character(Sys.getenv("RUNS"))
 
 
 # Input tests
@@ -74,6 +74,8 @@ test_that("selected trait exists", {
 test_that("kernel method is defined", {
   expect_true(g_method %in% c("RadenI", "RadenII", "Zhang", "none"))
 })
+
+
 
 
 ## -- DATA SELECTION -----------------------------------------------------
@@ -160,6 +162,7 @@ if (isTRUE(n_pred == 1)) {
     eta_lst <- pred_lst %>%
       map(., ~complete_eta(x = .$pred1, geno = .$geno, 
                            as_kernel = FALSE,
+                           is_pedigree = TRUE,
                            bglr_model = "BRR"))
   } else {
     eta_lst <- pred_lst %>%
@@ -217,18 +220,25 @@ get_elapsed_time <- function(start_time, tz = "CEST") {
   format(.POSIXct(dt, tz = tz), "%H:%M:%S")
 }
 
+# Define which runs shall be used, i.e., which genotypes shall be included as 
+# test sets.
+if (!is.na(runs)) {
+  run_length <- runs %>%
+    str_split(., pattern = "-") %>%
+    as_vector() %>%
+    as.integer() %>%
+    invoke(.f = seq, .x = ., by = 1) 
+} else {
+  run_length <- nrow(pheno)
+}
 param_df <- expand.grid(Trait = init_traits,
                         Iter = init_iter,
-                        Run = seq_len(nrow(pheno)))
+                        Run = run_length)
 param_df$Trait <- as.character(param_df$Trait)
-if (!is.na(runs)) {
-  param_df <- param_df[sample(seq_len(nrow(param_df)), size = runs), ]
-} else {
-  runs <- "all"
-}
+
+
+
 start_time <- Sys.time()
-
-
 # Keep track of how long a job is running.
 yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
   run <- param_df[i, "Run"]
@@ -272,10 +282,26 @@ res <- res %>%
          Elapsed_Time = elapsed_time,
          Date = as.character(Sys.time())) %>%
   as.data.table()
+
 log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Elapsed_Time, Trait, 
-                           Iter, CV, Model, PI, PriorPiCount, Date), ])
+                           Iter, CV, Model, PI, PriorPiCount, Date, Runs), ])
 
-
+# Reduce the size of the prediction object to the minimum possible size.
+res[, `:=` (Iter = NULL, 
+            Pred1 = NULL,
+            Pred2 = NULL,
+            Pred3 = NULL, 
+            CV = NULL,
+            Trait = NULL,
+            Dent = NULL,
+            Flint = NULL,
+            Runs = NULL,
+            Model = NULL,
+            PI = NULL,
+            PriorPiCount = NULL,
+            Elapsed_Time = NULL,
+            Date = NULL),
+  ]
 # Prediction results file
 saveRDS(res, 
         file = paste0("./data/derived/predictions/", job_id, ".RDS"),
