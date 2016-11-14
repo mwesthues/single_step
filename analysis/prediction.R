@@ -36,11 +36,11 @@ if (isTRUE(interactive())) {
   # place.
   Sys.setenv("PRED1" = "ped100")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "mrna42")
+  Sys.setenv("PRED2" = "")
   # If not empty, this predictor will be imputed.
   Sys.setenv("PRED3" = "")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "7-12")
+  Sys.setenv("RUNS" = "")
 }
 
 if (!interactive()) {
@@ -222,7 +222,7 @@ get_elapsed_time <- function(start_time, tz = "CEST") {
 
 # Define which runs shall be used, i.e., which genotypes shall be included as 
 # test sets.
-if (!is.na(runs)) {
+if (nchar(runs) != 0) {
   run_length <- runs %>%
     str_split(., pattern = "-") %>%
     as_vector() %>%
@@ -233,7 +233,7 @@ if (!is.na(runs)) {
 }
 param_df <- expand.grid(Trait = init_traits,
                         Iter = init_iter,
-                        Run = run_length)
+                        Run = seq_len(run_length))
 param_df$Trait <- as.character(param_df$Trait)
 
 
@@ -280,11 +280,13 @@ res <- res %>%
          PI = Pi,
          PriorPiCount = PriorPiCount,
          Elapsed_Time = elapsed_time,
-         Date = as.character(Sys.time())) %>%
+         Date = as.character(Sys.time()),
+         Cores = use_cores) %>%
   as.data.table()
 
 log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Elapsed_Time, Trait, 
-                           Iter, CV, Model, PI, PriorPiCount, Date, Runs), ])
+                           Iter, CV, Model, PI, PriorPiCount, Date, Runs,
+                           Cores), ])
 
 # Reduce the size of the prediction object to the minimum possible size.
 res[, `:=` (Iter = NULL, 
@@ -300,7 +302,8 @@ res[, `:=` (Iter = NULL,
             PI = NULL,
             PriorPiCount = NULL,
             Elapsed_Time = NULL,
-            Date = NULL),
+            Date = NULL,
+            Cores = NULL),
   ]
 # Prediction results file
 saveRDS(res, 
