@@ -34,7 +34,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "ped100")
+  Sys.setenv("PRED1" = "snp42")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "")
   # If not empty, this predictor will be imputed.
@@ -229,11 +229,11 @@ if (nchar(runs) != 0) {
     as.integer() %>%
     invoke(.f = seq, .x = ., by = 1) 
 } else {
-  run_length <- nrow(pheno)
+  run_length <- seq_len(nrow(pheno))
 }
 param_df <- expand.grid(Trait = init_traits,
                         Iter = init_iter,
-                        Run = seq_len(run_length))
+                        Run = run_length)
 param_df$Trait <- as.character(param_df$Trait)
 
 
