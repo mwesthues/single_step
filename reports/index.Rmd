@@ -71,12 +71,9 @@ of/among transcriptomic predictors for "raw" and transformed mRNA BLUEs.
 Chapter \@ref(genotype-wise-mrna-imputation) examines the correlation between
 the original and imputed transcriptomic BLUEs.
 
-Chapter \@ref(loocv-prediction-without-prediction-error-estimates) deals with 
-the results of hybrid prediction for the reduced set of data and a comparison
-of predictive abilities with the full data set.
-
-Chapter \@ref(prediction-with-imputed-mrnas) examines the influence of certain levels of missingness 
-in the transcriptomic data.
+Chapter \@ref(loocv-prediction) deals with the results of hybrid prediction for 
+the reduced set of data and a comparison of predictive abilities with the full 
+data set.
 
 Chapter \@ref(conclusions-and-outlook) provides a summary of the analyses and 
 provides an outlook for future analyses.

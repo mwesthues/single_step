@@ -1,7 +1,7 @@
 # Transcriptomic Data
 Keep only genotypes for which both, transcriptomic and genomic data are 
 available.
-```{r echo = FALSE}
+```{r setup-transcriptomic, echo = FALSE}
 pacman::p_load("sspredr", "tidyverse", "caret", "e1071", "viridis")
 knitr::knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", small.mark = ".", digits = 2)

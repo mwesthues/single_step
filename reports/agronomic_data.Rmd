@@ -1,5 +1,5 @@
 # Agronomic Data
-```{r echo = FALSE, message = FALSE}
+```{r setup-agro, echo = FALSE, message = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
                "viridis", "tidyr", "knitr", "tibble", "purrr")

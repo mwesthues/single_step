@@ -1,5 +1,5 @@
 # LOOCV-Prediction
-```{r message = FALSE, echo = FALSE}
+```{r setup-loocv, message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
                "stringr", "forcats")
@@ -108,33 +108,34 @@ Bear in mind that the distribution of the observed values will be different
 for different predictors because some predictors "xx42" and "xx77", where
 'xx' denotes a predictor, contain less hybrids than there are available 
 (i.e. "xx100").
-```{r Distribution-y-yhat, cache = TRUE}
+```{r Distribution-y-yhat, cache = TRUE, fig.height = 12, fig.cap = "Frequency polygon of observed and predicted values for seven agronomic traits (columns) and nine sets of predictors (rows)."}
 legend_labs <- expression(y, hat(y))
-distr_plot <- pred_df %>%
+pred_df %>%
   filter(Predictor != "snp77-none-none") %>%
   gather(key = Value, value = `Phenotypic Value`, y, yhat) %>%
   mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
   ggplot(aes(x = `Phenotypic Value`, color = Value)) +
   geom_freqpoly() +
-  scale_color_manual(values = viridis(length(legend_labs), option = "C"),
-                     labels = legend_labs) +
+  scale_color_manual(values = c("#1f78b4", "#e31a1c"), labels = legend_labs) +
   facet_grid(Predictor ~ Trait, scales = "free") +
+  theme_bw() +
   theme(legend.position = "top",
-        strip.text.y = element_text(size = 5)) +
+        strip.text.y = element_text(size = 7)) +
+  guides(color = guide_legend(override.aes = list(size = 2))) +
   ylab("Frequency")
 ```
 
 
 
 Compare the coefficients of variation for all predictor-trait combinations.
-```{r Coefficient-of-Variation-Plot, cache = TRUE}
-cv_plot <- overview_df %>%
+```{r Coefficient-of-Variation-Plot, cache = TRUE, fig.cap = "Coefficient of variation for seven agronomic traits and nine sets of predictors."}
+overview_df %>%
   filter(Predictor != "snp77-none-none") %>%
   mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
   ggplot(aes(x = CV, y = Predictor)) +
   geom_segment(aes(yend = Predictor), xend = 0, color = "gray50") +
-  geom_point(aes(color = Predictor)) +
-  scale_color_viridis(discrete = TRUE) +
+  geom_point(aes(color = Predictor), size = 3) +
+  scale_color_viridis(discrete = TRUE, option = "inferno") +
   facet_wrap(~ Trait, scales = "free_x") +
   theme_bw() +
   theme(panel.grid.major.y = element_blank(),
@@ -152,8 +153,8 @@ cv_plot <- overview_df %>%
 
 Plot the predictive abilities for all predictor-trait combinations 
 separately for the reduced and the full data set, respectively.
-```{r Predictive-Ability-Plots, cache = TRUE}
-pred_plot <- overview_df %>%
+```{r Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for seven agronomic traits (rows) and nine predictor sets (columns). The predictor sets are split into the categories 'Reduced' (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids)."}
+overview_df %>%
   as_tibble() %>%
   filter(Predictor != "snp77-none-none") %>%
   mutate(Predictor = fct_relevel(Predictor, pred_order),
