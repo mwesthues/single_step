@@ -104,16 +104,24 @@ ggplot(all_pheno, aes(x = Observed)) +
 
 
 ## Correlation
-```{r Agro-Correlation, echo = FALSE, fig.cap = "Pairwise correlations among seven agronomic traits for the full set of hybrids and the reduced set of hybrids, respectively."}
-par(mar = c(0, 1, 0, 0),
-    mfrow = c(1, 2))
-all_pheno %>%
-  select(-Reduced_Data) %>%
+```{r Agro-Correlation, echo = FALSE, fig.cap = "Pairwise correlations among seven agronomic traits for the full set of hybrids (upper diagonal) and the reduced set of hybrids (lower diagonal), respectively."}
+cor_coeffs <- all_pheno %>%
+  rbind(., reduced_pheno) %>%
   spread(key = Trait, value = Observed) %>%
-  as.data.frame() %>%
-  remove_rownames() %>%
-  column_to_rownames(var = "G") %>%
-  cor() %>%
+  split(.$Reduced_Data) %>%
+  map(~select(., -Reduced_Data)) %>%
+  map(as.data.frame) %>%
+  map(remove_rownames) %>%
+  map(column_to_rownames, var = "G") %>%
+  map(cor) %>%
+  map_at(.at = "no", .f = ~.[upper.tri(., diag = FALSE)]) %>%
+  map_at(.at = "yes", .f = ~.[lower.tri(., diag = FALSE)])
+traits <- levels(all_pheno$Trait)
+cor_mat <- diag(nrow = 7, ncol = 7)
+cor_mat[upper.tri(cor_mat, diag = FALSE)] <- cor_coeffs$no
+cor_mat[lower.tri(cor_mat, diag = FALSE)] <- cor_coeffs$yes
+dimnames(cor_mat) <- list(traits, traits)
+cor_mat %>%
   corrplot::corrplot(col = viridis(256),
                      method = "color",
                      diag = FALSE,
@@ -122,24 +130,5 @@ all_pheno %>%
                      tl.srt = 60,
                      order = "hclust",
                      addCoef.col = "black",
-                     title = "Full",
-                     mar = c(0, 1, 1, 0))
-reduced_pheno %>%
-  filter(Reduced_Data == "yes") %>%
-  select(-Reduced_Data) %>%
-  spread(key = Trait, value = Observed) %>%
-  as.data.frame() %>%
-  remove_rownames() %>%
-  column_to_rownames(var = "G") %>%
-  cor() %>%
-  corrplot::corrplot(col = viridis(256),
-                     method = "color",
-                     diag = FALSE,
-                     cl.pos = "b",
-                     tl.pos = "d",
-                     tl.srt = 60,
-                     order = "hclust",
-                     addCoef.col = "black",
-                     title = "Reduced",
                      mar = c(0, 1, 1, 0))
 ```

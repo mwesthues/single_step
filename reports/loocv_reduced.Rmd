@@ -12,6 +12,8 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
                       warning = FALSE, echo = FALSE)
 ```
 
+
+
 ```{r Load-LOOCV-Data, cache = TRUE}
 log_file <- fread("./data/derived/pred_log.txt")
 
@@ -36,7 +38,6 @@ pred_df <- log_file %>%
          Predictor = as.factor(Predictor)) %>%
   select(-Job_ID, -Iter)
 
-
 # Update the variable 'Trait' for subsequent joins with 'pred_df'.
 log_file <- log_file %>%
   filter(Iter == 30000) %>%
@@ -54,8 +55,44 @@ log_file <- log_file %>%
 ```
 
 
-Compute the average standard deviation for each combination of predictors and 
-traits -> http://stats.stackexchange.com/a/26647
+
+## Distribution of predicted and observed values
+```{r Distribution-y-yhat, cache = TRUE, fig.height = 12, fig.cap = "Frequency polygon of observed and predicted values for seven agronomic traits (columns) and nine sets of predictors (rows)."}
+# Specify a unified predictor order.
+pred_order <- c("ped42-none-none", "snp42-none-none", "mrna42-none-none",
+                "ped100-none-none", "snp100-none-none", "ped100-snp77-none",
+                "ped100-mrna42-none", "snp100-mrna42-none",
+                "ped100-snp77-mrna42")
+legend_labs <- expression(y, hat(y))
+pred_df %>%
+  filter(Predictor != "snp77-none-none") %>%
+  gather(key = Value, value = `Phenotypic Value`, y, yhat) %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
+  ggplot(aes(x = `Phenotypic Value`, color = Value)) +
+  geom_freqpoly() +
+  scale_color_manual(values = c("#1f78b4", "#e31a1c"), labels = legend_labs) +
+  facet_grid(Predictor ~ Trait, scales = "free") +
+  theme_bw() +
+  theme(legend.position = "top",
+        strip.text.y = element_text(size = 7)) +
+  guides(color = guide_legend(override.aes = list(size = 2))) +
+  ylab("Frequency")
+```
+
+## Coefficient of variation for predicted values
+We are interested in the variation in the predicted values relative to the 
+arithmetic mean of the predicted values, separately for each agronomic trait and
+each set of predictors:
+
+$$
+\begin{equation}
+  \label{eq:CV}
+CV = \sqrt{\frac{\sum_{i = 1}^{N} \sigma^{2}_{\hat{y}(i)} / N}{\sum_{i=1}^{N}\hat{y}_{i} / N}},
+\end{equation}
+$$
+
+where $N$ denotes the number of hybrids.
+
 ```{r Coefficient-of-Variation, cache = TRUE}
 coefficient_of_variation <- function(x, y) {
   sqrt(mean(x)) / mean(y)
@@ -69,13 +106,7 @@ cv_df <- pred_df %>%
   tbl_dt() %>%
   mutate(Predictor = as.factor(Predictor),
          Trait = as.factor(Trait))
-```
 
-
-
-Combine predictive abilities and coefficients of variation for all predictor
-and trait combinations for plotting.
-```{r Organize-Data, cache = TRUE}
 overview_df <- pred_df %>%
   group_by(Predictor, Trait) %>%
   summarize(r = cor(y, yhat)) %>%
@@ -94,40 +125,11 @@ overview_df <- pred_df %>%
                         yes = "Reduced", no = "Full")
   ) %>%
   mutate(Group = as.factor(Group))
-
-# Specify a unified predictor order.
-pred_order <- c("ped42-none-none", "snp42-none-none", "mrna42-none-none",
-                "ped100-none-none", "snp100-none-none", "ped100-snp77-none",
-                "ped100-mrna42-none", "snp100-mrna42-none",
-                "ped100-snp77-mrna42")
-```
-
-
-Distribution of predicted and observed values.
-Bear in mind that the distribution of the observed values will be different
-for different predictors because some predictors "xx42" and "xx77", where
-'xx' denotes a predictor, contain less hybrids than there are available 
-(i.e. "xx100").
-```{r Distribution-y-yhat, cache = TRUE, fig.height = 12, fig.cap = "Frequency polygon of observed and predicted values for seven agronomic traits (columns) and nine sets of predictors (rows)."}
-legend_labs <- expression(y, hat(y))
-pred_df %>%
-  filter(Predictor != "snp77-none-none") %>%
-  gather(key = Value, value = `Phenotypic Value`, y, yhat) %>%
-  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
-  ggplot(aes(x = `Phenotypic Value`, color = Value)) +
-  geom_freqpoly() +
-  scale_color_manual(values = c("#1f78b4", "#e31a1c"), labels = legend_labs) +
-  facet_grid(Predictor ~ Trait, scales = "free") +
-  theme_bw() +
-  theme(legend.position = "top",
-        strip.text.y = element_text(size = 7)) +
-  guides(color = guide_legend(override.aes = list(size = 2))) +
-  ylab("Frequency")
 ```
 
 
 
-Compare the coefficients of variation for all predictor-trait combinations.
+## Predictive Abilities
 ```{r Coefficient-of-Variation-Plot, cache = TRUE, fig.cap = "Coefficient of variation for seven agronomic traits and nine sets of predictors."}
 overview_df %>%
   filter(Predictor != "snp77-none-none") %>%
