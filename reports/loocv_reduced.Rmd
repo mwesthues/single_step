@@ -1,8 +1,8 @@
-# LOOCV-Prediction Without Prediction Error Estimates
+# LOOCV-Prediction
 ```{r message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
-               "viridis", "tidyr", "modelr")
+pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
+               "stringr", "forcats")
 
 knitr::knit_hooks$set(inline = function(x) {
   prettyNum(x, big.mark = ",", digits = 2)
@@ -13,126 +13,172 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
 ```
 
 ```{r Load-LOOCV-Data, cache = TRUE}
-# Load log files and data
-run_log <- fread("./data/derived/na_fraction_pred_log.txt")
+log_file <- fread("./data/derived/pred_log.txt")
 
-# LOOCV 
-loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
-loocv <- lapply(seq_along(loocv_nms), FUN = function(i) {
-  readRDS(paste0("./data/derived/predictions/", loocv_nms[i], ".RDS"))
-})
-loocv <- rbindlist(loocv)
+pred_df <- log_file %>%
+  .$Job_ID %>%
+  as.list() %>%
+  map(~readRDS(paste0("./data/derived/predictions/", ., ".RDS"))) %>%
+  bind_rows(.id = "id") %>%
+  left_join(y = log_file %>% select(Job_ID, Pred1, Pred2, Pred3, Trait, Iter),
+            by = "Job_ID") %>%
+  filter(Iter == 30000) %>%
+  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-") %>%
+  mutate(Trait = fct_recode(Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
+  mutate(Trait = fct_relevel(Trait,
+                             "DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG"),
+         Predictor = as.factor(Predictor)) %>%
+  select(-Job_ID, -Iter)
+
+
+# Update the variable 'Trait' for subsequent joins with 'pred_df'.
+log_file <- log_file %>%
+  filter(Iter == 30000) %>%
+  mutate(Trait = fct_recode(Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
+  mutate(Trait = fct_relevel(Trait,
+                             "DMY", "DMC", "ADF", "FAT", "PRO",
+                             "STA", "SUG")) %>%
+  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-")
 ```
 
 
-```{r Rename-Traits, cache = TRUE}
-loocv_clean <- loocv %>%
-  mutate(Trait = fct_recode(Trait, 
-                            "FAT" = "FETT",
-                            "PRO" = "RPR",
-                            "DMY" = "GTM",
-                            "DMC" = "GTS",
-                            "SUG" = "XZ"),
-         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
-                                      "SUG")),
-         Dent_NA_Fraction = as.factor(as.character(Dent_NA_Fraction)),
-         Flint_NA_Fraction = as.factor(as.character(Flint_NA_Fraction)),
-         Residuals = y - yhat,
-         Predictor = fct_recode(Predictor,
-                                "Transcriptomic" = "mrna",
-                                "Genomic" = "snp")
-  )
+Compute the average standard deviation for each combination of predictors and 
+traits -> http://stats.stackexchange.com/a/26647
+```{r Coefficient-of-Variation, cache = TRUE}
+coefficient_of_variation <- function(x, y) {
+  sqrt(mean(x)) / mean(y)
+}
+cv_df <- pred_df %>%
+  split(list(.$Trait, .$Predictor)) %>%
+  map(~coefficient_of_variation(x = .$var_yhat, y = .$yhat)) %>%
+  stack() %>%
+  separate(col = ind, into = c("Trait", "Predictor"), sep = "[.]") %>%
+  rename(CV = values) %>%
+  tbl_dt() %>%
+  mutate(Predictor = as.factor(Predictor),
+         Trait = as.factor(Trait))
 ```
 
 
-## Reduced Data
-### Predicted vs. residuals
-```{r Complete-Data-Residuals, cache = TRUE, dependson = "Rename-Traits"}
-full_pred_resid <- loocv_clean %>%
-  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
-  group_by(Predictor) %>%
-  do(plot = ggplot(., aes(x = yhat, y = Residuals)) +
-       geom_point(size = 0.5) +
-       geom_ref_line(h = 0) +
-       facet_wrap(~ Trait, nrow = 2, scales = "free") +
-       theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
-       xlab("Predicted") +
-       ylab("Residuals") +
-       ggtitle(.$Predictor))
-invisible(lapply(full_pred_resid$plot, FUN = print))
-```
 
-### Predicted vs. Observed
-```{r Complete-Data-y-yHat, cache = TRUE, dependson = "Rename-Traits"}
-full_y_yhat <- loocv_clean %>%
-  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
-  group_by(Predictor) %>%
-  do(plot = ggplot(., aes(x = y, y = yhat)) +
-       geom_point(size = 0.5) +
-       geom_abline(slope = 1, linetype = "dashed", color = "blue") +
-       facet_wrap(~ Trait, nrow = 2, scales = "free") +
-       theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
-       xlab("Observed") +
-       ylab("Predicted") +
-       ggtitle(.$Predictor))
-invisible(lapply(full_y_yhat$plot, FUN = print))
-```
-
-
-## Predictive Ability for 'Full' vs 'Reduced' Data
-```{r Non-Imputed-Pred-Ability, cache = TRUE}
-loocv_tbl_cap <- paste("Predictive abilities for the 'reduced' set of hybrids",
-                       "using two different predictors and seven agronomic",
-                       "traits. Results are ranked by predictive ability.")
-pred_reduced <- loocv_clean %>%
-  filter(Dent_NA_Fraction == 0, Flint_NA_Fraction == 0) %>%
-  mutate(Predictor = as.factor(Predictor)) %>%
-  droplevels() %>%
+Combine predictive abilities and coefficients of variation for all predictor
+and trait combinations for plotting.
+```{r Organize-Data, cache = TRUE}
+overview_df <- pred_df %>%
   group_by(Predictor, Trait) %>%
-  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
-  spread(key = "Predictor", value = "Pred_Ability") %>%
-  rename(Reduced_Transcriptomic = Transcriptomic,
-         Reduced_Genomic = Genomic)
+  summarize(r = cor(y, yhat)) %>%
+  ungroup() %>%
+  as.data.frame() %>%
+  left_join(y = cv_df, by = c("Predictor", "Trait")) %>%
+  as_tibble() %>%
+  mutate(Predictor = as.factor(Predictor),
+         Predictor = forcats::fct_reorder(Predictor, CV),
+         Trait = fct_relevel(Trait,
+                             "DMY", "DMC", "ADF", "FAT", "PRO",
+                             "STA", "SUG"),
+         Group = ifelse(Predictor %in% c("snp42-none-none",
+                                         "ped42-none-none",
+                                         "mrna42-none-none"),
+                        yes = "Reduced", no = "Full")
+  ) %>%
+  mutate(Group = as.factor(Group))
+
+# Specify a unified predictor order.
+pred_order <- c("ped42-none-none", "snp42-none-none", "mrna42-none-none",
+                "ped100-none-none", "snp100-none-none", "ped100-snp77-none",
+                "ped100-mrna42-none", "snp100-mrna42-none",
+                "ped100-snp77-mrna42")
 ```
 
 
-```{r Imputed-Pred-Ability, cache = TRUE}
-run_log <- fread("./data/processed/prediction_log/log_list.txt")
-
-# LOOCV 
-full_loocv_nms <- run_log[CV == "LOOCV", Job_ID, ]
-full_loocv <- lapply(seq_along(full_loocv_nms), FUN = function(i) {
-  readRDS(paste0("./data/processed/predictions/", full_loocv_nms[i], ".RDS"))
-})
-full_loocv <- rbindlist(full_loocv)
-
-full_loocv_clean <- full_loocv %>%
-  mutate(Trait = as.factor(Trait),
-         Trait = fct_recode(Trait, 
-                            "FAT" = "FETT",
-                            "PRO" = "RPR",
-                            "DMY" = "GTM",
-                            "DMC" = "GTS",
-                            "SUG" = "XZ"),
-         Trait = fct_relevel(Trait, c("DMY", "DMC", "ADF", "FAT", "PRO", "STA",
-                                      "SUG")),
-         Residuals = y - yhat,
-         Predictor = as.factor(as.character(Imputation)),
-         Predictor = fct_recode(Predictor,
-                                "Transcriptomic" = "TRUE",
-                                "Genomic" = "FALSE")
-  )
-full_loocv_tbl_cap <- paste(
-  "Predictive abilities for the 'full' and the 'reduced' set of hybrids using",
-  "two different predictors and seven agronomic traits."
-  )
-full_loocv_clean %>%
-  droplevels() %>%
-  group_by(Predictor, Trait) %>%
-  summarize(Pred_Ability = round(cor(y, yhat), digits = 2)) %>%
-  spread(key = "Predictor", value = "Pred_Ability") %>%
-  rename(Full_Transcriptomic = Transcriptomic,
-         Full_Genomic = Genomic) %>%
-  full_join(y = pred_reduced, by = "Trait") %>%
-  knitr::kable(caption = full_loocv_tbl_cap, booktabs = TRUE)
+Distribution of predicted and observed values.
+Bear in mind that the distribution of the observed values will be different
+for different predictors because some predictors "xx42" and "xx77", where
+'xx' denotes a predictor, contain less hybrids than there are available 
+(i.e. "xx100").
+```{r Distribution-y-yhat, cache = TRUE}
+legend_labs <- expression(y, hat(y))
+distr_plot <- pred_df %>%
+  filter(Predictor != "snp77-none-none") %>%
+  gather(key = Value, value = `Phenotypic Value`, y, yhat) %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
+  ggplot(aes(x = `Phenotypic Value`, color = Value)) +
+  geom_freqpoly() +
+  scale_color_manual(values = viridis(length(legend_labs), option = "C"),
+                     labels = legend_labs) +
+  facet_grid(Predictor ~ Trait, scales = "free") +
+  theme(legend.position = "top",
+        strip.text.y = element_text(size = 5)) +
+  ylab("Frequency")
 ```
+
+
+
+Compare the coefficients of variation for all predictor-trait combinations.
+```{r Coefficient-of-Variation-Plot, cache = TRUE}
+cv_plot <- overview_df %>%
+  filter(Predictor != "snp77-none-none") %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
+  ggplot(aes(x = CV, y = Predictor)) +
+  geom_segment(aes(yend = Predictor), xend = 0, color = "gray50") +
+  geom_point(aes(color = Predictor)) +
+  scale_color_viridis(discrete = TRUE) +
+  facet_wrap(~ Trait, scales = "free_x") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = c(0.7, 0.13)
+  ) +
+  guides(color = guide_legend(ncol = 2,
+                              reverse = FALSE)) +
+  xlab("Coefficient of Variation") +
+  ylab("Predictor Set") +
+  xlim(0, NA)
+```
+
+Plot the predictive abilities for all predictor-trait combinations 
+separately for the reduced and the full data set, respectively.
+```{r Predictive-Ability-Plots, cache = TRUE}
+pred_plot <- overview_df %>%
+  as_tibble() %>%
+  filter(Predictor != "snp77-none-none") %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order),
+         Group = fct_relevel(Group, "Reduced", "Full")
+  ) %>%
+  ggplot(aes(x = Predictor, y = r)) +
+  geom_bar(stat = "identity", aes(fill = Predictor), color = "black") +
+  geom_text(aes(label = round(r, digits = 3)), vjust = -0.2) +
+  scale_fill_viridis(discrete = TRUE, option = "inferno") +
+  facet_grid(Trait ~ Group, space = "free", scales = "free_x") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position = "bottom",
+    legend.key = element_rect(color = "white")
+  ) +
+  guides(fill = guide_legend(nrow = 3,
+                             byrow = TRUE,
+                             keywidth = 0.25,
+                             keyheight = 0.25,
+                             default.unit = "inch",
+                             title.position = "top")
+  ) +
+  ylim(c(0, 1))
+```
+
