@@ -129,7 +129,6 @@ overview_df <- pred_df %>%
 
 
 
-## Predictive Abilities
 ```{r Coefficient-of-Variation-Plot, cache = TRUE, fig.cap = "Coefficient of variation for seven agronomic traits and nine sets of predictors."}
 overview_df %>%
   filter(Predictor != "snp77-none-none") %>%
@@ -153,8 +152,7 @@ overview_df %>%
   xlim(0, NA)
 ```
 
-Plot the predictive abilities for all predictor-trait combinations 
-separately for the reduced and the full data set, respectively.
+## Predictive Abilities
 ```{r Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for seven agronomic traits (rows) and nine predictor sets (columns). The predictor sets are split into the categories 'Reduced' (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids)."}
 overview_df %>%
   as_tibble() %>%
