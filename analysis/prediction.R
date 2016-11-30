@@ -25,7 +25,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "500")
+  Sys.setenv("ITER" = "30000")
   # Prediction model in BGLR()
   Sys.setenv("MODEL" = "BRR")
   # Algorithm to generate variance-covariance matrices.
@@ -34,11 +34,11 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "snp42")
+  Sys.setenv("PRED1" = "ped100")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "")
+  Sys.setenv("PRED2" = "snp77")
   # If not empty, this predictor will be imputed.
-  Sys.setenv("PRED3" = "")
+  Sys.setenv("PRED3" = "mrna42")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "")
 }
