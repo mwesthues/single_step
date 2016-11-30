@@ -160,32 +160,47 @@ pedigree_first <- pred_nms %>%
 if (isTRUE(n_pred == 1)) {
   if (isTRUE(pedigree_first)) {
     eta_lst <- pred_lst %>%
-      map(., ~complete_eta(x = .$pred1, geno = .$geno, 
-                           as_kernel = FALSE,
+      map(., ~complete_eta(x = .$pred1,
+                           geno = .$geno,
+                           as_kernel = TRUE,
                            is_pedigree = TRUE,
                            bglr_model = "BRR"))
   } else {
     eta_lst <- pred_lst %>%
-      map(., ~complete_eta(x = .$pred1, geno = .$geno, 
+      map(., ~complete_eta(x = .$pred1,
+                           geno = .$geno,
                            as_kernel = TRUE,
+                           is_pedigree = FALSE,
                            bglr_model = "BRR"))
   }
 
 } else if (isTRUE(n_pred == 2)) {
   if (isTRUE(pedigree_first)) {
     eta_lst <- pred_lst %>%
-      map(., ~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
-                         as_kernel = FALSE, bglr_model = "BRR"))
-  }
+      map(., ~impute_eta(x = .$pred1,
+                         y = .$pred2,
+                         geno = .$geno,
+                         as_kernel = TRUE,
+                         is_pedigree = TRUE,
+                         bglr_model = "BRR"))
+  } else {
     eta_lst <- pred_lst %>%
-      map(., ~impute_eta(x = .$pred1, y = .$pred2, geno = .$geno,
-                         as_kernel = TRUE, bglr_model = "BRR"))
+      map(., ~impute_eta(x = .$pred1,
+                         y = .$pred2,
+                         geno = .$geno,
+                         as_kernel = TRUE,
+                         is_pedigree = FALSE,
+                         bglr_model = "BRR"))
+  }
 
 } else if (isTRUE(n_pred == 3)) {
 
   eta_lst <- pred_lst %>%
-    map(., ~impute2(ped = .$pred1, snp = .$pred2, mrna = .$pred3, 
+    map(., ~impute2(ped = .$pred1,
+                    snp = .$pred2,
+                    mrna = .$pred3,
                     geno = .$geno,
+                    as_kernel = TRUE,
                     bglr_model = "BRR"))
 }
 eta <- flatten(eta_lst)
