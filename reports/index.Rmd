@@ -74,6 +74,9 @@ the original and imputed transcriptomic BLUEs.
 Chapter \@ref(predictor-subsetting) introduces the different predictor sets that
 were used for predictions.
 
+Chapter \@ref(kernel-inspection) gives the distribution of coefficients in the 
+different kernel matrices used in hybrid prediction.
+
 Chapter \@ref(loocv-prediction) deals with the results of hybrid prediction for 
 the reduced set of data and a comparison of predictive abilities with the full 
 data set.

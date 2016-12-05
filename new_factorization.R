@@ -18,7 +18,11 @@ pred_df %>%
   unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-") %>%
   select(-Job_ID, -Iter) %>%
   group_by(Predictor, Trait) %>%
-  summarize(PredAbility = cor(y, yhat))
+  summarize(PredAbility = cor(y, yhat)) %>%
+  as.data.frame()
 
 
 
+readRDS("./data/derived/predictions/10094280.RDS") %>%
+  plot(.$y, .$yhat)
+  .[, .(cor(y, yhat)), ]
