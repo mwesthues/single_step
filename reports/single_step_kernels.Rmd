@@ -108,6 +108,8 @@ cat_lst <- lapply(seq_along(feat_lst), FUN = function(i) {
   names(geno_lst) <- names(x_lvl1)
   geno_lst
 })
+saveRDS(cat_lst,
+        file = "./data/derived/pred_sub_list.RDS")
 
 
 ## -- BUILD KERNELS --------------------------------------------------------
