@@ -46,8 +46,8 @@ trans_lst <- mrna_lst %>%
   map2(.y = mrna_lst, .f = predict)
 
 
-pred_lst <- readRDS("./data/derived/pred_sub_list.RDS")
-snp77 <- pred_lst %>% 
+pred_sub_lst <- readRDS("./data/derived/pred_sub_list.RDS")
+snp77 <- pred_sub_lst %>% 
   transpose() %>%
   .[names(.) == "ped100_snp77_none"] %>%
   at_depth(.depth = 2, .f = ~.[c(2, 3)]) %>%
@@ -77,12 +77,11 @@ snp77_mrna42 <- lapply(seq_along(thinned_snp77), FUN = function(i) {
 })
 names(snp77_mrna42) <- c("Dent", "Flint")
 
-ped100 <- pred_lst %>% 
+ped100 <- pred_sub_lst %>% 
   transpose() %>%
   .[names(.) == "ped100_snp77_none"] %>%
   at_depth(.depth = 2, .f = 1) %>%
-  .[[1]] %>%
-  map(~.[, match(rownames(.), rownames(.))])
+  .[[1]]
 
 ped100_snp77_mrna42 <- snp77_mrna42
 ped100_snp77_mrna42[["Dent"]][["ped"]] <- ped100[[1]]
@@ -98,19 +97,19 @@ ped100_snp77_mrna42_eta <- ped100_snp77_mrna42 %>%
     )
   )
 
-#snp77_mrna42_eta %>%
-#  map(2) %>%
-#  map("X") %>%
-#  map(~.[match(colnames(.), rownames(.)), ]) %>%
-#  map(~.[lower.tri(., diag = FALSE)]) %>%
-#  stack() %>%
-#  rename(Values = values,
-#         Group = ind) %>%
-#  ggplot(aes(x = Values, fill = Group)) +
-#  geom_histogram(alpha = 0.5, position = "identity") +
-#  theme_bw() +
-#  theme(legend.position = "top") +
-#  scale_fill_manual(values = c("#669933", "#FFCC66"))
+ped100_snp77_mrna42_eta %>%
+  map(2) %>%
+  map("X") %>%
+  map(~.[match(colnames(.), rownames(.)), ]) %>%
+  map(~.[lower.tri(., diag = FALSE)]) %>%
+  stack() %>%
+  rename(Values = values,
+         Group = ind) %>%
+  ggplot(aes(x = Values, fill = Group)) +
+  geom_histogram(alpha = 0.5, position = "identity") +
+  theme_bw() +
+  theme(legend.position = "top") +
+  scale_fill_manual(values = c("#669933", "#FFCC66"))
 
 
 # Select hybrids for whose parent lines at least one predictor has records.
@@ -132,20 +131,20 @@ pheno <- pheno %>%
   column_to_rownames(var = "G") %>%
   as.matrix
 
-eta <- snp77_mrna42_eta %>%
+eta <- ped100_snp77_mrna42_eta %>%
   flatten() %>%
   map(function(x) {
     rownames(x$X) <- hybrid
     x
   })
 
-param_df <- expand.grid(Trait = "GTM",
+param_df <- expand.grid(Trait = "GTS",
                         Iter = 30000,
                         Run = seq_len(nrow(pheno)))
 param_df$Trait <- as.character(param_df$Trait)
-#set.seed(34923)
-#param_df <- param_df[sample(rownames(param_df), size = 3), ]
-use_cores <- 4L
+set.seed(34923)
+param_df <- param_df[sample(rownames(param_df), size = 60), ]
+use_cores <- 3L
 
 keep_objs <- c("use_cores", "param_df", "eta", "pheno")
 rm(list = ls()[!ls() %in% keep_objs])

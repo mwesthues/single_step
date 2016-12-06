@@ -3,9 +3,7 @@
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("mwesthues/sspredr", update = TRUE)
-pacman::p_load("BGLR","data.table", "parallel", "magrittr", "dplyr", "tidyr",
-               "purrr", "testthat", "methods", "tibble", "ggplot2", "stringr",
-               "stringi", "lubridate", "readr")
+pacman::p_load("BGLR","data.table", "tidyverse", "dtplyr", "caret", "e1071")
 pacman::p_load_gh("mwesthues/sspredr")
 
 knitr::knit_hooks$set(inline = function(x) {
