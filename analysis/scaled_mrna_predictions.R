@@ -42,8 +42,21 @@ mrna_lst <- mrna_df %>%
 # Data transformation
 trans_lst <- mrna_lst %>%
   map(preProcess,
-      method = c("BoxCox", "center", "scale", "nzv")) %>%
+      method = c("BoxCox", "center", "scale")) %>%
   map2(.y = mrna_lst, .f = predict)
+
+mrna_cor_idx <- trans_lst %>%
+  map(cor) %>%
+  map(~findCorrelation(x = ., cutoff = 0.999))
+
+trans_lst <- lapply(seq_along(trans_lst), FUN = function(i) {
+  mat <- trans_lst[[i]]
+  high_cor_idx <- mrna_cor_idx[[i]]
+  if (isTRUE(length(high_cor_idx) != 0)) {
+    mat <- mat[, -high_cor_idx]
+  }
+  mat
+})
 
 
 pred_sub_lst <- readRDS("./data/derived/pred_sub_list.RDS")
@@ -56,10 +69,15 @@ bare_snp77 <- snp77 %>%
   map(.f = 1)
 snp77_cor <- bare_snp77 %>%
   map(cor)
-snp77_zv <- snp77_cor %>%
+snp77_high_ld <- snp77_cor %>%
   map(~findCorrelation(x = ., cutoff = 0.999))
-thinned_snp77 <- map2(.x = bare_snp77, .y = snp77_zv, .f = function(x, y) {
-  x[, y]
+thinned_snp77 <- lapply(seq_along(bare_snp77), FUN = function(i) {
+  mat <- bare_snp77[[i]]
+  high_cor_idx <- snp77_high_ld[[i]]
+  if (isTRUE(length(high_cor_idx) != 0)) {
+    mat <- mat[, -high_cor_idx]
+  }
+  mat
 })
 names(thinned_snp77) <- c("Dent", "Flint")
 thinned_snp77 <- list(
