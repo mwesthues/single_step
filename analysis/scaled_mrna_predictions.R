@@ -25,10 +25,10 @@ mrna_df <- mrna %>%
 
 ## Data pre-processing
 # Pre-process the data in the following order:
-# 1.    Near-zero-variance filtering.
-# 2.    Box-Cox tranformation
-# 3.    Centering
-# 4.    Scaling
+# 1.    Box-Cox tranformation
+# 2.    Centering
+# 3.    Scaling
+# 4.    Remove highly correlated features
 mrna_lst <- mrna_df %>% 
   split(.$Group) %>%
   map(as.data.frame) %>%
