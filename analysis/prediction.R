@@ -92,6 +92,13 @@ pred_combi <- list(pred1, pred2, pred3) %>%
   keep(nchar(.) != 0) %>%
   flatten_chr() %>%
   paste(., collapse = "_")
+
+if (isTRUE(transformation)) {
+  if (nchar(pred2) == 0 && nchar(pred3) == 0 && grepl("ped", x = pred1)) {
+    stop("No transformation was applied to 'ped100'. Choose a different set!")
+  }
+}
+
 if (isTRUE(transformation)) {
   pred_lst <- readRDS("./data/derived/transformed_pred_sub_list.RDS")
 } else {
