@@ -17,6 +17,9 @@ pacman::p_load("BGLR","data.table", "parallel", "magrittr", "dplyr", "tidyr",
                "stringi", "lubridate", "readr")
 pacman::p_load_gh("mwesthues/sspredr")
 
+# Load function to save session info on the software used for the analysis in
+# this script.
+source("./software/session_info.R")
 
 ## --------------------------------------------------------------------------
 ## COLLECT AND CHECK ARGUMENTS 
@@ -48,6 +51,10 @@ if (isTRUE(interactive())) {
 if (!interactive()) {
   job_id <- Sys.getenv("MOAB_JOBID")
 } else job_id <- "interactive_00"
+
+# Save session info
+write_session_info(directory = "./data/derived/session_info/",
+                   job_id = job_id)
 
 use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
 init_traits <- as.character(Sys.getenv("TRAIT"))
