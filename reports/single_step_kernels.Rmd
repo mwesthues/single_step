@@ -17,6 +17,14 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
 
 Goal: Inspection of input matrices for single-step hybrid prediction using 
 BGLR.
+With the original configuration of the predictors, very low predictive abilities
+were obtained for the amalgamation of pedigree, genomic and transcriptomic 
+information, regardless of the phenotypic trait.
+One of the possible causes were inconsistencies in the functions `impute_eta()`
+and `impute2` from the `sspredr` package regarding the factorization of 
+matrices.
+After tackling those bugs, we wanted to revisit the distribution of the 
+coefficients from the matrix $\mathbf{W}$ in \@ref(eq:mrna-model).
 
 ```{r Prepare-Kernel-Inspection, cache = TRUE}
 ## -- DATA SELECTION -----------------------------------------------------

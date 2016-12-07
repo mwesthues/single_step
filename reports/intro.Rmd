@@ -24,12 +24,10 @@ matrix $\mathbf{A}$.
 In order to obtain breeding values for any individual in the population, we 
 consider the following model:
 
-$$
 \begin{equation}
+	(\#eq:animal-model)
 	\mathbf{y} = \mathbf{Xb} + \mathbf{Za} + \mathbf{e},
-	\label{eq:animal_model}
 \end{equation}
-$$
 
 where $\mathbf{X}$ is a design matrix for fixed effects, $\mathbf{b}$ is a 
 vector of fixed effects, $\mathbf{Z}$ is the design matrix for the random animal 
@@ -61,12 +59,10 @@ values and weighting the residuals according to the prediction error variances
 Genomic breeding values for any animal in the population can then be obtained 
 by:
 
-$$
 \begin{equation}
-	\label{eq:gebv}
+  (\#eq:gebv)
 	\mathbf{\tilde{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
 \end{equation}
-$$
 
 where $\mathbf{p}$ is a row-vector of allele frequencies in the base population,
 $\mathbf{M}$ is a matrix of marker covariates and $\mathbf{u}$ is a vector of
@@ -79,12 +75,10 @@ of $(\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}}$ when a Bayesian model is used.
 
 ## Single Step Transciptomic prediction of Breeding Values
 The breeding values in a mRNA prediction model are in general given by:
-$$
 \begin{equation}
-	\label{eq:mrnaebv}
+	(\#eq:mrnaebv)
 	\mathbf{\tilde{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
 \end{equation}
-$$
 
 where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model 
 equaivalent to the GBLUP model but using mRNA covariates ($\mathbf{W}$) instead of 
@@ -103,14 +97,12 @@ Individuals with subscript $2$ have both, SNP and mRNA information.
 The covariates in $\mathbf{W}$ are centered.
 The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
 expectation given $\mathbf{g}_2$ and a residual error term:
-$$
 \begin{align}
-	\label{eq:mrna1}
+	(\#eq:mrna1)
 	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
 	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
 	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
 \end{align}
-$$
 
 The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$
 [@legarra_relationship_2009].
@@ -130,17 +122,16 @@ It might also be interesting to include individuals which have neither mRNA nor 
 but phenotypes.
 The general mRNA model for that situation could be written as:
 
-$$
 \begin{equation}
+  (\#eq:mrna-model)
 \mathbf{y} = \mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U}_{Ped} \boldsymbol{\epsilon}_{Ped} 
 + \mathbf{U}_{SNP} \boldsymbol{\epsilon}_{SNP}+ \mathbf{e},
 \end{equation}
-$$
 
 with
 
-$$
 \begin{equation}
+ (\#eq:mrna-submatrices)
 \mathbf{X} = 
 \begin{bmatrix}
   X_0 \\
@@ -165,16 +156,15 @@ $$
   Z_1 \\
   0 
  \end{bmatrix},
- \end{equation}
-$$
+\end{equation}
 
 The subscript 0 denotes animals with Pedigree information and neither
 SNP nor mRNA data, 1 individuals with SNP but no mRNA data and 2 individuals with mRNA data.
 
 Following the notation in @fernando_class_2014 the phenotypes can be untangled like this:
 
-$$
 \begin{align}
+ (\#eq:entangled-augmented-mrna-model)
 \begin{bmatrix}
   y_0 \\
   y_1 \\
@@ -235,12 +225,11 @@ $$
  \end{bmatrix}
   + \mathbf{e} \\
 \end{align}
-$$
 
 The breeding values from that model are:
 
-$$
 \begin{equation}
+ (\#eq:breeding-values)
 \tilde{\mathbf{g}} = 
  \begin{bmatrix}
   \hat{\mathbf{W}_0} \\
@@ -262,8 +251,7 @@ $$
   0
  \end{bmatrix}
  \hat{\boldsymbol{\epsilon}}_{SNP} 
- \end{equation}
- $$
+\end{equation}
 
 
 
@@ -275,8 +263,8 @@ general combining abilitiy (GCA) for every line of a specific subpopulation.
 In our case, the subpopulations comprise *dent* and *flint*.
 Hence, our final model looks like this:
 
-$$
 \begin{align}
+ (\#eq:final-model)
 \mathbf{y} &= \mathbf{Xb} \\ 
   &+ \mathbf{Z}_{dent}\mathbf{W}_{dent} \boldsymbol{\alpha}_{dent} + \mathbf{Z}_{dent}\mathbf{U}_{dent_{Ped}} \boldsymbol{\epsilon}_{dent_{Ped}}
 + \mathbf{Z}_{dent}\mathbf{U}_{dent_{SNP}} \boldsymbol{\epsilon}_{dent_{SNP}} \\
@@ -284,18 +272,16 @@ $$
 + \mathbf{Z}_{flint}\mathbf{U}_{flint_{SNP}} \boldsymbol{\epsilon}_{flint_{SNP}} \\
   &+ \mathbf{e},
 \end{align}
-$$
 
 where $\mathbf{Z}_{dent}$ and $\mathbf{Z}_{flint}$ are design matrices that map hybrids to their respective
 parents in the dent and flint lines.
 The obtained GCA effects for the inbred lines represent half their breeding values.
 The predicted hybrid performance is:
 
-$$
 \begin{equation}
+ (\#eq:predicted-performance)
 \tilde{\mathbf{h}} = \mathbf{Z}_{dent}\tilde{\mathbf{g}}_{dent} + \mathbf{Z}_{flint}\tilde{\mathbf{g}}_{flint} 
 \end{equation}
-$$
 
 
 
