@@ -78,7 +78,10 @@ test_that("kernel method is defined", {
 
 ## -- DATA SELECTION -----------------------------------------------------
 # Load the predictor data.
-pred_combi <- paste(c(pred1, pred2, pred3), collapse = "_")
+pred_combi <- list(pred1, pred2, pred3) %>%
+  keep(nchar(.) != 0) %>%
+  flatten_chr() %>%
+  paste(., collapse = "_")
 if (isTRUE(transformation)) {
   pred_lst <- readRDS("./data/derived/transformed_pred_sub_list.RDS")
 } else {
@@ -196,11 +199,13 @@ eta <- lapply(eta, FUN = function(x) {
 # Determine how much time (hh:mm:ss format) has elapsed since script initiation.
 get_elapsed_time <- function(start_time, tz = "CEST") {
   start_time <- as.POSIXct(start_time)
-  dt <- difftime(Sys.time(), start_time, units = "secs")
-  # Since you only want the H:M:S, we can ignore the date...
-  # but you have to be careful about time-zone issues
-  format(.POSIXct(dt, tz = tz), "%H:%M:%S")
+  sec <- Sys.time() %>%
+    difftime(time1 = ., time2 = start_time, units = "secs") %>%
+    lubridate::seconds_to_period()
+  paste0(sprintf("%02d", c(day(sec), hour(sec), minute(sec), second(sec))),
+         collapse = ":")
 }
+
 
 # Define which runs shall be used, i.e., which genotypes shall be included as 
 # test sets.
@@ -217,8 +222,7 @@ param_df <- expand.grid(Trait = init_traits,
                         Iter = init_iter,
                         Run = run_length)
 param_df$Trait <- as.character(param_df$Trait)
-
-param_df <- param_df[sample(rownames(param_df), size = 150), ]
+param_df <- param_df[sample(rownames(param_df), size = 30), ]
 
 start_time <- Sys.time()
 # Keep track of how long a job is running.
@@ -241,13 +245,15 @@ yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
   cbind(pred, Iter = iter)
 }, mc.cores = use_cores)
 res <- rbindlist(yhat_lst)
-elapsed_time <- get_elapsed_time(start_time)
-pred_nms <- pred_nms %>% 
-  map_if(., .p = nchar(.) == 0, .f = function(x) {
-    x <- "none"
-    x
-  }) %>%
+
+# If not all three predictors were used, declare the missing ones as "none" and
+# add them, which will facilitate further data analyses.
+max_pred_number <- 3L
+pred_nms <- pred_combi %>% 
+  str_split(., pattern = "_") %>%
   flatten_chr()
+pred_nms <- c(pred_nms,
+              rep("none", times = max_pred_number - length(pred_nms)))
 res <- res %>%
   rename(Trait = Phenotype,
          Dent = Mother,
@@ -256,25 +262,27 @@ res <- res %>%
          Pred1 = pred_nms[1],
          Pred2 = pred_nms[2],
          Pred3 = pred_nms[3],
+         Transformation = transformation,
          Job_ID = job_id,
          Runs = runs,
          Model = hypred_model,
          PI = Pi,
          PriorPiCount = PriorPiCount,
-         Elapsed_Time = elapsed_time,
-         Date = as.character(Sys.time()),
+         Elapsed_Time = get_elapsed_time(start_time),
+         Start_Time = as.character(start_time),
          Cores = use_cores) %>%
   as.data.table()
 
-log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Elapsed_Time, Trait, 
-                           Iter, CV, Model, PI, PriorPiCount, Date, Runs,
-                           Cores), ])
+log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Transformation, 
+                           Elapsed_Time, Trait, Iter, CV, Model, PI,
+                           PriorPiCount, Start_Time, Runs, Cores), ])
 
 # Reduce the size of the prediction object to the minimum possible size.
 res[, `:=` (Iter = NULL, 
             Pred1 = NULL,
             Pred2 = NULL,
             Pred3 = NULL, 
+            Transformation = NULL,
             CV = NULL,
             Trait = NULL,
             Dent = NULL,
@@ -284,7 +292,7 @@ res[, `:=` (Iter = NULL,
             PI = NULL,
             PriorPiCount = NULL,
             Elapsed_Time = NULL,
-            Date = NULL,
+            Start_Time = NULL,
             Cores = NULL),
   ]
 # Prediction results file

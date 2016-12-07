@@ -28,7 +28,7 @@
 # Write standard output (o) and errors (e) to the same file
 #MOAB -j oe
 #
-#MOAB -v TRAIT=GTM
+#MOAB -v TRAIT=
 #
 #MOAB -v ITER=30000
 #
@@ -39,6 +39,8 @@
 #MOAB -v PI=0.5
 #
 #MOAB -v PRIOR_PI_COUNT=10
+#
+#MOAB -v TRANSFORMATION=
 #
 #MOAB -v PRED1=ped100
 #
@@ -68,6 +70,7 @@ echo "Trait=${TRAIT}\
       VCOV=${VCOV}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
+      Transformation=${TRANSFORMATION}\
       Pred1=${PRED1}\
       Pred2=${PRED2}\
       Pred3=${PRED3}\
@@ -77,7 +80,8 @@ echo "Trait=${TRAIT}\
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/prediction.R\
            ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
-           ${PRIOR_PI_COUNT} ${PRED1} ${PRED2} ${PRED3} ${RUNS}"
+           ${PRIOR_PI_COUNT} ${TRANSFORMATION} ${PRED1} ${PRED2} ${PRED3}\
+           ${RUNS}"
 
 # Start program
 echo $startprog
