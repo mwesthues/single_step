@@ -3,7 +3,8 @@
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("mwesthues/sspredr", update = TRUE)
-pacman::p_load("BGLR","data.table", "tidyverse", "dtplyr", "caret", "e1071")
+pacman::p_load("BGLR","data.table", "tidyverse", "dtplyr", "caret", "e1071",
+               "stringr")
 pacman::p_load_gh("mwesthues/sspredr")
 
 knitr::knit_hooks$set(inline = function(x) {
@@ -106,6 +107,14 @@ cat_lst <- lapply(seq_along(feat_lst), FUN = function(i) {
   names(geno_lst) <- names(x_lvl1)
   geno_lst
 })
+names(cat_lst) <- names(feat_lst)
+
+# Remove empty names (i.e. 'none') from predictor set names.
+cat_lst <- cat_lst %>%
+  map(function(x) {
+    names(x) <- str_replace_all(names(x), pattern = "_none", replacement = "")
+    x
+  })
 saveRDS(cat_lst,
         file = "./data/derived/pred_sub_list.RDS")
 
@@ -128,9 +137,9 @@ ped100_snp77_mrna42 <- cat_lst %>%
   map(2) %>%
   map("X")
 
-snp100_mrna42_none <- cat_lst %>%
+snp100_mrna42 <- cat_lst %>%
   transpose() %>%
-  .[["snp100_mrna42_none"]] %>%
+  .[["snp100_mrna42"]] %>%
   map(~impute_eta(
      x = .[[1]],
      y = .[[2]],
@@ -143,9 +152,9 @@ snp100_mrna42_none <- cat_lst %>%
   map(2) %>%
   map("X")
 
-ped100_x_none <- cat_lst %>%
+ped100_x <- cat_lst %>%
   transpose() %>%
-  .[names(.) %in% c("ped100_mrna42_none", "ped100_snp77_none")] %>%
+  .[names(.) %in% c("ped100_mrna42", "ped100_snp77")] %>%
   at_depth(.depth = 2, .f = ~impute_eta(
     x = .[[1]],
     y = .[[2]],
@@ -158,9 +167,9 @@ ped100_x_none <- cat_lst %>%
   at_depth(.depth = 2, .f = 2) %>%
   at_depth(.depth = 2, .f = "X")
 
-pedx_none_none <- cat_lst %>%
+pedx <- cat_lst %>%
   transpose() %>%
-  .[names(.) %in% c("ped100_none_none", "ped42_none_none")] %>%
+  .[names(.) %in% c("ped100", "ped42")] %>%
   at_depth(.depth = 2, .f = ~complete_eta(
     x = .[[1]],
     geno = .[["geno"]],
@@ -174,8 +183,7 @@ pedx_none_none <- cat_lst %>%
 
 single_pred <- cat_lst %>%
   transpose() %>%
-  .[names(.) %in% c("snp42_none_none", "mrna42_none_none", 
-                    "snp100_none_none")] %>%
+  .[names(.) %in% c("snp42", "mrna42", "snp100")] %>%
   at_depth(.depth = 2, .f = ~complete_eta(
     x = .[[1]],
     geno = .[["geno"]],
@@ -190,9 +198,9 @@ single_pred <- cat_lst %>%
 # Combine the results in a single list to reduce code replications (the
 # following steps are the same for all predictor sets).
 W_lst <- c(list(ped100_snp77_mrna42 = ped100_snp77_mrna42),
-           list(snp100_mrna42_none = snp100_mrna42_none),
-           pedx_none_none,
-           ped100_x_none,
+           list(snp100_mrna42 = snp100_mrna42),
+           pedx,
+           ped100_x,
            single_pred)
 ```
 

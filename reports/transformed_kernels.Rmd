@@ -77,19 +77,19 @@ names(mrna42) <- names(mrna_lst)
 # Remove perfect LD
 snp42 <- cat_lst %>% 
   transpose() %>%
-  .[names(.) == "snp42_none_none"] %>%
+  .[names(.) == "snp42"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
 
 snp77 <- cat_lst %>% 
   transpose() %>%
-  .[names(.) == "ped100_snp77_none"] %>%
+  .[names(.) == "ped100_snp77"] %>%
   at_depth(.depth = 2, .f = 2) %>%
   .[[1]]
 
 snp100 <- cat_lst %>%
   transpose() %>%
-  .[names(.) == "snp100_none_none"] %>%
+  .[names(.) == "snp100"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
 
@@ -105,14 +105,14 @@ invisible(list2env(snp_lst, envir = globalenv()))
 # Get pedigree data
 ped100 <- cat_lst %>% 
   transpose() %>%
-  .[names(.) == "ped100_snp77_none"] %>%
+  .[names(.) == "ped100_snp77"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
 names(ped100) <- c("Dent", "Flint")
 
 ped42 <- cat_lst %>% 
   transpose() %>%
-  .[names(.) == "ped42_none_none"] %>%
+  .[names(.) == "ped42"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
 names(ped42) <- c("Dent", "Flint")
@@ -123,25 +123,22 @@ names(ped42) <- c("Dent", "Flint")
 ```{r Kernel-assembly, cache = TRUE}
 nms100 <- cat_lst %>%
   transpose() %>%
-  .[names(.) == "ped100_none_none"] %>%
+  .[names(.) == "ped100"] %>%
   at_depth(.depth = 2, "geno") %>%
   .[[1]]
 
 nms42 <- cat_lst %>%
   transpose() %>%
-  .[names(.) == "mrna42_none_none"] %>%
+  .[names(.) == "mrna42"] %>%
   at_depth(.depth = 2, "geno") %>%
   .[[1]]
 
 # Specify the predictor sets.
-pred_vec <- c("snp42-none-none", "mrna42-none-none", "snp100-none-none",
-              "ped100-snp77-none", "ped100-mrna42-none", "snp100-mrna42-none",
-              "ped100-snp77-mrna42")
-pred_sets <- pred_vec %>%
-  strsplit(., split = "[-]") %>%
-  map(.f = function(x) {
-    x[x != "none"] 
-  })
+pred_sets <- c(
+  "snp42", "mrna42", "snp100", "ped100-snp77", "ped100-mrna42",
+  "snp100-mrna42", "ped100-snp77-mrna42"
+  ) %>%
+  strsplit(., split = "[-]")
 
 trans_cat_lst <- lapply(pred_sets, FUN = function(x) {
   cmb_lst <- x %>% 

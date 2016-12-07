@@ -76,38 +76,31 @@ test_that("kernel method is defined", {
 })
 
 
-
-
 ## -- DATA SELECTION -----------------------------------------------------
 # Load the predictor data.
-pred_nms <- list(pred1 = pred1, pred2 = pred2, pred3 = pred3)
-pred_lst <- pred_nms %>%
-  keep(~nchar(.) != 0) %>%
-  map(~paste0("./data/derived/predictor_subsets/", ., ".RDS")) %>%
-  map(readRDS)
+pred_combi <- paste(c(pred1, pred2, pred3), collapse = "_")
+if (isTRUE(transformation)) {
+  pred_lst <- readRDS("./data/derived/transformed_pred_sub_list.RDS")
+} else {
+  pred_lst <- readRDS("./data/derived/pred_sub_list.RDS")
+}
 
-# Names of inbred lines for which at least one predictor type has records.
-pred_geno_nms <- pred_lst %>%
-  map(rownames) %>%
-  reduce(union)
+# Select the requested set of predictors.
+pre_eta <- pred_lst %>%
+  map(~keep(., names(.) == pred_combi))
 
 # Select hybrids for whose parent lines at least one predictor has records.
-genos <- readRDS("./data/processed/common_genotypes.RDS")
-hybrid <- genos %>%
-  filter(Pool == "Hybrid") %>%
-  mutate(G = stringr::str_replace(G, pattern = "DF_", replacement = "")) %>%
+hybrid <- pre_eta %>%
+  at_depth(2, "geno") %>%
+  flatten() %>%
+  transpose() %>%
+  map(paste, collapse = "_") %>%
+  flatten_chr() %>%
+  as_data_frame() %>%
+  rename(G = value) %>%
   separate(G, into = c("Dent", "Flint"), sep = "_") %>%
-  filter(Dent %in% pred_geno_nms, Flint %in% pred_geno_nms) %>%
   unite(col = Hybrid, Dent, Flint, sep = "_", remove = FALSE) %>%
   mutate(Hybrid = paste0("DF_", Hybrid))
-
-# Store the names of all Dent and Flint hybrid parents in a list in order to
-# correctly augment the predictor matrices with their help.
-hybrid_parent_nms <- hybrid %>%
-  gather(key = "Group", value = "G", Dent, Flint) %>%
-  split(.$Group) %>%
-  map("G")
-
 
 ## -- PREDICTOR AND AGRONOMIC DATA PREPARATION ----------------------------
 # Agronomic data
@@ -122,27 +115,6 @@ pheno <- pheno %>%
   remove_rownames() %>%
   column_to_rownames(var = "G") %>%
   as.matrix
-
-# Split the predictor matrices into Dent and Flint.
-pred_lst <- pred_lst %>%
-  map(as.data.frame) %>%
-  map(rownames_to_column, var = "G") %>%
-  map(as_tibble) %>%
-  map(~left_join(x = .,
-                 y = genos %>% 
-                       select(G, Pool) %>%
-                       distinct(G, .keep_all = TRUE),
-                 by = "G")) %>%
-  map(~split(., .$Pool)) %>%
-  transpose() %>%
-  at_depth(.depth = 2, ~select(., -Pool)) %>%
-  at_depth(.depth = 2, .f = as.data.frame) %>%
-  at_depth(.depth = 2, .f = column_to_rownames, var = "G") %>%
-  at_depth(.depth = 2, as.matrix)
-pred_lst[["Dent"]][["geno"]] <- hybrid_parent_nms$Dent
-pred_lst[["Flint"]][["geno"]] <- hybrid_parent_nms$Flint
-
-  
 
 ## -- GENERATE BGLR() INPUT MATRICES --------------------------------------
 # Number of predictors used.
