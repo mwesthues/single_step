@@ -87,12 +87,18 @@ if (isTRUE(transformation)) {
 
 # Select the requested set of predictors.
 pre_eta <- pred_lst %>%
-  map(~keep(., names(.) == pred_combi))
+  map(~keep(., names(.) == pred_combi)) %>%
+  at_depth(.depth = 2, .f = function(x) {
+    x$as_kernel <- TRUE
+    x$bglr_model <- hypred_model
+    x 
+  }) %>% 
+  flatten()
+names(pre_eta) <- names(pred_lst)
 
 # Select hybrids for whose parent lines at least one predictor has records.
 hybrid <- pre_eta %>%
-  at_depth(2, "geno") %>%
-  flatten() %>%
+  map("geno") %>%
   transpose() %>%
   map(paste, collapse = "_") %>%
   flatten_chr() %>%
@@ -102,8 +108,7 @@ hybrid <- pre_eta %>%
   unite(col = Hybrid, Dent, Flint, sep = "_", remove = FALSE) %>%
   mutate(Hybrid = paste0("DF_", Hybrid))
 
-## -- PREDICTOR AND AGRONOMIC DATA PREPARATION ----------------------------
-# Agronomic data
+## -- AGRONOMIC DATA PREPARATION ----------------------------
 pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
 pheno <- pheno %>%
   as_data_frame() %>%
@@ -117,80 +122,70 @@ pheno <- pheno %>%
   as.matrix
 
 ## -- GENERATE BGLR() INPUT MATRICES --------------------------------------
-# Number of predictors used.
-n_pred <- pred_nms %>%
-  keep(~nchar(.) != 0) %>%
-  as_vector() %>%
+# Determine the number of predictors to decide later on, which function to
+# call for the set-up of the kernels.
+raw_args <- pre_eta %>%
+  map(names) %>%
+  reduce(intersect)
+pred_number <- raw_args %>%
+  .[grep("ped|snp|mrna", x = .)] %>%
   length()
 
-# If pedigree data constituted the first specified predictor, don't generate
-# a kernel from them but use a simple Cholesky decomposition instead.
-pedigree_first <- pred_nms %>%
-  .[[1]] %>%
-  str_detect(., pattern = "ped")
-
-if (isTRUE(n_pred == 1)) {
-  if (isTRUE(pedigree_first)) {
-    eta_lst <- pred_lst %>%
-      map(., ~complete_eta(x = .$pred1,
-                           geno = .$geno,
-                           as_kernel = TRUE,
-                           is_pedigree = TRUE,
-                           bglr_model = "BRR"))
+# If all predictors are being used, it is known that pedigree data are involved
+# and no measures need to be taken.
+# If only a subset of predigrees will be used, it needs to be determined
+# whether pedigree data are involved or not, since subsequent functions need to
+# 'know' if the predictor matrices need to be scaled or not.
+if (pred_number != 3) {
+  if (any(grepl("ped", x = raw_args))) {
+    pre_eta <- pre_eta %>%
+      map(.f = function(x) {
+        x$is_pedigree <- TRUE
+        x
+      })
   } else {
-    eta_lst <- pred_lst %>%
-      map(., ~complete_eta(x = .$pred1,
-                           geno = .$geno,
-                           as_kernel = TRUE,
-                           is_pedigree = FALSE,
-                           bglr_model = "BRR"))
+    pre_eta <- pre_eta %>%
+      map(.f = function(x) {
+        x$is_pedigree <- FALSE
+        x
+      })
   }
-
-} else if (isTRUE(n_pred == 2)) {
-  if (isTRUE(pedigree_first)) {
-    eta_lst <- pred_lst %>%
-      map(., ~impute_eta(x = .$pred1,
-                         y = .$pred2,
-                         geno = .$geno,
-                         as_kernel = TRUE,
-                         is_pedigree = TRUE,
-                         bglr_model = "BRR"))
-  } else {
-    eta_lst <- pred_lst %>%
-      map(., ~impute_eta(x = .$pred1,
-                         y = .$pred2,
-                         geno = .$geno,
-                         as_kernel = TRUE,
-                         is_pedigree = FALSE,
-                         bglr_model = "BRR"))
-  }
-
-} else if (isTRUE(n_pred == 3)) {
-
-  eta_lst <- pred_lst %>%
-    map(., ~impute2(ped = .$pred1,
-                    snp = .$pred2,
-                    mrna = .$pred3,
-                    geno = .$geno,
-                    as_kernel = TRUE,
-                    bglr_model = "BRR"))
 }
-eta <- flatten(eta_lst)
+
+# Depending on the number of predictors included in the set, choose the correct
+# function for the set-up of the BGLR kernels.
+eta_fun <- c(
+  "complete_eta", "impute_eta", "impute2"
+  ) %>%
+  .[pred_number]
+
+# Collect the formal arguments from the selected function and then rename the
+# corresponding predictors in the 'pre_eta' object so that the call of the 
+# kernel building function (e.g. "impute_eta") can be generalized.
+eta_fun_args <- eta_fun %>%
+  formals() %>%
+  names()
+eta_pred_nms <- eta_fun_args %>%
+  .[!grepl("as_kernel|is_pedigree|geno|bglr_model", x = .)]
+current_eta_names <- pre_eta %>%
+  map(names) %>%
+  reduce(intersect)
+current_eta_names[seq_len(pred_number)] <- eta_pred_nms
+pre_eta <- pre_eta %>%
+  map(function(x) {
+    names(x) <- current_eta_names
+    x
+  })
+# Build the kernel for BGLR.
+eta <- invoke_map(get(eta_fun), pre_eta) %>%
+  flatten()
 
 # Substitute hybrid names for the current names of the hybrid parents in the
 # ETA objects. This is required for the cross-validation function to detect
 # correct sorting of genotypes in the variance-covariance matrices with respect
 # to the phenotypic traits.
-hybrid_names <- eta_lst %>%
-  map(~transpose(.)) %>%
-  map("X") %>%
-  at_depth(.depth = 2, rownames) %>%
-  map(1) %>%
-  reduce(.f = paste, sep = "_") %>%
-  paste0("DF_", .)
-
 eta <- lapply(eta, FUN = function(x) {
-  rownames(x$X) <- hybrid_names
+  rownames(x$X) <- hybrid$Hybrid
   x
 })
 
@@ -223,7 +218,7 @@ param_df <- expand.grid(Trait = init_traits,
                         Run = run_length)
 param_df$Trait <- as.character(param_df$Trait)
 
-
+param_df <- param_df[sample(rownames(param_df), size = 150), ]
 
 start_time <- Sys.time()
 # Keep track of how long a job is running.
