@@ -17,15 +17,15 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
 Goal: Generate nine subsets of predictors for later comparisons between their
 predictive abilities:
 
-a.    100% SNP
-b.    100% pedigree
-c.    42% mRNA
-d.    42% pedigree
-e.    42% SNP
-f.    100% pedigree & 77% SNP
-g.    100% pedigree & 42% mRNA
-h.    100% SNP & 42% mRNA
-i.    100% pedigree & 77% SNP & 42% mRNA
+a.    100% SNP (`snp100`)
+b.    100% pedigree (`ped100`)
+c.    42% mRNA (`mrna42`)
+d.    42% pedigree (`ped42`)
+e.    42% SNP (`snp42`)
+f.    100% pedigree & 77% SNP (`ped100_snp77`)
+g.    100% pedigree & 42% mRNA (`ped100_mrna42`)
+h.    100% SNP & 42% mRNA (`snp100_mrna42`)
+i.    100% pedigree & 77% SNP & 42% mRNA (`ped100_snp77_mrna42`)
 
 Make comparisons between the following scenarios:
 

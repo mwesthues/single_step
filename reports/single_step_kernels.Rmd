@@ -1,4 +1,4 @@
-# Kernel Inspection
+# Original Kernels
 ```{r setup-kernel-inspection, message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
@@ -15,8 +15,6 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
                       warning = FALSE, echo = FALSE)
 ```
 
-Goal: Inspection of input matrices for single-step hybrid prediction using 
-BGLR.
 With the original configuration of the predictors, very low predictive abilities
 were obtained for the amalgamation of pedigree, genomic and transcriptomic 
 information, regardless of the phenotypic trait.
@@ -213,7 +211,7 @@ W_lst <- c(list(ped100_snp77_mrna42 = ped100_snp77_mrna42),
 ```
 
 
-```{r Plot-kernel-coefficients, cache = TRUE, fig.cap = "Distribution of coefficients that are elements of the kernel matrices used in single step or regular prediction of hybrid performance."}
+```{r Plot-kernel-coefficients, cache = TRUE, fig.cap = "Distribution of coefficients that are elements of the unmodified kernel matrices ($\\mathbf{W}$) used in single step or regular prediction of hybrid performance."}
 ## -- PLOT KERNEL COEFFICIENTS ---------------------------------------------
 # Extract the coefficients from the lower triangle of the kernels for
 # subsequent plotting of their distributions.

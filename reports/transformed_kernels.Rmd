@@ -1,4 +1,4 @@
-# Kernel Inspection
+# Transformed Kernels
 ```{r setup-kernel-transformation, message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
@@ -15,9 +15,24 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
                       warning = FALSE, echo = FALSE)
 ```
 
-Goal: Tranformation of predictor data for improved single-step prediction using 
-BGLR.
 
+After noticing extremely narrow distributions in the coefficients of 
+$\mathbf{W}$ (defined in Eq. \@ref(eq:mrna-model), Fig.
+\@ref(fig:Plot-kernel-coefficients)), we decided to explore the effect of several
+data pre-processing procedures on the distribution of the coefficients.
+Separately for each heterotic group, the following data pre-processing 
+procedures were applied to the transcriptomic data: i) Box-Cox transformation,
+ii) centering, iii) scaling, removal of features with a correlation 
+$\rho \geq 0.999$, using the function `preProcess` from the R package `caret` 
+[@Kuhn2013].
+Separately for each heterotic group and each subset of features (i.e. `snp100`, 
+`snp77` and `snp42`), only SNPs that were not in perfect linkage disequilibrium
+with another marker were kept. 
+From Fig. \@ref(fig:Plot-transformed-kernel-coefficients) we can glean that 
+data processing had a considerable, positive effect on the distribution of 
+coefficients in $\mathbf{W}$, which became wider in the case of predictor 
+combinations such as `ped100_snp77_mrna42` compared to unprocessed features 
+(Fig \@ref(fig:Plot-kernel-coefficients)).
 
 ```{r Raw-Kernel-Transformation, cache = TRUE}
 genos <- readRDS("./data/processed/common_genotypes.RDS")
@@ -244,7 +259,7 @@ W_lst <- c(list(ped100_snp77_mrna42 = ped100_snp77_mrna42),
            single_pred)
 ```
 
-```{r Plot-transformed-kernel-coefficients, cache = TRUE, fig.cap = "Distribution of coefficients that are elements of the kernel matrices used in single step or regular prediction of hybrid performance."}
+```{r Plot-transformed-kernel-coefficients, cache = TRUE, fig.cap = "Distribution of coefficients that are elements of the transformed kernel matrices $\\mathbf{W}$ used in single step or regular prediction of hybrid performance."}
 ## -- PLOT KERNEL COEFFICIENTS ---------------------------------------------
 # Extract the coefficients from the lower triangle of the kernels for
 # subsequent plotting of their distributions.
@@ -273,6 +288,3 @@ W_df %>%
   scale_fill_manual(values = c("#669933", "#FFCC66")) +
   xlim(c(-1.0, 1.0))
 ```
-
-
-
