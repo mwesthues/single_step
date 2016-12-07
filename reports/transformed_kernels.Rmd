@@ -171,6 +171,8 @@ names(trans_cat_lst) <- pred_sets %>%
   flatten_chr()
 trans_cat_lst <- trans_cat_lst %>%
   transpose()
+saveRDS(trans_cat_lst, 
+        file = "./data/derived/transformed_pred_sub_list.RDS")
 
 ## -- BUILD KERNELS --------------------------------------------------------
 # Apply kernel building functions to different predictor sets.

@@ -32,6 +32,8 @@ if (isTRUE(interactive())) {
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
+  # Were the data transformed (TRUE) or not?
+  Sys.setenv("TRANSFORMATION" = "TRUE")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
   Sys.setenv("PRED1" = "ped100")
@@ -54,6 +56,7 @@ hypred_model <- as.character(Sys.getenv("MODEL"))
 g_method <- as.character(Sys.getenv("VCOV"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
+transformation <- as.logical(Sys.getenv("TRANSFORMATION"))
 pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
 pred3 <- as.character(Sys.getenv("PRED3"))
@@ -222,7 +225,8 @@ param_df <- expand.grid(Trait = init_traits,
                         Iter = init_iter,
                         Run = run_length)
 param_df$Trait <- as.character(param_df$Trait)
-param_df <- param_df[sample(rownames(param_df), size = 30), ]
+
+
 
 start_time <- Sys.time()
 # Keep track of how long a job is running.
