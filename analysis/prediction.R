@@ -292,7 +292,7 @@ res <- res %>%
   as.data.table()
 
 log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Transformation, 
-                           Elapsed_Time, Trait, Iter, CV, Model, PI,
+                           Elapsed_Time, Iter, CV, Model, PI,
                            PriorPiCount, Start_Time, Runs, Cores), ])
 
 # Reduce the size of the prediction object to the minimum possible size.
@@ -302,7 +302,6 @@ res[, `:=` (Iter = NULL,
             Pred3 = NULL, 
             Transformation = NULL,
             CV = NULL,
-            Trait = NULL,
             Dent = NULL,
             Flint = NULL,
             Runs = NULL,
