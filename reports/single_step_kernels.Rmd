@@ -104,9 +104,14 @@ feat_lst <- transpose(feat_lst)
 cat_lst <- lapply(seq_along(feat_lst), FUN = function(i) {
   x_lvl1 <- feat_lst[[i]] 
   y_lvl1 <- hybrid_parent_nms[[i]]
+  lvl1_nms <- x_lvl1 %>%
+    names() %>%
+    str_replace_all(., pattern = "_none", replacement = "") %>%
+    strsplit(., split = "_")
   geno_lst <- lapply(seq_along(x_lvl1), FUN = function(j) {
     x_lvl2 <- x_lvl1[[j]]
     y_lvl2 <- y_lvl1[[j]]
+    names(x_lvl2) <- lvl1_nms[[j]]
     x_lvl2[["geno"]] <- y_lvl2
     x_lvl2
   })
