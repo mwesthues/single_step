@@ -76,6 +76,6 @@ Chapter \@ref(transformed-kernels) gives the distribution of coefficients in
 $\mathbf{W}$ after applying centering, scaling, transformations and feature 
 filtering on the original matrices.
 
-Chapter \@ref(loocv-prediction) deals with the results of hybrid prediction for 
+Chapter \@ref(loocv-transformed-kernel-prediction) deals with the results of hybrid prediction for 
 the reduced set of data and a comparison of predictive abilities with the full 
 data set.

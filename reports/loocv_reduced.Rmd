@@ -15,16 +15,18 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
 
 
 ```{r Load-LOOCV-Data, cache = TRUE}
-log_file <- fread("./data/derived/pred_log.txt")
+log_file <- read_delim("./data/derived/pred_log.txt", delim = "\t") %>%
+  as.data.table() %>%
+  mutate(Job_ID = as.character(Job_ID))
 
 pred_df <- log_file %>%
+  filter(Transformation == FALSE) %>%
   .$Job_ID %>%
   as.list() %>%
   map(~readRDS(paste0("./data/derived/predictions/", ., ".RDS"))) %>%
   bind_rows(.id = "id") %>%
-  left_join(y = log_file %>% select(Job_ID, Pred1, Pred2, Pred3, Trait, Iter),
+  left_join(y = log_file %>% select(Job_ID, Pred1, Pred2, Pred3, Iter),
             by = "Job_ID") %>%
-  filter(Iter == 30000) %>%
   unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-") %>%
   mutate(Trait = fct_recode(Trait,
     "DMY" = "GTM",
@@ -37,21 +39,6 @@ pred_df <- log_file %>%
                              "DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG"),
          Predictor = as.factor(Predictor)) %>%
   select(-Job_ID, -Iter)
-
-# Update the variable 'Trait' for subsequent joins with 'pred_df'.
-log_file <- log_file %>%
-  filter(Iter == 30000) %>%
-  mutate(Trait = fct_recode(Trait,
-    "DMY" = "GTM",
-    "DMC" = "GTS",
-    "FAT" = "FETT",
-    "PRO" = "RPR",
-    "SUG" = "XZ"
-  )) %>%
-  mutate(Trait = fct_relevel(Trait,
-                             "DMY", "DMC", "ADF", "FAT", "PRO",
-                             "STA", "SUG")) %>%
-  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-")
 ```
 
 

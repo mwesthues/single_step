@@ -1,5 +1,5 @@
-# LOOCV-Prediction
-```{r setup-loocv, message = FALSE, echo = FALSE}
+# LOOCV-Transformed-Kernel-Prediction
+```{r setup-transformed-kernel-prediction, message = FALSE, echo = FALSE}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
                "stringr", "forcats")
@@ -20,32 +20,30 @@ ped_log <- log_file %>%
   filter(Pred1 %in% c("ped100", "ped77", "ped42"),
          Pred2 == "none",
          Pred3 == "none")
-log_file %>%
-  filter(Transformation == TRUE)
-trait_order <- levels(log_file$Trait)
 log_file <- log_file %>%
-  select(-Trait) %>%
-  distinct()
+  filter(Transformation == TRUE) %>%
+  rbind(., ped_log)
 
-pred_lst <- lapply(seq_len(nrow(log_file)), FUN = function(i) {
-  job_id <- log_file[i, Job_ID, ]
-  pred_obj <- readRDS(paste0("./data/derived/predictions/", job_id, ".RDS"))
-  geno_number <- pred_obj %>%
-    .$Geno %>%
-    unique() %>%
-    length()
-  geno_trait_labels <- rep(trait_order, times = geno_number)
-  pred_obj$Trait <- geno_trait_labels
-  pred_obj$Predictor <- log_file[i, Predictor, ]
-  pred_obj 
-})
-
-pred_df <- pred_lst %>%
-  bind_rows() %>% 
-  mutate(Trait = as.factor(Trait)) %>%
+pred_df <- log_file %>%
+  .$Job_ID %>%
+  as.list() %>%
+  map(~paste0("./data/derived/predictions/", ., ".RDS")) %>%
+  map(readRDS) %>%
+  bind_rows() %>%
+  left_join(y = log_file %>% select(Job_ID, Pred1, Pred2, Pred3, Iter),
+            by = "Job_ID") %>%
+  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-") %>%
+  mutate(Trait = fct_recode(Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
   mutate(Trait = fct_relevel(Trait,
                              "DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG"),
-         Predictor = as.factor(Predictor))
+         Predictor = as.factor(Predictor)) %>%
+  select(-Job_ID, -Iter)
 ```
 
 
@@ -53,8 +51,8 @@ pred_df <- pred_lst %>%
 ## Distribution of predicted and observed values
 ```{r Distribution-y-yhat, cache = TRUE, fig.height = 12, fig.cap = "Frequency polygon of observed and predicted values for seven agronomic traits (columns) and nine sets of predictors (rows)."}
 # Specify a unified predictor order.
-pred_order <- c("snp42-none-none", "mrna42-none-none",
-                "snp100-none-none", "ped100-snp77-none",
+pred_order <- c("ped42-none-none", "snp42-none-none", "mrna42-none-none",
+                "ped100-none-none", "snp100-none-none", "ped100-snp77-none",
                 "ped100-mrna42-none", "snp100-mrna42-none",
                 "ped100-snp77-mrna42")
 legend_labs <- expression(y, hat(y))
@@ -115,6 +113,7 @@ overview_df <- pred_df %>%
                              "DMY", "DMC", "ADF", "FAT", "PRO",
                              "STA", "SUG"),
          Group = ifelse(Predictor %in% c("snp42-none-none",
+                                         "ped42-none-none",
                                          "mrna42-none-none"),
                         yes = "Reduced", no = "Full")
   ) %>%
