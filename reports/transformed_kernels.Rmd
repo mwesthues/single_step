@@ -88,22 +88,24 @@ mrna42 <- lapply(seq_along(trans_lst), FUN = function(i) {
   mat
 })
 names(mrna42) <- names(mrna_lst)
+saveRDS(mrna42, 
+        file = "./data/derived/predictor_subsets/transformed-mrna42.RDS")
 
 # Remove perfect LD
 snp42 <- cat_lst %>% 
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) == "snp42"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
 
 snp77 <- cat_lst %>% 
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) == "ped100_snp77"] %>%
   at_depth(.depth = 2, .f = 2) %>%
   .[[1]]
 
 snp100 <- cat_lst %>%
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) == "snp100"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
@@ -119,14 +121,14 @@ invisible(list2env(snp_lst, envir = globalenv()))
 
 # Get pedigree data
 ped100 <- cat_lst %>% 
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) == "ped100_snp77"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
 names(ped100) <- c("Dent", "Flint")
 
 ped42 <- cat_lst %>% 
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) == "ped42"] %>%
   at_depth(.depth = 2, .f = 1) %>%
   .[[1]]
@@ -137,13 +139,13 @@ names(ped42) <- c("Dent", "Flint")
 
 ```{r Kernel-assembly, cache = TRUE}
 nms100 <- cat_lst %>%
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) == "ped100"] %>%
   at_depth(.depth = 2, "geno") %>%
   .[[1]]
 
 nms42 <- cat_lst %>%
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) == "mrna42"] %>%
   at_depth(.depth = 2, "geno") %>%
   .[[1]]
@@ -160,7 +162,7 @@ trans_cat_lst <- lapply(pred_sets, FUN = function(x) {
     map(~get(.))
   names(cmb_lst) <- x
   cmb_lst <- cmb_lst %>% 
-    transpose()
+    purrr::transpose()
   largest_pred_size <- x %>%
     str_extract(., pattern = "[0-9]+") %>%
     as.integer() %>% 
@@ -185,7 +187,7 @@ names(trans_cat_lst) <- pred_sets %>%
   map(~paste(., collapse = "_")) %>%
   flatten_chr()
 trans_cat_lst <- trans_cat_lst %>%
-  transpose()
+  purrr::transpose()
 saveRDS(trans_cat_lst, 
         file = "./data/derived/transformed_pred_sub_list.RDS")
 
@@ -194,7 +196,7 @@ saveRDS(trans_cat_lst,
 # The choice of function depends on the number of predictors as well as on the
 # type of predictor (are pedigree data involved or not?).
 ped100_snp77_mrna42 <- trans_cat_lst %>%
-  transpose() %>%
+  purrr::transpose() %>%
   .[["ped100_snp77_mrna42"]] %>%
   map(~impute2(ped = .[[1]],
                snp = .[[2]],
@@ -208,7 +210,7 @@ ped100_snp77_mrna42 <- trans_cat_lst %>%
   map("X")
 
 snp100_mrna42 <- trans_cat_lst %>%
-  transpose() %>%
+  purrr::transpose() %>%
   .[["snp100_mrna42"]] %>%
   map(~impute_eta(
      x = .[[1]],
@@ -223,7 +225,7 @@ snp100_mrna42 <- trans_cat_lst %>%
   map("X")
 
 ped100_x <- trans_cat_lst %>%
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) %in% c("ped100_mrna42", "ped100_snp77")] %>%
   at_depth(.depth = 2, .f = ~impute_eta(
     x = .[[1]],
@@ -238,7 +240,7 @@ ped100_x <- trans_cat_lst %>%
   at_depth(.depth = 2, .f = "X")
 
 single_pred <- trans_cat_lst %>%
-  transpose() %>%
+  purrr::transpose() %>%
   .[names(.) %in% c("snp42", "mrna42", "snp100")] %>%
   at_depth(.depth = 2, .f = ~complete_eta(
     x = .[[1]],
