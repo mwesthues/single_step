@@ -7,6 +7,7 @@ pacman::p_load("BGLR","data.table", "parallel", "magrittr", "dplyr", "tidyr",
                "purrr", "testthat", "methods", "tibble", "ggplot2", "stringr",
                "stringi", "lubridate", "readr")
 devtools::install_github("mwesthues/sspredr")
+pacman::p_load_gh("mwesthues/sspredr")
 
 # Load function to save session info on the software used for the analysis in
 # this script.
@@ -30,9 +31,9 @@ if (isTRUE(interactive())) {
   # If not empty, this predictor will be imputed.
   Sys.setenv("PRED3" = "mrna42")
   # Which sampling fold shall be used for snp77 (1 to 20)?
-  Sys.setenv("REPLICATION" = "1")
+  Sys.setenv("REPLICATION" = "2")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "1")
+  Sys.setenv("RUNS" = "1-3")
 }
 
 if (!interactive()) {
@@ -71,7 +72,7 @@ pred_combi <- list(pred1, pred2, pred3) %>%
   keep(nchar(.) != 0) %>%
   flatten_chr() %>%
   paste(., collapse = "_")
-stopifnot(pred_combi %in% c("ped100_snp77_mrna42", "ped100_snp77_none"))
+stopifnot(pred_combi %in% c("ped100_snp77_mrna42", "ped100_snp77"))
 
 pred_sets <- pred_combi %>%
   strsplit(split = "_") %>%
@@ -94,14 +95,6 @@ ped100 <- cat_lst %>%
   .[[1]]
 names(ped100) <- c("Dent", "Flint")
 
-# snp
-snp100 <- readRDS("./data/processed/snp_mat.RDS")
-snp_nms <- genos %>%
-  filter(Data_Type == "snp") %>%
-  .$G
-snp100 <- snp100 %>%
-  .[rownames(.) %in% snp_nms, ]
-
 # mrna
 mrna42 <- readRDS("./data/derived/predictor_subsets/transformed-mrna42.RDS")
 
@@ -110,41 +103,9 @@ mrna42 <- readRDS("./data/derived/predictor_subsets/transformed-mrna42.RDS")
 # -- RESAMPLE PREDICTOR DATA -------------------------------------------- 
 # Remove some genomic records so that we can impute them via pedigree
 # information.
-mrna_genos <- genos %>%
-  filter(Data_Type == "mrna") %>%
-  split(.$Pool) %>%
-  map("G")
-
-set.seed(314)
-sample_df <- genos %>%
-  filter(Pool %in% c("Dent", "Flint"),
-         Data_Type == "snp",
-         !G %in% flatten_chr(mrna_genos)) %>%
-  split(.$Pool) %>%
-  at_depth(1, "G") %>%
-  map(~rerun(20, sample(., size = length(.) * 0.6))) %>%
-  map(~do.call(cbind, .)) %>%
-  map(as_data_frame) %>%
-  bind_rows(.id = "Group") %>%
-  gather(key = Run, value = Genotype, -Group)
-
-geno_lst <- sample_df %>%
-  filter(Run == paste0("V", replication)) %>%
-  split(.$Group) %>%
-  map("Genotype")
-
-grp_nms <- names(geno_lst)
-snp77 <- lapply(grp_nms, FUN = function(i) {
-  snp_geno <- geno_lst[[i]]
-  mrna_geno <- mrna_genos[[i]]
-  snp35 <- snp100[snp_geno, ]
-  snp_mat <- snp100 %>%
-    .[rownames(.) %in% mrna_geno, ] %>%
-    rbind(., snp35) %>%
-    unique(., MARGIN = 2)
-  snp_mat
-})
-names(snp77) <- grp_nms
+storage_dir <- "./data/derived/predictor_subsets/snp77_repetition_"
+snp77 <- readRDS(paste0(storage_dir, replication, ".RDS"))
+grp_nms <- names(snp77)
 
 cmb_lst <- pred_sets %>% 
   map(~get(.))

@@ -61,12 +61,12 @@ echo "Trait=${TRAIT}\
       Pred1=${PRED1}\
       Pred2=${PRED2}\
       Pred3=${PRED3}\
-      Transformation=${REPLICATION}\
+      Replication=${REPLICATION}\
       Runs=${RUNS}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
-           ./analysis/prediction.R\
+           ./analysis/repeated_snp77_prediction.R\
            ${TRAIT} ${ITER} ${REPLICATION} ${PRED1} ${PRED2} ${PRED3}\
            ${RUNS}"
 
