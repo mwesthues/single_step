@@ -34,6 +34,8 @@ if (isTRUE(interactive())) {
   Sys.setenv("REPLICATION" = "2")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
+  # Output directory for temporary BGLR files
+  Sys.setenv("TMP" = "./tmp")
 }
 
 if (!interactive()) {
@@ -52,6 +54,8 @@ pred2 <- as.character(Sys.getenv("PRED2"))
 pred3 <- as.character(Sys.getenv("PRED3"))
 runs <- as.character(Sys.getenv("RUNS"))
 replication <- as.integer(Sys.getenv("REPLICATION"))
+temp <- as.character(Sys.getenv("TMP"))
+
 
 # Input tests
 poss_traits <- c("GTM", "GTS", "FETT", "RPR", "STA", "XZ", "ADF")
@@ -277,7 +281,7 @@ yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
                     speed_tst = FALSE,
                     run = run,
                     verbose = FALSE,
-                    out_loc = "./tmp/")
+                    out_loc = temp)
   cbind(pred, Iter = iter)
 }, mc.cores = use_cores)
 res <- rbindlist(yhat_lst)

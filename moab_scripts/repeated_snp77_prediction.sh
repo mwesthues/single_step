@@ -14,7 +14,7 @@
 #MOAB -l walltime=00:22:00:00
 #
 # Job submission directory
-#MOAB -d /pfs/work2/workspace/scratch/ho_westhues-gamazon-0/gamazon
+#MOAB -d /pfs/work2/workspace/scratch/ho_westhues-single_step-0/gamazon
 #
 # Standard output naming
 #MOAB -o $(JOBNAME)_$(JOBID)
@@ -67,8 +67,8 @@ echo "Trait=${TRAIT}\
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/repeated_snp77_prediction.R\
-           ${TRAIT} ${ITER} ${REPLICATION} ${PRED1} ${PRED2} ${PRED3}\
-           ${RUNS}"
+           ${TRAIT} ${ITER} ${PRED1} ${PRED2} ${PRED3}\
+           ${REPLICATION} ${RUNS}"
 
 # Start program
 echo $startprog

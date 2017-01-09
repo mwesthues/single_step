@@ -46,6 +46,8 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRED3" = "mrna42")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "")
+  # Output directory for temporary BGLR files
+  Sys.setenv("TMP" = "./tmp")
 }
 
 if (!interactive()) {
@@ -68,6 +70,7 @@ pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
 pred3 <- as.character(Sys.getenv("PRED3"))
 runs <- as.character(Sys.getenv("RUNS"))
+temp <- as.character(Sys.getenv("TMP"))
 
 
 # Input tests
@@ -259,7 +262,7 @@ yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
                     speed_tst = FALSE,
                     run = run,
                     verbose = FALSE,
-                    out_loc = "./tmp/")
+                    out_loc = temp)
   cbind(pred, Iter = iter)
 }, mc.cores = use_cores)
 res <- rbindlist(yhat_lst)

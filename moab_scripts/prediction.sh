@@ -14,7 +14,7 @@
 #MOAB -l walltime=00:22:00:00
 #
 # Job submission directory
-#MOAB -d /pfs/work2/workspace/scratch/ho_westhues-gamazon-0/gamazon
+#MOAB -d /pfs/work2/workspace/scratch/ho_westhues-single_step-0/gamazon
 #
 # Standard output naming
 #MOAB -o $(JOBNAME)_$(JOBID)
