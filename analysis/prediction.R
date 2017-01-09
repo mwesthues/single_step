@@ -26,7 +26,7 @@ source("./software/session_info.R")
 if (isTRUE(interactive())) {
   # Number of cores
   Sys.setenv("MOAB_PROCCOUNT" = "3")
-  Sys.setenv("TRAIT" = "GTM")
+  Sys.setenv("TRAIT" = "")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "30000")
   # Prediction model in BGLR()
@@ -45,9 +45,9 @@ if (isTRUE(interactive())) {
   # If not empty, this predictor will be imputed.
   Sys.setenv("PRED3" = "mrna42")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "")
+  Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
-  Sys.setenv("TMP" = "./tmp")
+  Sys.setenv("TMP" = "./tmp/")
 }
 
 if (!interactive()) {
@@ -70,7 +70,7 @@ pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
 pred3 <- as.character(Sys.getenv("PRED3"))
 runs <- as.character(Sys.getenv("RUNS"))
-temp <- as.character(Sys.getenv("TMP"))
+temp <- paste0(as.character(Sys.getenv("TMP")), "/")
 
 
 # Input tests
