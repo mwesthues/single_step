@@ -81,7 +81,8 @@ pred_df <- pred_df %>%
 ```
 
 
-```{r Reduce-Hybrid-Data, dependson="Load-Agro-Data}
+```{r Reduce-Hybrid-Data, dependson="Load-Agro-Data"}
+red_hybrid <- readRDS("./data/processed/hybrids_685.RDS")
 pred_df <- pred_df %>%
   filter(Geno %in% red_hybrid)
 ```

@@ -55,6 +55,7 @@ red_hybrid <- full_hybrid %>%
   filter(Tested_Parents == 2) %>%
   unite(Hybrid, DF, Dent, Flint) %>%
   .$Hybrid
+saveRDS(red_hybrid, "./data/processed/hybrids_685.RDS")
 genos <- genos %>%
   rbind(tibble(G = red_hybrid,
                Pool = "Hybrid",
