@@ -54,7 +54,7 @@ pred2 <- as.character(Sys.getenv("PRED2"))
 pred3 <- as.character(Sys.getenv("PRED3"))
 runs <- as.character(Sys.getenv("RUNS"))
 replication <- as.integer(Sys.getenv("REPLICATION"))
-temp <- as.character(Sys.getenv("TMP"))
+temp <- paste0(as.character(Sys.getenv("TMP")), "/")
 
 
 # Input tests

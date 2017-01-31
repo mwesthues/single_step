@@ -47,7 +47,7 @@ if (isTRUE(interactive())) {
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
-  Sys.setenv("TMP" = "./tmp/")
+  Sys.setenv("TMP" = "./tmp")
 }
 
 if (!interactive()) {

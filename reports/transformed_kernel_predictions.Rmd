@@ -15,25 +15,59 @@ knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
 
 
 ```{r Load-LOOCV-Data, cache = TRUE}
-log_file <- fread("./data/derived/pred_log.txt")
-ped_log <- log_file %>%
-  filter(Pred1 %in% c("ped100", "ped77", "ped42"),
-         Pred2 == "none",
-         Pred3 == "none")
-log_file <- log_file %>%
-  filter(Transformation == TRUE) %>%
-  rbind(., ped_log)
+# Specify which predictions are based on the updated single-step prediction
+# algorithms in 'sspredr'.
+commit <-  "mwesthues/sspredr@26447a1"
+session_files <- list.files("./data/derived/session_info/")
+session_files <- session_files[grep(session_files,
+                                    pattern = "interactive", invert = TRUE)]
+session_filter <- session_files %>%
+  map(~readLines(paste0("./data/derived/session_info/", .))) %>%
+  grepl(., pattern = commit)
+upd_algo_runs <- session_files[session_filter]
+upd_algo_runs <- gsub(upd_algo_runs, pattern = ".txt", replacement = "")
+rep_log_file <- fread("./data/derived/repeated_snp77_prediction_log.txt") %>%
+  filter(Cores == 16,
+         Job_ID %in% upd_algo_runs)
 
-pred_df <- log_file %>%
+# Load all prediction results based on the resampling of 'snp77'.
+rep_df <- rep_log_file %>%
   .$Job_ID %>%
   as.list() %>%
   map(~paste0("./data/derived/predictions/", ., ".RDS")) %>%
   map(readRDS) %>%
   bind_rows() %>%
-  left_join(y = log_file %>% select(Job_ID, Pred1, Pred2, Pred3, Iter),
+  left_join(y = rep_log_file %>% select(Job_ID, Pred1, Pred2, Pred3, Iter,
+                                        Replication),
             by = "Job_ID") %>%
-  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-") %>%
-  mutate(Trait = fct_recode(Trait,
+  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-")
+
+
+# Load all other predictions, which did not involve 'snp77'.
+reg_log <- fread("./data/derived/pred_log.txt") %>%
+  select(-Model, -PI, -PriorPiCount) %>%
+  filter(Cores == 16,
+        # Job_ID %in% upd_algo_runs,
+         Transformation == TRUE | Pred1 %in% c("ped42", "ped100"),
+         Pred1 != "snp77",
+         Pred2 != "snp77",
+         Pred3 != "snp77") %>% 
+  select(-Transformation)
+reg_df <- reg_log %>%
+  .$Job_ID %>%
+  as.list() %>%
+  map(~paste0("./data/derived/predictions/", ., ".RDS")) %>%
+  map(readRDS) %>%
+  bind_rows() %>%
+  left_join(y = reg_log %>% select(Job_ID, Pred1, Pred2, Pred3, Iter),
+            by = "Job_ID") %>%
+  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-")
+
+# Combine all data for ease of handling.
+pred_df <- rbind(reg_df, rep_df %>% select(-Replication))
+pred_df <- pred_df %>%
+  mutate(Trait = as.factor(Trait),
+         Trait = fct_recode(Trait,
     "DMY" = "GTM",
     "DMC" = "GTS",
     "FAT" = "FETT",
@@ -46,6 +80,11 @@ pred_df <- log_file %>%
   select(-Job_ID, -Iter)
 ```
 
+
+```{r Reduce-Hybrid-Data, dependson="Load-Agro-Data}
+pred_df <- pred_df %>%
+  filter(Geno %in% red_hybrid)
+```
 
 
 ## Distribution of predicted and observed values
@@ -85,6 +124,7 @@ CV = \sqrt{\frac{\sum_{i = 1}^{N} \sigma^{2}_{\hat{y}(i)} / N}{\sum_{i=1}^{N}\ha
 $$
 
 where $N$ denotes the number of hybrids.
+
 
 ```{r Coefficient-of-Variation, cache = TRUE}
 coefficient_of_variation <- function(x, y) {
@@ -146,7 +186,7 @@ overview_df %>%
 ```
 
 ## Predictive Abilities
-```{r Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for seven agronomic traits (rows) and nine predictor sets (columns). The predictor sets are split into the categories 'Reduced' (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids)."}
+```{r Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for seven agronomic traits (rows) and nine predictor sets (columns). The predictor sets are split into the categories 'Reduced' (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids). For both categories, predictive abilities are based solely on the set of 685 common hybrids."}
 overview_df %>%
   as_tibble() %>%
   filter(Predictor != "snp77-none-none") %>%
@@ -175,4 +215,33 @@ overview_df %>%
   ) +
   ylim(c(0, 1))
 ```
+
+
+```{r Resampled-Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for two scenarios and seven agronomic traits where the composition of the set of genomic predictors 'snp77' is based on sampling at random for 20 times. Predictive abilities are based solely on the set of 685 common hybrids."}
+# Plot the distribution of predictive abilities over 20 rounds of resampled
+# 'snp77'.
+rep_df %>%
+  mutate(Trait = as.factor(Trait),
+         Trait = fct_recode(Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
+  mutate(Trait = fct_relevel(
+    Trait, "DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG"
+    )
+  ) %>%
+  group_by(Trait, Replication, Predictor) %>%
+  summarize(r = cor(y, yhat)) %>%
+  ggplot(aes(x = Predictor, y = r, fill = Predictor)) +
+  geom_boxplot() +
+  facet_wrap(~Trait) +
+  theme_bw(base_size = 10) +
+  theme(axis.text.x = element_blank(),
+        legend.position = "top")
+```
+
+
 
