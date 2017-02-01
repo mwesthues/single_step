@@ -187,7 +187,10 @@ overview_df %>%
 ```
 
 ## Predictive Abilities
-```{r Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for seven agronomic traits (rows) and nine predictor sets (columns). The predictor sets are split into the categories 'Reduced' (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids). For both categories, predictive abilities are based solely on the set of 685 common hybrids."}
+For an introduction to the abbreviations used for the different predictors, and
+combinations thereof, please refer to chapter \@ref(predictor-subsetting).
+
+```{r Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for seven agronomic traits (rows) and nine predictor sets (columns). The predictor sets are split into the categories 'Reduced' (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids). For both categories, predictive abilities are based solely on the set of 685 common hybrids. Predictions including 'snp77' are based on 20 runs where each run was assembled by selecting a set of genotypes at random. The resampling procedure took into account the difference in absolute size between sets of Dent and the Flint parent lines. In these instances, the arithmetic mean of predictive abilities across all 20 runs is displayed."}
 overview_df %>%
   as_tibble() %>%
   filter(Predictor != "snp77-none-none") %>%
@@ -219,13 +222,12 @@ overview_df %>%
 
 
 ### Findings
-
 a)   Reduced
    
    -   For dry matter yield, transcriptomic data clearly perform best.
 
-   -   Genomic do not clearly perform better than pedigree data except for ADF
-     and FAT.
+   -   Genomic data do not clearly perform better than pedigree data except for 
+     ADF and FAT.
 
    -   Transcripts perform poorly for DMC and STA.
 
@@ -242,14 +244,23 @@ b)   Full
      r(\text{snp77}) * (0.77 - 0.42) + r(\text{mrna42}) * 0.42$$
 
    -   The predictive ability of only two predictors is typically higher than a
-     weighted average of the predictive abilities of the consituting
+     weighted average of the predictive abilities of the constituting
      individual predictors.
 
    -   Predictive abilities for FAT and the predictor combination
      "ped100-snp77-mrna42" are difficult to explain.
 
+c)   General
+
+   -   If a reduced predictor performed better than another predictor in the 
+     reduced data set (e.g. 'mrna42' vs. 'snp42' for DMY), it will boost the 
+     performance of the other predictor (here 'snp100') in the full set when the 
+     two predictors are combined in a single-step approach (here 
+     'snp100-mrna-42-none').
 
 
+
+#### Predictive abilities for predictor sets with resampling.
 ```{r Resampled-Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for two scenarios and seven agronomic traits where the composition of the set of genomic predictors 'snp77' is based on sampling at random for 20 times. Predictive abilities are based solely on the set of 685 common hybrids."}
 # Plot the distribution of predictive abilities over 20 rounds of resampled
 # 'snp77'.
