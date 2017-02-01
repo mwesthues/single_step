@@ -218,6 +218,38 @@ overview_df %>%
 ```
 
 
+### Findings
+
+a)   Reduced
+   
+   -   For dry matter yield, transcriptomic data clearly perform best.
+
+   -   Genomic do not clearly perform better than pedigree data except for ADF
+     and FAT.
+
+   -   Transcripts perform poorly for DMC and STA.
+
+b)   Full
+
+   -   SNP data perform better for all traits compared to pedigree information.
+
+   -   Predictive abilities for the combination of pedigree, SNP and 
+     transcriptomic data "ped100-snp77-mrna42" seem to be the result of the
+     predictive abilities of the individual predictors weighted by their share
+     of the genotypes. 
+     For example 
+     $$r(\text{ped100-snp77-mrna42}) = r(\text{ped100}) * (1 - 0.77) +
+     r(\text{snp77}) * (0.77 - 0.42) + r(\text{mrna42}) * 0.42$$
+
+   -   The predictive ability of only two predictors is typically higher than a
+     weighted average of the predictive abilities of the consituting
+     individual predictors.
+
+   -   Predictive abilities for FAT and the predictor combination
+     "ped100-snp77-mrna42" are difficult to explain.
+
+
+
 ```{r Resampled-Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for two scenarios and seven agronomic traits where the composition of the set of genomic predictors 'snp77' is based on sampling at random for 20 times. Predictive abilities are based solely on the set of 685 common hybrids."}
 # Plot the distribution of predictive abilities over 20 rounds of resampled
 # 'snp77'.
