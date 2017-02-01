@@ -1,0 +1,44 @@
+# Outlook
+## Size of individual predictors
+We have not yet investigated the influence of the size (in terms of the number
+of parental genotypes) of an individual predictor on the predictive ability
+achieved with a combination of multiple predictors in a single-step prediction
+settting.
+Consider the following predictors in single-step prediction, where nothing
+changes but the coverage of genotypes through genomic data in increments of 10%:
+
+1.   'ped100-snp90' or &nbsp;&nbsp;&nbsp;&nbsp; 'ped100-snp90-mrna42'
+
+2.   'ped100-snp80' or &nbsp;&nbsp;&nbsp;&nbsp; 'ped100-snp80-mrna42'
+
+3.   $\dots$        or  &nbsp;&nbsp;&nbsp;&nbsp; $\dots$
+
+4.   'ped100-snp10' or &nbsp;&nbsp;&nbsp;&nbsp; 'ped100-snp10-mrna42'
+
+
+Using such an iterative approach, we might get closer to describing the
+contribution of individual predictors to the predictive ability in a combined
+single-step predictor.
+
+One caveat here is that, so far, we have sampled 'snp77' at random (except for
+the adjustment to sampling, in relative terms, equally large fractions from the
+Dent and the Flint group, respectively).
+If we run the scenario proposed above, we would have a high computational load.
+What I am looking for is a way to sample 'snpXX' --- where XX reprents the
+fraction of all possible genotypes covered --- such that it covers the genetic
+target space (i.e. the whole set of 142 parental Dent and 103 parental Flint
+lines) equally well.
+@Bustos-Korts2016 have described a uniform sampling procedure that we might be
+able to use for this purpose.
+To evaluate the soundness of the method described in this publication, we could
+compare the predictive ability obtained with 'snp77' from uniform sampling with
+the mean (or median) of the predictive ability for 'snp77' from repeated random
+sampling (20 replications, see Figure
+\@ref(fig:Resampled-Predictive-Ability-Plots)).
+
+
+## Algorithm validation
+To validate the algorithms from @Fernando2014 and its extension in
+\@ref(introduction), we could perhaps have a look at an independent data set,
+such as the one described by @Guo2016, who used data from the [Yan
+lab](http://www.maizego.org/Resources.html).

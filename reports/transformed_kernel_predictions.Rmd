@@ -226,17 +226,18 @@ a)   Reduced
    
    -   For dry matter yield, transcriptomic data clearly perform best.
 
-   -   Genomic data do not clearly perform better than pedigree data except for 
-     ADF and FAT.
+   -   Genomic data perform decisively better than pedigree data for DMY, ADF 
+     and FAT.
 
-   -   Transcripts perform poorly for DMC and STA.
+   -   Relative to pedigree and genomic data, transcripts perform poorly for 
+     DMC and STA.
 
 b)   Full
 
    -   SNP data perform better for all traits compared to pedigree information.
 
    -   Predictive abilities for the combination of pedigree, SNP and 
-     transcriptomic data "ped100-snp77-mrna42" seem to be the result of the
+     transcriptomic data "ped100-snp77-mrna42" seem to be the sum of the
      predictive abilities of the individual predictors weighted by their share
      of the genotypes. 
      For example 
@@ -248,7 +249,7 @@ b)   Full
      individual predictors.
 
    -   Predictive abilities for FAT and the predictor combination
-     "ped100-snp77-mrna42" are difficult to explain.
+     "ped100-snp77-mrna42" are difficult to explain. **Suggestions???**
 
 c)   General
 
