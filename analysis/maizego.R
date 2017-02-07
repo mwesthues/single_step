@@ -9,12 +9,23 @@ pacman::p_load_gh("mwesthues/sspredr")
 library("LEA")
 
 
+# Get labels for the different subpopulations of the genotypes.
+pop_struc <- fread("./data/input/maizego/genotype_annotation.txt")
+
+# Keep only genotypes from the tropical/subtropical (TST) subset to avoid 
+# hassles with extreme population structure.
+tst_genotypes <- pop_struc %>%
+  filter(Subpopulations == "TST") %>%
+  select(Lines) %>%
+  flatten_chr()
+
 # Load the phenotypic BLUPs.
 pheno_path <- "./data/input/maizego/blup_traits_final.csv"
 pheno <- pheno_path %>%
   read_csv() %>%
   rename(Genotype = `<Trait>`) %>%
-  gather(key = Trait, value = Value, -Genotype)
+  gather(key = Trait, value = Value, -Genotype) %>%
+  filter(Genotype %in% tst_genotypes)
 
 
 # Load the gene expression data.
@@ -22,7 +33,8 @@ mrna_path <-  "./data/input/maizego/Expression_kernel_finalNormalized_28850.txt"
 mrna <- mrna_path %>%
   fread(header = TRUE) %>%
   gather(key = Genotype, value = Expression, -Gene_ID) %>%
-  as.data.table()
+  as.data.table() %>%
+  filter(Genotype %in% tst_genotypes)
 
 
 # Check whether genotypes between phenotypic and gene expression data overlap.
@@ -57,85 +69,80 @@ snp <- snp_path %>%
 # chromosome and the position of the marker on the chromosome.
 snp_meta_vars <- c("rs#", "alleles", "chrom", "pos", "strand", "assembly#",
                    "center", "protLSID", "assayLSID", "paneLSID", "QCcode")
+snp_selection_vars <- c(tst_genotypes, snp_meta_vars)
 snp_meta_info <- snp %>%
   select(one_of(snp_meta_vars))
 
 # Keep 
 snp_mat <- snp %>%
-  select(-`rs#`, -alleles, -chrom, -pos, -strand, -`assembly#`, -center, 
-         -protLSID, -assayLSID, -paneLSID, -QCcode) %>%
+  select(-one_of(snp_meta_vars)) %>%
+  select(one_of(tst_genotypes)) %>%
   as.matrix() %>%
   t()
 colnames(snp_mat) <- snp_meta_info %>%
   select(`rs#`) %>%
   flatten_chr()
-geno_nms <- rownames(snp_mat)
+snp_geno_nms <- rownames(snp_mat)
 rm(snp)
 
 
-# Remove all marker loci with more than 10% missing values.
-call_frequency <- 0.1
-many_na_markers <- snp_mat %>%
-  ncol() %>%
-  seq_len() %>%
-  map(function(i) {
-    mean(snp_mat[, i] == "NN") >= call_frequency
-  }) %>%
-  flatten_lgl()
-mean(many_na_markers)
+# Remove all marker loci with more than 5% missing values.
+high_cf_snp_nms <- snp_mat %>%
+  sspredr::compute_cf(., output = "markerNames", missing = "NN", 
+                      callThresh = 0.95)
 low_na_snp <- snp_mat %>%
-  .[, !many_na_markers] %>%
-  as.data.table()
+  .[, high_cf_snp_nms]
 rm(snp_mat)
 
 
 # Impute missing values in the genotype marker data by replacing each missing 
 # marker allele with the most frequent one.
-replace_missing_with_major_allele <- function(x) {
-  if (any(x == "NN")) {
-    major_genotype <- x %>%
-      table() %>%
-      sort(decreasing = TRUE) %>%
-      names() %>%
-      .[1]
-    x[x == "NN"] <- major_genotype   
-  }
-  x
-}
-# !!! Running the following code snippet takes about 30 minutes and requires 
-# roughly 20GB of RAM!!!
-cols <- colnames(low_na_snp)
-low_na_snp[,
-           (cols) := lapply(.SD, replace_missing_with_major_allele), 
-           .SDcols = cols
-           ]
-any(low_na_snp == "NN")
-saveRDS(low_na_snp, "./data/derived/maizego/imputed_snp_DT.RDS")
-
-
 # Select SNPs with a minor allele frequency (MAF) >= 0.05.
-low_maf_nms <- low_na_snp %>%
-  as.matrix() %>%
-  sspredr::compute_maf(output = "markerNames", mafThresh = 0.05)
-low_maf_snp <- low_na_snp %>%
-  as.matrix() %>%
-  .[, colnames(.) %in% low_maf_nms]
-rm(low_na_snp)
+low_maf_marker_names <- compute_maf(low_na_snp,
+                                    output = "markerNames",
+                                    missing = "NN",
+                                    mafThresh = 0.05)
+low_maf_snp <- low_na_snp[, colnames(low_na_snp) %in% low_maf_marker_names]
+major_allele_per_locus <- low_maf_snp %>%
+  sspredr::compute_maf(output = "genoList", missing = "NN", 
+                       mafThresh = 0) %>%
+  .["major_allele"] %>%
+  flatten_chr()
+stopifnot(identical(length(major_allele_per_locus),
+                    ncol(low_maf_snp)))
+
+
+no_na_snp <- lapply(seq_len(ncol(low_maf_snp)), FUN = function(i) {
+  x <- low_maf_snp[, i]
+  y <- major_allele_per_locus[i]
+  if (any(x == "NN")) {
+    x[x == "NN"] <- y
+  }
+  unique_genotypes <- x %>%
+    unique() %>%
+    length()
+  stopifnot(unique_genotypes == 2)
+  x
+}) %>%
+  combine() %>%
+  matrix(., ncol = ncol(low_maf_snp), byrow = FALSE)
+rownames(no_na_snp) <- rownames(low_maf_snp)
+colnames(no_na_snp) <- colnames(low_maf_snp)
+rm(low_na_snp, low_maf_snp)
 
 
 # Recode marker loci as 0 (no major allele), 0.5 (heterozygous) and 
 # 1 (both major alleles).
-geno_list <- low_maf_snp %>%
+geno_list <- no_na_snp %>%
   sspredr::compute_maf(output = "genoList", mafThresh = 0)
 
-num_snp <- low_maf_snp %>%
+num_snp <- no_na_snp %>%
   recode_snps(major = geno_list$major_allele, 
               minor = geno_list$minor_allele,
               major_coding = 1,
               minor_coding = 0,
               het_coding = 0.5,
               na_coding = NA_real_)
-rownames(num_snp) <- geno_nms
 saveRDS(num_snp, "./data/derived/maizego/numeric_snp_matrix.RDS")
 
 
@@ -143,17 +150,14 @@ saveRDS(num_snp, "./data/derived/maizego/numeric_snp_matrix.RDS")
 num_snp <- readRDS("./data/derived/maizego/numeric_snp_matrix.RDS")
 G <- build_kernel(M = num_snp)
 saveRDS(G, "./data/derived/maizego/genomic_relationship.RDS")
-write.geno(num_snp, "./data/derived/maizego/snp.geno")
-rm(low_maf_snp, num_snp, G)
+write.lfmm(num_snp, "./data/derived/maizego/snp.lfmm")
+rm(no_na_snp, num_snp, G)
 
-
-# Get labels for the different subpopulations of the genotypes.
-pop_struc <- fread("./data/input/maizego/genotype_annotation.txt")
 
 
 # Determine the structure of the data using genotypic and gene expression data,
 # respectively.
-snp_pc <- LEA::pca(input.file = "./data/derived/maizego/snp.geno",
+snp_pc <- LEA::pca(input.file = "./data/derived/maizego/snp.lfmm",
                    scale = TRUE)
 # Perform Tracy-Widom tests on all eigenvalues to determine the optimal number
 # of principal components.
@@ -161,7 +165,7 @@ snp_tw <- tracy.widom(snp_pc)
 tw_K <- snp_tw %>%
   .["pvalues"] %>%
   flatten_dbl() %>%
-  keep(~ .x <= 0.01) %>%
+  keep(~ .x <= 0.0001) %>%
   length()
 tw_K <- min(c(tw_K, 10))
 
@@ -172,6 +176,8 @@ snp_tw %>%
 
 # Qualitatively assign the genotypes to the previously determined 
 # subpopulations.
+lfmm2geno("./data/derived/maizego/snp.lfmm", 
+          output.file = "./data/derived/maizego/snp.geno")
 project <- snmf(input.file = "./data/derived/maizego/snp.geno",
                 K = seq_len(tw_K),
                 project = "new",
