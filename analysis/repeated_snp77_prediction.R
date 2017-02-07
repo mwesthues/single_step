@@ -76,7 +76,7 @@ pred_combi <- list(pred1, pred2, pred3) %>%
   keep(nchar(.) != 0) %>%
   flatten_chr() %>%
   paste(., collapse = "_")
-stopifnot(pred_combi %in% c("ped100_snp77_mrna42", "ped100_snp77"))
+stopifnot(pred_combi %in% c("snp77", "ped100_snp77_mrna42", "ped100_snp77"))
 
 pred_sets <- pred_combi %>%
   strsplit(split = "_") %>%
@@ -110,6 +110,21 @@ mrna42 <- readRDS("./data/derived/predictor_subsets/transformed-mrna42.RDS")
 storage_dir <- "./data/derived/predictor_subsets/snp77_repetition_"
 snp77 <- readRDS(paste0(storage_dir, replication, ".RDS"))
 grp_nms <- names(snp77)
+
+if (isTRUE(pred_sets == "snp77")) {
+  snp77_inbred_lst <- snp77 %>%
+    map(rownames)
+  hybrids <- genos %>%
+    filter(Pool == "Hybrid") %>%
+    mutate(G = str_replace(G, pattern = "DF_", replacement = "")) %>%
+    separate(G, into = c("Dent", "Flint"), sep = "_") %>%
+    filter(Dent %in% snp77_inbred_lst$Dent & 
+           Flint %in% snp77_inbred_lst$Flint) %>%
+    select(-Data_Type, -Pool) %>%
+    gather(key = Pool, value = G) %>%
+    split(.$Pool) %>%
+    map("G")
+}
 
 cmb_lst <- pred_sets %>% 
   map(~get(.))
