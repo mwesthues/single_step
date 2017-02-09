@@ -37,26 +37,6 @@ mrna <- mrna_path %>%
   filter(Genotype %in% tst_genotypes)
 
 
-# Check whether genotypes between phenotypic and gene expression data overlap.
-common_genotypes <- list(mrna = mrna, pheno = pheno) %>%
-  map(., ~select(., Genotype)) %>%
-  map(flatten_chr) %>%
-  map(unique) %>%
-  reduce(intersect)
-
-
-# Number of overlapping genotypes.
-length(common_genotypes)
-
-# Number of genotypes that are part of one source of information additional to
-# the common set of genotypes shared between different sources.
-list(mrna = mrna, pheno = pheno) %>%
-  map(., ~select(., Genotype)) %>%
-  map(flatten_chr) %>%
-  map(unique) %>%
-  map(~setdiff(., common_genotypes)) %>%
-  map(length)
-
 
 # Explore the kinship matrix.
 snp_path <- "./data/input/maizego/513allchr-imputation.txt"
@@ -84,6 +64,32 @@ colnames(snp_mat) <- snp_meta_info %>%
   flatten_chr()
 snp_geno_nms <- rownames(snp_mat)
 rm(snp)
+
+# Find the common set of genotypes for all data (phenotypic, genotypic, 
+# transcriptomic).
+geno_lst <- list(mrna = mrna, pheno = pheno) %>%
+  map(., ~select(., Genotype)) %>%
+  map(flatten_chr) %>%
+  map(unique)
+geno_lst$snp <- snp_geno_nms
+common_genotypes <- geno_lst %>%
+  reduce(intersect)
+saveRDS(common_genotypes,
+        "./data/derived/maizego/common_snp-mrna-pheno_genotypes.RDS",
+        compress = FALSE)
+
+# Number of overlapping genotypes.
+length(common_genotypes)
+
+# Number of genotypes that are part of one source of information additional to
+# the common set of genotypes shared between different sources.
+list(mrna = mrna, pheno = pheno) %>%
+  map(., ~select(., Genotype)) %>%
+  map(flatten_chr) %>%
+  map(unique) %>%
+  map(~setdiff(., common_genotypes)) %>%
+  map(length)
+
 
 
 # Remove all marker loci with more than 5% missing values.
