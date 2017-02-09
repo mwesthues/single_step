@@ -9,6 +9,11 @@ issues with dependencies:
 ### Gene expression
 
 ## Yan (Inbreds)
+Filter agronomic, genomic and transcriptomic data for tropical and subtropical
+lines.
+
+[maizego.R](analysis/maizego.R)
+
 ### Agronomic
 ### Genomic (incl. imputation)
 ### Gene expression
