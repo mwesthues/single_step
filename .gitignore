@@ -10,6 +10,7 @@
 !*.md
 !*.sh
 !*.Rmd
+!*reports/single-step-hypred-report.html
 
 # ... even if they are in subdirectories
 !*/
