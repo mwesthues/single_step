@@ -1,9 +1,7 @@
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("mwesthues/sspredr", update = TRUE)
-pacman::p_load("tidyverse", "data.table", "dtplyr", "viridis", "stringr",
-               "corehunter")
-pacman::p_load_gh("mwesthues/sspredr")
+pacman::p_load("tidyverse", "data.table", "dtplyr")
 
 
 # Get labels for the different subpopulations of the genotypes.
@@ -49,6 +47,7 @@ snp_meta_vars <- c("rs#", "alleles", "chrom", "pos", "strand", "assembly#",
 snp_selection_vars <- c(tst_genotypes, snp_meta_vars)
 snp_meta_info <- snp %>%
   select(one_of(snp_meta_vars))
+saveRDS(snp_meta_info, "./data/derived/maizego/snp_meta_info_datatable.RDS")
 
 # Keep 
 snp_mat <- snp %>%
@@ -74,8 +73,8 @@ geno_lst <- list(mrna = mrna, pheno = pheno) %>%
 geno_lst$snp <- snp_geno_nms
 common_genotypes <- geno_lst %>%
   reduce(intersect)
-saveRDS(common_genotypes,
-        "./data/derived/maizego/common_snp-mrna-pheno_genotypes.RDS",
+saveRDS(geno_lst,
+        "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS",
         compress = FALSE)
 
 # Determine the number of overlapping elements between each data type. Then, 

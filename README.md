@@ -8,15 +8,62 @@ issues with dependencies:
 ### Genomic (incl. imputation)
 ### Gene expression
 
+
+
+
+
 ## Yan (Inbreds)
 Filter agronomic, genomic and transcriptomic data for tropical and subtropical
 lines.
 
-[maizego.R](analysis/maizego.R)
+[maizego_tst_data_subsetting.R](analysis/maizego_tst_data_subsetting.R)
+
+
 
 ### Agronomic
-### Genomic (incl. imputation)
+1.   Distribution of agronomic data.
+
+2.   Skewness in agronomic data (permutation test).
+
+3.   Correlation among agronomic traits.
+
+[maizego_agronomic_data.R](analysis/maizego_agronomic_data.R)
+
+
+### Genomic
+#### Quality filtering and imputation.
+
+1.   Remove loci with a callfrequency $\geq 0.95$.
+
+2.   Remove loci with heterozygosity $\geq 0.05$.
+
+3.   Remove loci with minor allele frequency $\geq 0.05$.
+
+4.   Impute remaining missing values using BEAGLE using 25 iterations and 20
+     samples per iterations.
+
+5.   Remove copies (i.e. loci in perfect LD with a previous one) of marker
+     loci.
+
+[maizego_snp_imputation.R](analysis/maizego_snp_imputation.R)
+
+6.   Principal component analysis.
+
+
+
+#### Core set sampling
+
+
+
 ### Gene expression
+1.   Scaling, centering, Box-Cox transformation
+
+2.   Principal component analysis
+
+[maizego_mrna_preprocessing.R](analysis/maizego_mrna_preprocessing.R)
+
+
+
 
 
 Create 'predictor_data/' directory where, separately for 'maizego' and 'uhoh',
@@ -34,6 +81,3 @@ predictor data for the predictions are stored.
 ## Scenario 2
 ## Scenario 3
 
-1.   Prepare agronomic 
-1.   [common_genotypes](analysis/common_genotypes.R)
-2.   [cv_sampling](analysis/cv_sampling.R/)
