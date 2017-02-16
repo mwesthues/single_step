@@ -228,4 +228,9 @@ combi_mat <- t(combi_mat)
 # "copies" of any marker locus will only add noise to our prediction models.
 combi_mat <- unique(combi_mat, MARGIN = 2)
 
-saveRDS(combi_mat, file = "./data/processed/maizego/imputed_snp_mat.RDS")
+# Remove all markers, which might violate the minor allele frequency threshold 
+# after imputing missing values.
+imp_poly_nms <- compute_maf(x = combi_mat, output = "marker_names", 
+                            maf_threshold = maf, missing_value = NA_real_)
+snp <- combi_mat[, match(imp_poly_nms, colnames(combi_mat))]
+saveRDS(snp, file = "./data/processed/maizego/imputed_snp_mat.RDS")
