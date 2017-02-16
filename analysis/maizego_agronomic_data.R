@@ -48,8 +48,7 @@ random_skewness <- iter %>%
   summarize(Skewness = e1071::skewness(Value),
             Skewness = round(Skewness, digits = 2)) %>%
   select(Skewness) %>%
-  flatten_dbl() %>%
-  abs()
+  flatten_dbl()
 hist(random_skewness)
  
 compare_skewness <- function(observed, simulated) {

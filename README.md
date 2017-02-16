@@ -49,10 +49,47 @@ lines.
 
 6.   Principal component analysis.
 
+[maizego_snp_analyses.R](analysis/maizego_snp_analyses.R)
 
 
 #### Core set sampling
+##### Scenario 1
+Scenario 1 does not involve any core set sampling because it simply uses all
+available SNP data (211 genotypes) and all available transcriptomic data (149
+genotypes).
+However, it does involve subsampling of the SNP data for the direct comparison
+of the predictive ability obtained for 149 genotypes with transciptomic data
+and the one obtained for the same set of genotypes using genomic data.
 
+
+##### Scenario 2
+Goal: Quantify the influence of SNP data on the predictive ability of the
+combination of genomic with transcriptomic data in single step prediction.
+
+1.   Reduce the SNP data to 149 inbred lines, which are also covered by mRNA 
+     data.
+
+2.   Alter the fraction of genotypes covered by SNP data from 100% to 10% in
+     increments of 10 percentage points while keeping the number of genotypes
+     covered by the transcriptomic data fixed.
+
+[maizego_corehunter.R](analysis/maizego_corehunter.R)
+
+
+##### Scenario 3
+This scenario is based on scenario 2 but it respects the set of genotypes
+covered by trancsriptomic data.
+This means that, as long as the fraction of genotypes covered by SNP data is at
+least as large as the set of genotypes covered by transcriptomic data, all
+genotypes covered by transcriptomic data must be included in the core set.
+As soon as the set of genotypes covered by SNP data is smaller than the one
+covered by mRNA data, we sample the core set only from the set of genotypes
+covered by mRNA data.
+
+> I'm still undecided whether this adds anything useful to our study compared
+> to scenario 2.
+
+[maizego_corehunter.R](analysis/maizego_corehunter.R)
 
 
 ### Gene expression
