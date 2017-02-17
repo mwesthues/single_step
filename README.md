@@ -4,10 +4,28 @@ issues with dependencies:
 # Data preparation
 ## UHOH (Hybrids)
 ### Agronomic
-### Pedigree
+[agronomic_data.Rmd](reports/agronomic_data.Rmd)
+
 ### Genomic (incl. imputation)
+
+1.   Remove loci with a callfrequency $\geq 0.95$.
+
+2.   Remove loci with heterozygosity $\geq 0.05$.
+
+3.   Remove loci with minor allele frequency $\geq 0.05$.
+
+4.   Impute remaining missing values using BEAGLE using 25 iterations and 20
+     samples per iterations.
+
+5.   Remove copies (i.e. loci in perfect LD with a previous one) of marker
+     loci.
+
+[snp_preparation.R](analysis/snp_preparation.R)
+
+
 ### Gene expression
 
+[transcriptomic_data.Rmd](reports/transcriptomic_data.Rmd)
 
 
 
@@ -94,8 +112,6 @@ covered by mRNA data.
 
 ### Gene expression
 1.   Scaling, centering, Box-Cox transformation
-
-2.   Principal component analysis
 
 [maizego_mrna_preprocessing.R](analysis/maizego_mrna_preprocessing.R)
 
