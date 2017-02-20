@@ -100,14 +100,14 @@ for (i in chromosome) {
     if (identical(rownames(map_chr_mat), as.vector(y2[-1, "mk_names"])))
     {        
         # Marker file
-        write.table(y2, paste0("./data/derived/snp_qc/imp_input/", "chr", 
+        write.table(y2, paste0("./data/derived/maizego/snp_qc/imp_input/", "chr", 
                                get("i"), ".txt"),
                     sep = "\t", quote = FALSE, col.names = FALSE, 
                     row.names = FALSE)
         
         # Map file
         write.table(map_chr_mat, 
-                    paste0("./data/derived/snp_qc/imp_input/map_chr",
+                    paste0("./data/derived/maizego/snp_qc/imp_input/map_chr",
                            get("i"), ".txt"), sep = "\t", quote = FALSE,
                     col.names = FALSE, row.names = TRUE)
     } else{stop("Mismatched SNP names")}
@@ -116,7 +116,7 @@ for (i in chromosome) {
 
 ############################## BEAGLE OUTPUT FILES ############################
 # Extract the names of all Beagle input files.
-all_files <- list.files(path = "./data/derived/snp_qc/imp_input")
+all_files <- list.files(path = "./data/derived/maizego/snp_qc/imp_input")
 chr_length <- 10
 use_cores <- 4L
 
@@ -141,38 +141,38 @@ mclapply(seq_len(chr_length), FUN = function(iter) {
     system(paste("java -Xmx5000m -jar", paste0(getwd(),
                  "/software/beagle.jar"), 
                  paste0("unphased=", getwd(),
-                        "/data/derived/snp_qc/imp_input/",
+                        "/data/derived/maizego/snp_qc/imp_input/",
                         chr_files[chr_matches]),
                  paste0("markers=", getwd(),
-                        "/data/derived/snp_qc/imp_input/",
+                        "/data/derived/maizego/snp_qc/imp_input/",
                         map_files[map_matches]),
                  "missing=N", 
                  paste0("out=", getwd(),
-                        "/data/derived/snp_qc/imp_output/out"),
+                        "/data/derived/maizego/snp_qc/imp_output/out"),
                  "niterations=25 nsamples=20"))
 }, mc.preschedule = FALSE, mc.cores = use_cores)
 
 
 # HOMOZYGOUS BEAGLE OUTPUT ------------------------------------------------
-gprobs_gz <- list.files(path = "./data/derived/snp_qc/imp_output/")
+gprobs_gz <- list.files(path = "./data/derived/maizego/snp_qc/imp_output/")
 gprobs_gz <- gprobs_gz[grepl(pattern = "gprobs", x = gprobs_gz)]
 
 # Unzip all files with genotype probabilities.
 for (i in gprobs_gz) {
     
     system(paste("gzip -d -f", 
-                 paste0("./data/derived/snp_qc/imp_output/", i)))
+                 paste0("./data/derived/maizego/snp_qc/imp_output/", i)))
 }
 
 # Select all unzipped files containing genotype probabilities.
-gprobs_unz <- list.files(path = "./data/derived/snp_qc/imp_output/")
+gprobs_unz <- list.files(path = "./data/derived/maizego/snp_qc/imp_output/")
 gprobs_unz <- gprobs_unz[grepl(pattern = "gprobs", x = gprobs_unz)]
 gprobs_unz <- gprobs_unz[!grepl(pattern = "gz", x = gprobs_unz)]
 
 mclapply(seq_along(gprobs_unz), FUN = function(iter) {
     i <- gprobs_unz[iter]
     # Specify 'check.names= FALSE' to allow duplicate genotype IDs.
-    gprob <- read.table(paste0("./data/derived/snp_qc/imp_output/", i),
+    gprob <- read.table(paste0("./data/derived/maizego/snp_qc/imp_output/", i),
                         check.names = FALSE, header = TRUE, row.names = 1)
     
     ### Allele dosage computation.
@@ -207,7 +207,7 @@ mclapply(seq_along(gprobs_unz), FUN = function(iter) {
     outname <- gsub(pattern = "out.", replacement = "", x = outname)
     outname <- paste0("homoz.", outname)
     write.table(x = dos_mat, 
-                file = paste0("./data/derived/snp_qc/imp_output/",
+                file = paste0("./data/derived/maizego/snp_qc/imp_output/",
                               "homozygous/", outname))
 }, mc.preschedule = FALSE, mc.cores = use_cores)
 
@@ -216,7 +216,7 @@ mclapply(seq_along(gprobs_unz), FUN = function(iter) {
 chromosome <- seq_len(10)
 combi_list <- list()
 for (i in chromosome) {
-    imp_df <- read.table(file = paste0("./data/derived/snp_qc/", 
+    imp_df <- read.table(file = paste0("./data/derived/maizego/snp_qc/", 
                                        "imp_output/homozygous/homoz.chr", i),
                          stringsAsFactors = FALSE, header = TRUE)
     combi_list[[i]] <- imp_df

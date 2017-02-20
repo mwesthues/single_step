@@ -5,6 +5,7 @@ pacman::p_load("data.table", "parallel")
 pacman::p_load_gh("mwesthues/sspredr")
 
 # MARKER MATRIX PREPARATION -----------------------------------------------
+# MARKER MATRIX PREPARATION -----------------------------------------------
 # Load data that connect GTP_IDs to pool identifiers (i.e. Dent or Flint)
 smp_conv <- fread("./data/input/tGTP.txt", sep = "\t")
 id_gtp <- smp_conv[, .(id_GTP, pool_2), 
@@ -13,15 +14,15 @@ id_gtp[, id_GTP := as.character(id_GTP), ]
 
 # Load data frame with meta information on marker names and their positions in 
 # the genome.
-map <- fread("./data/raw/marker_map.txt", sep = "\t")
-map <- map[complete.cases(map), ]
-map <- map[map$chromosome != 0, ]
-map_marker_names <- as.character(map[["markername"]])
+geno_map <- fread("./data/raw/marker_map.txt", sep = "\t")
+geno_map <- geno_map[complete.cases(geno_map), ]
+geno_map <- geno_map[geno_map$chromosome != 0, ]
+map_marker_names <- as.character(geno_map[["markername"]])
 map_marker_names <- gsub(pattern = "[.]", replacement = "_",
                          x = map_marker_names)
 map_marker_names <- gsub(pattern = "[-]", replacement = "_", 
                          x = map_marker_names)
-map[, markername := map_marker_names]
+geno_map[, markername := map_marker_names]
 
 
 # Load the marker data.
@@ -54,7 +55,7 @@ marker_origin_excl <- NULL
 callfreq <- 0.95 # remove if callfreq <= value
 rating <- 3
 smp_callrate <- 0
-maf <- 0.025 # remove if maf <= value
+maf <- 0.05 # remove if maf <= value
 snp_het <- 0.05 # remove if snp_het > 0.05
 
 
@@ -106,66 +107,45 @@ init_markmat <- t(init_markmat)
 
 # Keep only markers for which there are information in the map object.
 init_markmat <- init_markmat[, intersect(colnames(init_markmat), 
-                                         map[["markername"]])]
-init_markmat <- init_markmat[, match(map$markername, colnames(init_markmat))]
-stopifnot(identical(colnames(init_markmat), map$markername))
+                                         geno_map[["markername"]])]
+init_markmat <- init_markmat[, match(geno_map$markername,
+                                     colnames(init_markmat))]
+stopifnot(identical(colnames(init_markmat), geno_map$markername))
 
+
+############################## SNP QUALITY CHECKS ############################
 # Mutual
-call_nms <- compute_cf(x = init_markmat, output = "markerNames",
-                       callThresh = callfreq)
-het_nms <- compute_het(x = init_markmat, output = "markerNames",
-                       hetThresh = snp_het)
+call_nms <- compute_cf(x = init_markmat, output = "marker_names",
+                       call_threshold = callfreq, missing_value = "??")
+het_nms <- compute_het(x = init_markmat, output = "marker_names",
+                       het_threshold = snp_het, na_coding = "??")
 init_markmat <- init_markmat[, match(intersect(call_nms, het_nms), 
                                      colnames(init_markmat))]
-poly_nms <- compute_maf(x = init_markmat, output = "markerNames", 
-                        mafThresh = maf)
+poly_nms <- compute_maf(x = init_markmat, output = "marker_names", 
+                        maf_threshold = maf, missing_value = "??")
 poly_mat <- init_markmat[, match(poly_nms, colnames(init_markmat))]
 # Get mutual major and minor genotypes for each locus in the combined Dent
 # and Flint data.
-geno_lst <- compute_maf(x = poly_mat, output = "genoList", mafThresh = maf)
+geno_lst <- compute_maf(x = poly_mat, output = "geno_list", 
+                        missing_value = "??", maf_threshold = maf)
 # Recode genotypes.
 combi_marker <- recode_snps(x = poly_mat, 
-                            major = geno_lst[["major_allele"]],
-                            minor = geno_lst[["minor_allele"]],
+                            major = geno_lst[["major_genotype"]],
+                            minor = geno_lst[["minor_genotype"]],
                             major_coding = "XX", minor_coding = "YY",
-                            het_coding = "XY", na_coding = "??")
+                            het_coding = "XY", missing_value = "??", 
+                            na_coding = "NN")
 
-geno_map <- copy(map[i = match(colnames(combi_marker), map$markername)])
-
-### 2) Preparation of marker data
-# Initial marker matrix for heterotic groups.
-# Sort matrices and check congruency.
-dta_raw <- t(combi_marker)
-save(list = c("geno_map", "dta_raw", "maf"),
-     file = "./51_SNP_qc/_results/snp_qc_output.RData")
-
-
-# ---
-# Store SNP information
-smry <- data.frame(Statistic = c("raw_length",
-                                 "raw_call_length", 
-                                 "raw_het_length",
-                                 "raw_callhet_length",
-                                 "raw_maf_length",
-                                 "imp_maf_dent_length",
-                                 "imp_maf_flint_length",
-                                 "imp_maf_length",
-                                 "imp_equi_length"),
-                   Length = c(ncol(init_markmat),
-                              length(call_names),
-                              length(het_names),
-                              length(call_het),
-                              length(poly_names),
-                              0, 0, 0, 0))
-saveRDS(smry, "./54_SNP_Stats/_results/SNP_Summary.RDS", compress = FALSE)
-
+geno_map <- copy(geno_map[i = match(colnames(combi_marker),
+                                    geno_map$markername)])
+geno_map[, `:=`(markerindex = NULL), ]
+setnames(geno_map, old = c("chromosome", "position"), new = c("chr", "pos"))
+setkey(geno_map, chr, pos)
 
 ################################ BEAGLE INPUT FILES ###########################
 chromosome <- seq_len(10)
-setkey(geno_map, chromosome, position)
+dta_raw <- t(combi_marker)
 dta_raw <- dta_raw[geno_map[["markername"]], ]    
-setnames(geno_map, old = c("chromosome", "position"), 
-         new = c("chr", "pos"))
 
 for (i in chromosome) {
     
@@ -198,10 +178,9 @@ for (i in chromosome) {
     # Produce the final Beagle input file.
     y2 <- cbind(I, mk_names, y1)        
     upd_map <- copy(map_chr)
-    map_chr[, c("alleleA", "alleleB", "chr", "markerindex", "markername") := 
+    map_chr[, c("alleleA", "alleleB", "chr", "markername") := 
                 list(rep("X", times = nrow(map_chr)),
                      rep("Y", times = nrow(map_chr)),
-                     NULL,
                      NULL,
                      NULL)]
     map_chr[, pos := as.character(pos)]
@@ -213,14 +192,14 @@ for (i in chromosome) {
     if (identical(rownames(map_chr_mat), as.vector(y2[-1, "mk_names"])))
     {        
         # Marker file
-        write.table(y2, paste0("./data/derived/snp_qc/imp_input/", "chr", 
+        write.table(y2, paste0("./data/derived/uhoh/snp_qc/imp_input/", "chr", 
                                get("i"), ".txt"),
                     sep = "\t", quote = FALSE, col.names = FALSE, 
                     row.names = FALSE)
         
         # Map file
         write.table(map_chr_mat, 
-                    paste0("./data/derived/snp_qc/imp_input/map_chr",
+                    paste0("./data/derived/uhoh/snp_qc/imp_input/map_chr",
                            get("i"), ".txt"), sep = "\t", quote = FALSE,
                     col.names = FALSE, row.names = TRUE)
     } else{stop("Mismatched SNP names")}
@@ -229,13 +208,14 @@ for (i in chromosome) {
 
 ############################## BEAGLE OUTPUT FILES ############################
 # Extract the names of all Beagle input files.
-all_files <- list.files(path = "./data/derived/snp_qc/imp_input")
-chr <- paste0("chr", seq_len(10))
+all_files <- list.files(path = "./data/derived/uhoh/snp_qc/imp_input")
+chr_length <- 10
+use_cores <- 4L
 
 # Make sure to adjust the 'Xmx...m' number, depending on available memory.
 # Create Beagle output.
-for (i in chr) {
-    
+mclapply(seq_len(chr_length), FUN = function(iter) {
+    i <- paste0("chr", iter)
     chr_files <- all_files[!grepl(pattern = "map", x = all_files)]
     map_files <- all_files[grepl(pattern = "map", x = all_files)]
     
@@ -250,41 +230,41 @@ for (i in chr) {
                           FUN = grep, fixed = TRUE, chr_files)
     map_matches <- sapply(X = get("i"),
                           FUN = grep, map_files)
-    system(paste("java -Xmx15000m -jar", paste0(getwd(),
+    system(paste("java -Xmx5000m -jar", paste0(getwd(),
                  "/software/beagle.jar"), 
                  paste0("unphased=", getwd(),
-                        "/data/derived/snp_qc/imp_input/",
+                        "/data/derived/uhoh/snp_qc/imp_input/",
                         chr_files[chr_matches]),
                  paste0("markers=", getwd(),
-                        "/data/derived/snp_qc/imp_input/",
+                        "/data/derived/uhoh/snp_qc/imp_input/",
                         map_files[map_matches]),
-                 "missing=?", 
+                 "missing=N", 
                  paste0("out=", getwd(),
-                        "/data/derived/snp_qc/imp_output/out"),
+                        "/data/derived/uhoh/snp_qc/imp_output/out"),
                  "niterations=25 nsamples=20"))
-}
+}, mc.preschedule = FALSE, mc.cores = use_cores)
 
 
 # HOMOZYGOUS BEAGLE OUTPUT ------------------------------------------------
-gprobs_gz <- list.files(path = "./data/derived/snp_qc/imp_output/")
+gprobs_gz <- list.files(path = "./data/derived/uhoh/snp_qc/imp_output/")
 gprobs_gz <- gprobs_gz[grepl(pattern = "gprobs", x = gprobs_gz)]
 
 # Unzip all files with genotype probabilities.
 for (i in gprobs_gz) {
     
     system(paste("gzip -d -f", 
-                 paste0("./data/derived/snp_qc/imp_output/", i)))
+                 paste0("./data/derived/uhoh/snp_qc/imp_output/", i)))
 }
 
 # Select all unzipped files containing genotype probabilities.
-gprobs_unz <- list.files(path = "./data/derived/snp_qc/imp_output/")
+gprobs_unz <- list.files(path = "./data/derived/uhoh/snp_qc/imp_output/")
 gprobs_unz <- gprobs_unz[grepl(pattern = "gprobs", x = gprobs_unz)]
 gprobs_unz <- gprobs_unz[!grepl(pattern = "gz", x = gprobs_unz)]
 
-for (i in gprobs_unz) {
-
+mclapply(seq_along(gprobs_unz), FUN = function(iter) {
+    i <- gprobs_unz[iter]
     # Specify 'check.names= FALSE' to allow duplicate genotype IDs.
-    gprob <- read.table(paste0("./data/derived/snp_qc/imp_output/", i),
+    gprob <- read.table(paste0("./data/derived/uhoh/snp_qc/imp_output/", i),
                         check.names = FALSE, header = TRUE, row.names = 1)
     
     ### Allele dosage computation.
@@ -319,84 +299,30 @@ for (i in gprobs_unz) {
     outname <- gsub(pattern = "out.", replacement = "", x = outname)
     outname <- paste0("homoz.", outname)
     write.table(x = dos_mat, 
-                file = paste0("./data/derived/snp_qc/imp_output/",
+                file = paste0("./data/derived/uhoh/snp_qc/imp_output/",
                               "homozygous/", outname))
-}
+}, mc.preschedule = FALSE, mc.cores = use_cores)
 
 
 # Concatenate chromosomes from Beagle output.
 chromosome <- seq_len(10)
 combi_list <- list()
 for (i in chromosome) {
-    imp_df <- read.table(file = paste0("./data/derived/snp_qc/", 
+    imp_df <- read.table(file = paste0("./data/derived/uhoh/snp_qc/", 
                                        "imp_output/homozygous/homoz.chr", i),
                          stringsAsFactors = FALSE, header = TRUE)
     combi_list[[i]] <- imp_df
 }
 combi_mat <- as.matrix(do.call(rbind, combi_list))
-colnames(combi_mat) <- gsub(pattern = "X", replacement = "", 
-                            x = colnames(combi_mat))
 stopifnot(all(combi_mat != "??"))
 combi_mat <- t(combi_mat)
-# Preparation for 'maf.fun' function.
-storage.mode(combi_mat) <- "character"
-combi_mat[combi_mat == "1"] <- "AA"
-combi_mat[combi_mat == "0"] <- "BB"
-stopifnot(all(unique(as.vector(combi_mat)) %in% c("AA", "BB")))
+# Remove all marker loci that are in perfect linkage disequilibrium. Having
+# "copies" of any marker locus will only add noise to our prediction models.
+combi_mat <- unique(combi_mat, MARGIN = 2)
 
-
-# Get the mutual reference allele for each marker across both populations.
-ref_alleles <- compute_maf(x = combi_mat, output = "genoList")
-ref_names <- compute_maf(x = combi_mat, output = "markerNames")
-ref_alleles <- lapply(X = ref_alleles, FUN = function(x){
-    names(x) <- ref_names
-    x
-})
-
-save(list = c("combi_mat", "ref_alleles"), 
-     file = "./data/processed/imputed_snps.RData")
-
-
-############################## MAF #####################################
-# Common genotypes
-genos <- readRDS("./data/processed/common_genotypes.RDS")
-dent <- genos$Dent$snp
-flint <- genos$Flint$snp
-
-dent_polynm <- compute_maf(x = combi_mat[match(dent, rownames(combi_mat)), ],
-                           mafThresh = maf, output = "markerNames")
-d_alph <- combi_mat[match(dent, rownames(combi_mat)),
-                    match(dent_polynm, colnames(combi_mat))]
-d_major <- ref_alleles[["major_allele"]]
-d_major <- d_major[match(colnames(d_alph), names(d_major))]
-d_minor <- ref_alleles[["minor_allele"]]
-d_minor <- d_minor[match(colnames(d_alph), names(d_minor))]
-d_num <- recode_snps(x = d_alph, 
-                     major = d_major, 
-                     minor = d_minor, 
-                     major_coding = 2,
-                     minor_coding = 0, 
-                     het_coding = 1,
-                     na_coding = 999)
-
-# Flint preparation.
-flint_polynm <- compute_maf(x = combi_mat[match(flint, rownames(combi_mat)), ],
-                            mafThresh = maf, output = "markerNames")
-f_alph <- combi_mat[match(flint, rownames(combi_mat)),
-                    match(flint_polynm, colnames(combi_mat))]
-f_major <- ref_alleles[["major_allele"]]
-f_major <- f_major[match(colnames(f_alph), names(f_major))]
-f_minor <- ref_alleles[["minor_allele"]]
-f_minor <- f_minor[match(colnames(f_alph), names(f_minor))]
-f_num <- recode_snps(x = f_alph, 
-                     major = f_major, 
-                     minor = f_minor, 
-                     major_coding = 2,
-                     minor_coding = 0, 
-                     het_coding = 1,
-                     na_coding = 999)
-
-# Recode comb_mat to "2" (major) and "0" (minor), respectively.
-snp_mat <- rbind(d_num[, intersect(colnames(d_num), colnames(f_num))],
-                 f_num[, intersect(colnames(d_num), colnames(f_num))])
-saveRDS(snp_mat, file = "./data/processed/snp_mat.RDS")
+# Remove all markers, which might violate the minor allele frequency threshold 
+# after imputing missing values.
+imp_poly_nms <- compute_maf(x = combi_mat, output = "marker_names", 
+                            maf_threshold = maf, missing_value = NA_real_)
+snp <- combi_mat[, match(imp_poly_nms, colnames(combi_mat))]
+saveRDS(snp, file = "./data/processed/uhoh/imputed_snp_mat.RDS")
