@@ -80,9 +80,6 @@ core_fraction <- as.character(Sys.getenv("CORE_FRACTION"))
 runs <- as.character(Sys.getenv("RUNS"))
 temp <- paste0(as.character(Sys.getenv("TMP")), "/")
 
-if (isTRUE(data_type == "Hybrid")) {
-  hybrid <- TRUE
-} else hybrid <- FALSE
 
 
 
@@ -96,7 +93,16 @@ pred_sets <- pred_combi %>%
   strsplit(split = "_") %>%
   flatten_chr()
 
-if (core_fraction == "1.0" && length(pred_sets) > 1) {
+
+## -- INPUT CHECKS AND UPDATES ------------------------------------------
+if (isTRUE(nchar(core_fraction) != 0)) {
+  possible_fractions <- seq(from = 0.1, to = 1, by = 0.1)
+  if (!core_fraction %in% possible_fractions) {
+    stop("CORE_FRACTION must be a decimal number between 0 and 1")
+  }
+}
+
+if (isTRUE(core_fraction == "1.0" && length(pred_sets) > 1)) {
   stop("Imputation not possible if all predictors cover the same genotypes")
 }
 
@@ -104,7 +110,10 @@ if (isTRUE(nchar(core_fraction) != 0 && data_tye == "Hybrid")) {
   stop("Core sampling for hybrids is not yet supported")
 }
   
-  
+if (isTRUE(data_type == "Hybrid")) {
+  hybrid <- TRUE
+} else hybrid <- FALSE
+
 # Combine all input checks in a function so that it would be easily possible to
 # simply push the checks to another script for the sake of readability of this
 # analysis script.
@@ -115,6 +124,9 @@ if (data_type == "Inbred") {
   }
 }
 
+if (!all(pred_sets %in% c("ped", "snp", "mrna"))) {
+  stop("Predictors are unknown")
+}
 
 
 ## -- LOAD PREDICTOR DATA ------------------------------------------------
