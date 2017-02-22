@@ -33,12 +33,12 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
   # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Inbred")
+  Sys.setenv("DATA_TYPE" = "Hybrid")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "100grainweight")
+  Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "30000") 
+  Sys.setenv("ITER" = "3000") 
   # Prediction model in BGLR()
   Sys.setenv("MODEL" = "BRR")
   # Algorithm to generate variance-covariance matrices.
@@ -51,7 +51,7 @@ if (isTRUE(interactive())) {
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "mrna")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_FRACTION" = "0.8")
+  Sys.setenv("CORE_FRACTION" = "")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -85,6 +85,7 @@ if (isTRUE(data_type == "Hybrid")) {
 } else hybrid <- FALSE
 
 
+
 # -- PREDICTOR INPUT SPECIFICATION -------------------------------------
 pred_combi <- list(pred1, pred2) %>%
   keep(nchar(.) != 0) %>%
@@ -95,6 +96,15 @@ pred_sets <- pred_combi %>%
   strsplit(split = "_") %>%
   flatten_chr()
 
+if (core_fraction == "1.0" && length(pred_sets) > 1) {
+  stop("Imputation not possible if all predictors cover the same genotypes")
+}
+
+if (isTRUE(nchar(core_fraction) != 0 && data_tye == "Hybrid")) {
+  stop("Core sampling for hybrids is not yet supported")
+}
+  
+  
 # Combine all input checks in a function so that it would be easily possible to
 # simply push the checks to another script for the sake of readability of this
 # analysis script.
@@ -152,7 +162,7 @@ names(pred_lst) <- pred_lst_names
 
 
 ## -- CORE SET SUBSAMPLING OF SNPS -----------------------------------------
-if (isTRUE(nchar(core_fraction != 0) && data_type == "Inbred")) {
+if (isTRUE(nchar(core_fraction) != 0) && data_type == "Inbred") {
   core_lst <- readRDS("./data/derived/maizego/scenario2_snp_core_list.RDS")
   names(core_lst) <- gsub(names(core_lst), pattern = "selected_fraction_",
                           replacement = "")
@@ -172,13 +182,22 @@ if (isTRUE(nchar(core_fraction != 0) && data_type == "Inbred")) {
     flatten_chr()
 
   # Reduce the predictor data to match the size of the pre-specified core sets.
+  # Ensure that SNP quality checks are applied to the genomic data in order to 
+  # have only polymorphic markers and no markers in perfect LD.
   pred_lst <- pred_lst %>%
     map_at("mrna", .f = function(x) {
       x[rownames(x) %in% core_genotypes, ]
     }) %>%
     map_at("snp", .f = function(x) {
       x[rownames(x) %in% common_genotypes, ]
-    })
+    }) %>%
+    map_at("snp",
+           .f = ~sspredr::ensure_snp_quality(
+             ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
+             any_missing = FALSE, remove_duplicated = TRUE
+             )
+    )
+
 }
 
 
@@ -208,14 +227,23 @@ if (isTRUE(data_type == "Hybrid")) {
     flatten_chr()
   # In the case of hybrid data, we still need to split all predictor matrices
   # into Flint and Dent components first.
+  # 1. map_if
   # In the case of pedigree data, we need to split the data by genotypes in the
   # x- as well as the y-dimension because there are no features, which is
   # different for other predictor matrices.
+  # 2. map_at("snp")
+  # Ensure that SNP quality checks are applied separately to the genomic data 
+  # for each heterotic group in order to have only polymorphic markers and no 
+  # markers in perfect LD.
   pred_lst <- pred_lst %>%
     map_if(.p = names(.) == "ped",
            .f = split_into_hetgroups, y = hybrid_parents, pedigree = TRUE) %>%
     map_if(.p = names(.) != "ped",
-           .f = split_into_hetgroups, y = hybrid_parents, pedigree = FALSE)
+           .f = split_into_hetgroups, y = hybrid_parents, pedigree = FALSE) %>%
+    map_at("snp", .f = ~map(., ~sspredr::ensure_snp_quality(
+      ., callfreq_check = FALSE, maf_check = TRUE,
+      maf_threshold = 0.05, any_missing = FALSE, remove_duplicated = TRUE
+      )))
 
   # Add the names of the parental hybrids to the objects.
   # The procedure is necessary for matching predictor data with agronomic data
@@ -230,8 +258,6 @@ if (isTRUE(data_type == "Hybrid")) {
 }
 
 
-
-
 ## -- AGRONOMIC DATA PREPARATION ------------------------------------------
 # If only one trait was specified, use only that trait, otherwise select all
 # traits.
@@ -241,20 +267,23 @@ if (nchar(traits) == 0 || length(traits) != 1) {
   traits <- traits 
 }
 
-
 # In the case of subsampling based on core samples, we may also have to subset
 # the agronomic data afterwards.
 # Therefore, we need to determine the largest set of genotypes covered by any
 # selected predictor.
-high_coverage_geno_name_id <- pred_lst %>%
-  map(rownames) %>%
-  map(length) %>%
-  flatten_int() %>%
-  which.max()
-pred_genotypes <- pred_lst %>%
-  .[[get("high_coverage_geno_name_id")]]  %>%
-  rownames()
-
+if (isTRUE(data_type == "Inbred")) {
+  high_coverage_geno_name_id <- pred_lst %>%
+    map(rownames) %>%
+    map(length) %>%
+    flatten_int() %>%
+    which.max()
+  pred_genotypes <- pred_lst %>%
+    .[[get("high_coverage_geno_name_id")]]  %>%
+    rownames() 
+  pre_eta[[1]][["geno"]] <- pred_genotypes
+} else if (isTRUE(data_type == "Hybrid")) {
+  pred_genotypes <- hybrid_names
+}
 
 pheno_mat <- pheno %>%
   filter(Trait %in% traits,
