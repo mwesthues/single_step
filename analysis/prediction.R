@@ -46,9 +46,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "mrna")
+  Sys.setenv("PRED1" = "ped")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "")
+  Sys.setenv("PRED2" = "mrna")
   # Fraction of genotypes to be included in the core set.
   Sys.setenv("CORE_FRACTION" = "")
   # Number of genotypes to predict (only for testing!)
@@ -96,7 +96,7 @@ pred_sets <- pred_combi %>%
 ## -- INPUT CHECKS AND UPDATES ------------------------------------------
 if (isTRUE(nchar(core_fraction) != 0)) {
   possible_fractions <- seq(from = 0.1, to = 1, by = 0.1)
-  if (!core_fraction %in% possible_fractions) {
+  if (!as.numeric(core_fraction) %in% possible_fractions) {
     stop("CORE_FRACTION must be a decimal number between 0 and 1")
   }
 }
@@ -167,6 +167,11 @@ pred_lst_names <- named_df %>%
   select(Predictor) %>%
   flatten_chr()
 names(pred_lst) <- pred_lst_names
+
+# Make sure that the predictor matrices are in the intended order, which is
+# crucial for the imputation of the predictor matrix that covers fewer
+# genotypes.
+pred_lst <- pred_lst[match(names(pred_lst), pred_sets)]
 
 
 
