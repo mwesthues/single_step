@@ -32,10 +32,10 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
   # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Hybrid")
+  Sys.setenv("DATA_TYPE" = "Inbred")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "GTM")
+  Sys.setenv("TRAIT" = "cobweight")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "3000") 
   # Prediction model in BGLR()
@@ -46,9 +46,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "ped")
+  Sys.setenv("PRED1" = "snp")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "mrna")
+  Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
   Sys.setenv("CORE_FRACTION" = "")
   # Number of genotypes to predict (only for testing!)
@@ -105,7 +105,9 @@ if (isTRUE(core_fraction == "1.0" && length(pred_sets) > 1)) {
   stop("Imputation not possible if all predictors cover the same genotypes")
 }
 
-if (isTRUE(nchar(core_fraction) != 0 && data_type == "Hybrid")) {
+if (isTRUE(nchar(core_fraction) != 0 &&
+           core_fraction != "1.0" &&
+           data_type == "Hybrid")) {
   stop("Core sampling for hybrids is not yet supported")
 }
   
@@ -239,14 +241,18 @@ pred_genotypes <- pred_lst %>%
 # information on at least one predictor.
 # If we do not do this, the BGLR-input matrices will be augmented to genotypes
 # for which we cannot make predictions and the algorithm will fail.
-covered_genotypes <- pheno %>%
-  separate(Genotype, into = c("Prefix", "Dent", "Flint"), sep = "_") %>%
-  filter(Dent %in% pred_genotypes & Flint %in% pred_genotypes) %>%
-  unite(Hybrid, Dent, Flint, sep = "_") %>%
-  mutate(Hybrid = paste0("DF_", Hybrid)) %>%
-  select(Hybrid) %>%
-  unique() %>%
-  flatten_chr()
+if (isTRUE(data_type == "Hybrid")) {
+  covered_genotypes <- pheno %>%
+    separate(Genotype, into = c("Prefix", "Dent", "Flint"), sep = "_") %>%
+    filter(Dent %in% pred_genotypes & Flint %in% pred_genotypes) %>%
+    unite(Hybrid, Dent, Flint, sep = "_") %>%
+    mutate(Hybrid = paste0("DF_", Hybrid)) %>%
+    select(Hybrid) %>%
+    unique() %>%
+    flatten_chr()
+} else if (isTRUE(data_type == "Inbred")) {
+  covered_genotypes <- pred_genotypes
+}
 
 pheno <- pheno %>%
   filter(Genotype %in% covered_genotypes)
