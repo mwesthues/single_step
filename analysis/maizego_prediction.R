@@ -25,10 +25,10 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
   # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Hybrid")
+  Sys.setenv("DATA_TYPE" = "Inbred")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "")
+  Sys.setenv("TRAIT" = "100grainweight")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "30000") 
   # Prediction model in BGLR()
@@ -43,11 +43,9 @@ if (isTRUE(interactive())) {
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "mrna")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_FRACTION" = "")
+  Sys.setenv("CORE_FRACTION" = "0.8")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
-  # Prediction scenario (1, 2 or 3)
-  Sys.setenv("SCENARIO" = "1")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }
@@ -70,9 +68,8 @@ Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
-core_fraction <- as.numeric(Sys.getenv("CORE_FRACTION"))
+core_fraction <- as.character(Sys.getenv("CORE_FRACTION"))
 runs <- as.character(Sys.getenv("RUNS"))
-scenario <- as.integer(Sys.getenv("SCENARIO"))
 temp <- paste0(as.character(Sys.getenv("TMP")), "/")
 
 if (isTRUE(data_type == "Hybrid")) {
@@ -80,7 +77,7 @@ if (isTRUE(data_type == "Hybrid")) {
 } else hybrid <- FALSE
 
 
-# -- INPUT ---------------------------------------------------------------
+# -- PREDICTOR INPUT SPECIFICATION -------------------------------------
 pred_combi <- list(pred1, pred2) %>%
   keep(nchar(.) != 0) %>%
   flatten_chr() %>%
@@ -102,7 +99,7 @@ if (data_type == "Inbred") {
 
 
 
-# -- LOAD PREDICTOR DATA ------------------------------------------------
+## -- LOAD PREDICTOR DATA ------------------------------------------------
 if (data_type == "Inbred") {
   snp_path <- "./data/processed/maizego/imputed_snp_mat.RDS"
   agro_path <- "./data/derived/maizego/tst_pheno_tibble.RDS"
@@ -141,6 +138,42 @@ pred_lst_names <- named_df %>%
   select(Predictor) %>%
   flatten_chr()
 names(pred_lst) <- pred_lst_names
+
+
+
+
+
+## -- CORE SET SUBSAMPLING OF SNPS -----------------------------------------
+if (isTRUE(nchar(core_fraction != 0) && data_type == "Inbred")) {
+  core_lst <- readRDS("./data/derived/maizego/scenario2_snp_core_list.RDS")
+  names(core_lst) <- gsub(names(core_lst), pattern = "selected_fraction_",
+                          replacement = "")
+
+  # Get the core set of genotypes that uniformly cover the genetic target space
+  # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
+  core_genotypes <- core_lst %>%
+    keep(names(.) == core_fraction) %>%
+    map("sel") %>%
+    flatten_chr()
+
+  # Extract the intersect between genotypes that have data for genomic as well
+  # as transcriptomic features.
+  common_genotypes <- core_lst %>%
+    keep(names(.) == "1.0") %>%
+    map("sel") %>%
+    flatten_chr()
+
+  # Reduce the predictor data to match the size of the pre-specified core sets.
+  pred_lst <- pred_lst %>%
+    map_at("mrna", .f = function(x) {
+      x[rownames(x) %in% core_genotypes, ]
+    }) %>%
+    map_at("snp", .f = function(x) {
+      x[rownames(x) %in% common_genotypes, ]
+    })
+}
+
+
 
 
 ## -- PREDICTOR TRANSFORMATION FOR HYBRID DATA ---------------------------
@@ -188,25 +221,42 @@ if (isTRUE(data_type == "Hybrid")) {
   pre_eta <- list(Inbred = pred_lst)
 }
 
-## -- ETA PREPARATION -----------------------------------------------------
+
 
 
 ## -- AGRONOMIC DATA PREPARATION ------------------------------------------
 # If only one trait was specified, use only that trait, otherwise select all
 # traits.
-if (nchar(traits) == 0 || length(traits) != 0) {
+if (nchar(traits) == 0 || length(traits) != 1) {
   traits <- pheno %>% select(Trait) %>% flatten_chr() %>% unique()
 } else {
   traits <- traits 
 }
 
+
+# In the case of subsampling based on core samples, we may also have to subset
+# the agronomic data afterwards.
+# Therefore, we need to determine the largest set of genotypes covered by any
+# selected predictor.
+high_coverage_geno_name_id <- pred_lst %>%
+  map(rownames) %>%
+  map(length) %>%
+  flatten_int() %>%
+  which.max()
+pred_genotypes <- pred_lst %>%
+  .[[get("high_coverage_geno_name_id")]]  %>%
+  rownames()
+
+
 pheno_mat <- pheno %>%
-  filter(Trait %in% traits) %>%
+  filter(Trait %in% traits,
+         Genotype %in% pred_genotypes) %>%
   spread(key = Trait, value = Value) %>%
   as.data.frame() %>%
   remove_rownames() %>%
   column_to_rownames(var = "Genotype") %>%
   as.matrix()
+
 
 
 
@@ -281,7 +331,6 @@ if (isTRUE(data_type == "Hybrid")) {
 
 
 
-
 ## -- PREDICTION -----------------------------------------------------------
 # Determine how much time (hh:mm:ss format) has elapsed since script initiation.
 get_elapsed_time <- function(start_time, tz = "CEST") {
@@ -344,7 +393,7 @@ res <- rbindlist(yhat_lst)
 
 # If not all three predictors were used, declare the missing ones as "none" and
 # add them, which will facilitate further data analyses.
-max_pred_number <- 3L
+max_pred_number <- 2L
 pred_nms <- c(pred_sets,
               rep("none", times = max_pred_number - length(pred_sets)))
 res <- res %>%
@@ -352,10 +401,10 @@ res <- res %>%
          Dent = Mother,
          Flint = Father) %>%
   mutate(CV = "LOOCV",
+         Data_Type = data_type,
          Pred1 = pred_nms[1],
          Pred2 = pred_nms[2],
-         Pred3 = pred_nms[3],
-         Replication = replication,
+         Core_Fraction = core_fraction,
          Job_ID = job_id,
          Runs = runs,
          Elapsed_Time = get_elapsed_time(start_time),
@@ -363,15 +412,16 @@ res <- res %>%
          Cores = use_cores) %>%
   as.data.table()
 
-log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Pred3, Replication, 
-                           Elapsed_Time, Iter, CV, Start_Time, Runs, Cores), ])
+log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Data_Type, 
+                           Core_Fraction, Elapsed_Time, Iter, CV, Start_Time, 
+                           Runs, Cores), ])
 
 # Reduce the size of the prediction object to the minimum possible size.
 res[, `:=` (Iter = NULL, 
             Pred1 = NULL,
             Pred2 = NULL,
-            Pred3 = NULL, 
-            Replication = NULL,
+            Data_Type = NULL,
+            Core_Fraction = NULL,
             CV = NULL,
             Dent = NULL,
             Flint = NULL,
@@ -388,7 +438,7 @@ saveRDS(res,
         compress = FALSE)
                      
 # Log file
-log_location <- "./data/derived/repeated_snp77_prediction_log.txt"
+log_location <- "./data/derived/uhoh_maizego_prediction_log.txt"
 write.table(log_file,
             file = log_location,
             sep = "\t", row.names = FALSE,

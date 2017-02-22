@@ -116,21 +116,13 @@ covered by mRNA data.
 [maizego_mrna_preprocessing.R](analysis/maizego_mrna_preprocessing.R)
 
 
-
-
-
 Create 'predictor_data/' directory where, separately for 'maizego' and 'uhoh',
 predictor data for the predictions are stored.
 
 
-# Predictions
-## UHOH (Hybrids)
-## Scenario 1
-## Scenario 2
-## Scenario 3
 
-## Yan (Inbreds)
-## Scenario 1
-## Scenario 2
-## Scenario 3
+
+# Predictions
+
+[maizego_prediction.R](analysis/maizego_prediction.R)
 

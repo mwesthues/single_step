@@ -32,4 +32,10 @@ core_lst <- core_seq %>%
            size = .)
   )
 names(core_lst) <- paste0("selected_fraction_", core_seq)
+
+# Add the full set of genotypes that are covered by mRNA data to the list for 
+# the equivalent of a "1.0" scenario to exist.
+# This is of interest because it simplifies the prediction script.
+core_lst[["selected_fraction_1.0"]][["sel"]] <- common_genotypes
+core_lst[["selected_fraction_1.0"]][["EN"]][["MR"]] <- NA_real_
 saveRDS(core_lst, "./data/derived/maizego/scenario2_snp_core_list.RDS")
