@@ -105,7 +105,7 @@ if (isTRUE(core_fraction == "1.0" && length(pred_sets) > 1)) {
   stop("Imputation not possible if all predictors cover the same genotypes")
 }
 
-if (isTRUE(nchar(core_fraction) != 0 && data_tye == "Hybrid")) {
+if (isTRUE(nchar(core_fraction) != 0 && data_type == "Hybrid")) {
   stop("Core sampling for hybrids is not yet supported")
 }
   
