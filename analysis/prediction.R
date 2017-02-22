@@ -32,10 +32,10 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
   # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Inbred")
+  Sys.setenv("DATA_TYPE" = "Hybrid")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "cobweight")
+  Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "3000") 
   # Prediction model in BGLR()
@@ -46,9 +46,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "snp")
+  Sys.setenv("PRED1" = "ped")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "")
+  Sys.setenv("PRED2" = "snp")
   # Fraction of genotypes to be included in the core set.
   Sys.setenv("CORE_FRACTION" = "")
   # Number of genotypes to predict (only for testing!)
@@ -169,6 +169,21 @@ pred_lst_names <- named_df %>%
   select(Predictor) %>%
   flatten_chr()
 names(pred_lst) <- pred_lst_names
+
+# If we want to evaluate the predictive ability of genomic data that are being
+# imputed via pedigree data, we reduce the set of genotypes covered by SNP data
+# to the set of genotypes covered by mrna data. 
+# This way, we have a common reference (set of genotypes covered by mrna data)
+# for all comparisons.
+if (isTRUE(data_type == "Hybrid" &&
+           all(pred_sets %in% c("ped", "snp")))) {
+  mrna_genotypes <- readRDS(mrna_path) %>%
+    rownames()
+  pred_lst <- pred_lst %>%
+    map_at("snp", .f = function(x) {
+      x[match(mrna_genotypes, rownames(x)), ]
+    })
+}
 
 # Make sure that the predictor matrices are in the intended order, which is
 # crucial for the imputation of the predictor matrix that covers fewer
