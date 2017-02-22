@@ -11,9 +11,8 @@
 #
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
-pacman::p_load("BGLR","data.table", "parallel", "magrittr", "dplyr", "tidyr",
-               "purrr", "testthat", "methods", "tibble", "ggplot2", "stringr",
-               "stringi", "lubridate", "readr")
+pacman::p_load("BGLR","data.table", "parallel", "magrittr", "dplyr", "dtplyr",
+               "tidyr", "purrr", "methods", "tibble", "lubridate")
 devtools::install_github("mwesthues/sspredr")
 pacman::p_load_gh("mwesthues/sspredr")
 
@@ -47,9 +46,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "snp")
+  Sys.setenv("PRED1" = "mrna")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "mrna")
+  Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
   Sys.setenv("CORE_FRACTION" = "")
   # Number of genotypes to predict (only for testing!)
@@ -222,6 +221,32 @@ pheno <- named_df %>%
   flatten_chr() %>%
   readRDS()
 
+high_coverage_geno_name_id <- pred_lst %>%
+  map(rownames) %>%
+  map(length) %>%
+  flatten_int() %>%
+  which.max()
+pred_genotypes <- pred_lst %>%
+  .[[get("high_coverage_geno_name_id")]]  %>%
+  rownames() 
+
+# Get the names of genotypes for which there are (parental) inbred lines with 
+# information on at least one predictor.
+# If we do not do this, the BGLR-input matrices will be augmented to genotypes
+# for which we cannot make predictions and the algorithm will fail.
+covered_genotypes <- pheno %>%
+  separate(Genotype, into = c("Prefix", "Dent", "Flint"), sep = "_") %>%
+  filter(Dent %in% pred_genotypes & Flint %in% pred_genotypes) %>%
+  unite(Hybrid, Dent, Flint, sep = "_") %>%
+  mutate(Hybrid = paste0("DF_", Hybrid)) %>%
+  select(Hybrid) %>%
+  unique() %>%
+  flatten_chr()
+
+pheno <- pheno %>%
+  filter(Genotype %in% covered_genotypes)
+
+
 
 if (isTRUE(data_type == "Hybrid")) {
   hybrid_parents <- pheno %>%
@@ -284,14 +309,6 @@ if (nchar(traits) == 0 || length(traits) != 1) {
 # Therefore, we need to determine the largest set of genotypes covered by any
 # selected predictor.
 if (isTRUE(data_type == "Inbred")) {
-  high_coverage_geno_name_id <- pred_lst %>%
-    map(rownames) %>%
-    map(length) %>%
-    flatten_int() %>%
-    which.max()
-  pred_genotypes <- pred_lst %>%
-    .[[get("high_coverage_geno_name_id")]]  %>%
-    rownames() 
   pre_eta[[1]][["geno"]] <- pred_genotypes
 } else if (isTRUE(data_type == "Hybrid")) {
   pred_genotypes <- hybrid_names
