@@ -28,6 +28,9 @@
 # Write standard output (o) and errors (e) to the same file
 #MOAB -j oe
 #
+# Use either 'Hybrid' (UHOH data) or 'Inbred' (Yan-lab data)
+#MOAB -v DATA_TYPE=
+#
 #MOAB -v TRAIT=
 #
 #MOAB -v ITER=30000
@@ -40,13 +43,14 @@
 #
 #MOAB -v PRIOR_PI_COUNT=10
 #
-#MOAB -v TRANSFORMATION=
-#
-#MOAB -v PRED1=ped100
+# Predictor: 'ped', 'snp' or 'mrna'
+#MOAB -v PRED1=
 #
 #MOAB -v PRED2=
 #
-#MOAB -v PRED3=
+# Specify the core set set size, as a fraction of genotypes covered by mrna
+# data
+#MOAB -v CORE_FRACTION=
 #
 #MOAB -v RUNS=
 #
@@ -64,23 +68,23 @@ echo "Number of cores allocated to job:     $MOAB_PROCCOUNT"
 module load math/R/3.3.1
 
 # Echo input variables
-echo "Trait=${TRAIT}\
+echo "Data_Type=${DATA_TYPE}\
+      Trait=${TRAIT}\
       Iter=${ITER}\
       Model=${MODEL}\
       VCOV=${VCOV}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
-      Transformation=${TRANSFORMATION}\
       Pred1=${PRED1}\
       Pred2=${PRED2}\
-      Pred3=${PRED3}\
+      Core_Fraction=${CORE_FRACTION}\
       Runs=${RUNS}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/prediction.R\
-           ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
-           ${PRIOR_PI_COUNT} ${TRANSFORMATION} ${PRED1} ${PRED2} ${PRED3}\
+           ${DATA_TYPE} ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
+           ${PRIOR_PI_COUNT} ${PRED1} ${PRED2} ${CORE_FRACTION}\
            ${RUNS}"
 
 # Start program
