@@ -124,5 +124,5 @@ predictor data for the predictions are stored.
 
 # Predictions
 
-[maizego_prediction.R](analysis/maizego_prediction.R)
+[prediction.R](analysis/prediction.R)
 
