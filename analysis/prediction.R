@@ -46,9 +46,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "ped")
+  Sys.setenv("PRED1" = "snp")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "snp")
+  Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
   Sys.setenv("CORE_FRACTION" = "")
   # Number of genotypes to predict (only for testing!)
@@ -176,7 +176,7 @@ names(pred_lst) <- pred_lst_names
 # This way, we have a common reference (set of genotypes covered by mrna data)
 # for all comparisons.
 if (isTRUE(data_type == "Hybrid" &&
-           all(pred_sets %in% c("ped", "snp")))) {
+           all(c("ped", "snp") %in% pred_sets))) {
   mrna_genotypes <- readRDS(mrna_path) %>%
     rownames()
   pred_lst <- pred_lst %>%
@@ -444,7 +444,7 @@ if (nchar(runs) != 0) {
     as.integer() %>%
     invoke(.f = seq, .x = ., by = 1) 
 } else {
-  run_length <- seq_len(nrow(pheno))
+  run_length <- seq_len(nrow(pheno_mat))
 }
 param_df <- expand.grid(Trait = traits,
                         Iter = iter,
