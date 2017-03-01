@@ -50,7 +50,7 @@ if (isTRUE(interactive())) {
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_FRACTION" = "")
+  Sys.setenv("CORE_FRACTION" = "0.7")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -96,7 +96,7 @@ pred_sets <- pred_combi %>%
 ## -- INPUT CHECKS AND UPDATES ------------------------------------------
 if (isTRUE(nchar(core_fraction) != 0)) {
   possible_fractions <- seq(from = 0.1, to = 1, by = 0.1)
-  if (!as.numeric(core_fraction) %in% possible_fractions) {
+  if (!core_fraction %in% possible_fractions) {
     stop("CORE_FRACTION must be a decimal number between 0 and 1")
   }
 }
