@@ -32,10 +32,10 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
   # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Hybrid")
+  Sys.setenv("DATA_TYPE" = "Inbred")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "GTM")
+  Sys.setenv("TRAIT" = "100grainweight")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "3000") 
   # Prediction model in BGLR()
@@ -320,7 +320,6 @@ if (isTRUE(data_type == "Hybrid")) {
   pre_eta <- list(Inbred = pred_lst)
 }
 
-
 ## -- AGRONOMIC DATA PREPARATION ------------------------------------------
 # If only one trait was specified, use only that trait, otherwise select all
 # traits.
@@ -357,21 +356,31 @@ pheno_mat <- pheno %>%
 # call for the set-up of the kernels.
 raw_args <- pre_eta %>%
   map(names) %>%
-  reduce(intersect)
+  reduce(intersect) %>%
+  discard(. == "geno")
 pred_number <- raw_args %>%
   .[grep("ped|snp|mrna", x = .)] %>%
   length()
+
 
 # If all predictors are being used, it is known that pedigree data are involved
 # and no measures need to be taken.
 # If only a subset of predigrees will be used, it needs to be determined
 # whether pedigree data are involved or not, since subsequent functions need to
 # 'know' if the predictor matrices need to be scaled or not.
-if (any(grepl("ped", x = raw_args))) {
+if (all(grepl("ped", x = raw_args))) {
+  pre_eta <- pre_eta %>%
+    map(.f = function(x) {
+      x$as_kernel <- FALSE
+      x$bglr_model <- pred_model
+      x
+  })
+} else if (any(grepl("ped", x = raw_args))) {
   pre_eta <- pre_eta %>%
     map(.f = function(x) {
       x$is_pedigree <- TRUE
       x$bglr_model <- pred_model
+      x$as_kernel <- TRUE
       x
     })
 } else {
@@ -379,6 +388,7 @@ if (any(grepl("ped", x = raw_args))) {
     map(.f = function(x) {
       x$is_pedigree <- FALSE
       x$bglr_model <- pred_model
+      x$as_kernel <- TRUE
       x
     })
 }
