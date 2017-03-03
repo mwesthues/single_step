@@ -1,0 +1,87 @@
+# LOOCV-Prediction
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
+               "stringr", "forcats")
+
+log_path <- "./data/derived/uhoh_maizego_prediction_log.txt"
+prediction_path <- "./data/derived/predictions/"
+log_file <- fread(log_path)
+pred_df <- log_file %>%
+  filter(Runs == "",
+         Data_Type == "Hybrid") %>%
+  select(Job_ID) %>%
+  flatten_chr() %>%
+  map(~readRDS(paste0(prediction_path, ., ".RDS"))) %>%
+  bind_rows(.id = "id") %>%
+  left_join(y = log_file %>% select(Job_ID, Pred1, Pred2), by = "Job_ID") %>%
+  unite(col = Predictor, Pred1, Pred2, sep = "-") %>%
+  filter(Trait != "ADL") %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
+  droplevels() %>%
+  mutate(Trait = fct_recode(Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
+  mutate(Trait = fct_relevel(Trait,
+                             "DMY", "DMC", "FAT", "PRO", "STA", "SUG"),
+         Predictor = as.factor(Predictor)) %>%
+  select(-Job_ID)
+  
+
+
+## Distribution of predicted and observed values
+# Specify a unified predictor order.
+pred_order <- c("mrna-none", "ped-none", "snp-none",
+                "ped-snp", "ped-mrna", "snp-mrna")
+legend_labs <- expression(y, hat(y))
+g1 <- pred_df %>%
+  ggplot(aes(x = y, y = yhat)) +
+  geom_point() +
+  facet_wrap(Predictor ~ Trait, scales = "free") +
+  theme_pander() 
+
+# Number of hybrids per predictor.
+pred_df %>%
+  group_by(Predictor, Trait) %>%
+  count() %>%
+  as.data.frame()
+
+pred_df %>%
+  filter(Predictor == "mrna-none") %>%
+  group_by(Trait) %>%
+  summarize(r = cor(y, yhat))
+
+## Predictive ability for seven agronomic traits (rows) and nine predictor sets 
+# (columns). The predictor sets are split into the categories 'Reduced' 
+# (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids)."
+pred_df %>%
+  group_by(Predictor, Trait) %>%
+  summarize(r = cor(y, yhat)) %>%
+  ungroup() %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
+  ggplot(aes(x = Predictor, y = r)) +
+  geom_bar(stat = "identity", aes(fill = Predictor), color = "black") +
+  geom_text(aes(label = round(r, digits = 3)), vjust = -0.2) +
+  scale_fill_viridis(discrete = TRUE, option = "inferno") +
+  facet_grid(Trait ~ ., space = "free", scales = "free_x") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position = "bottom",
+    legend.key = element_rect(color = "white")
+  ) +
+  guides(fill = guide_legend(nrow = 3,
+                             byrow = TRUE,
+                             keywidth = 0.25,
+                             keyheight = 0.25,
+                             default.unit = "inch",
+                             title.position = "top")
+  ) +
+  ylim(c(0, 1))
+```
+
