@@ -32,10 +32,10 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
   # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Inbred")
+  Sys.setenv("DATA_TYPE" = "Hybrid")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "100grainweight")
+  Sys.setenv("TRAIT" = "GTM")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "3000") 
   # Prediction model in BGLR()
@@ -46,11 +46,11 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "snp")
+  Sys.setenv("PRED1" = "mrna")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_FRACTION" = "1.0")
+  Sys.setenv("CORE_FRACTION" = "")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -135,13 +135,13 @@ if (!all(pred_sets %in% c("ped", "snp", "mrna"))) {
 if (data_type == "Inbred") {
   snp_path <- "./data/processed/maizego/imputed_snp_mat.RDS"
   agro_path <- "./data/derived/maizego/tst_pheno_tibble.RDS"
-  mrna_path <- "./data/derived/maizego/transformed_mrna.RDS"
+  mrna_path <- "./data/derived/maizego/mrna.RDS"
   named_list <- create_named_list(snp_path, agro_path, mrna_path)
 
 } else if (data_type == "Hybrid") {
   snp_path <- "./data/derived/uhoh/snp_matrix.RDS"
   agro_path <- "./data/derived/uhoh/agro_tibble.RDS"
-  mrna_path <- "./data/derived/uhoh/transformed_mrna.RDS"
+  mrna_path <- "./data/derived/uhoh/mrna.RDS"
   ped_path <- "./data/derived/uhoh/pedigree_matrix.RDS"
   named_list <- create_named_list(snp_path, agro_path, mrna_path, ped_path)
 }

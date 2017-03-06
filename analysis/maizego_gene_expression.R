@@ -46,34 +46,12 @@ all_skewness %>%
 # 2.    Box-Cox tranformation
 # 3.    Centering
 # 4.    Scaling
-mrna_mat <- mrna %>% 
+mrna %>% 
   as_data_frame() %>%
   mutate(Gene_ID = as.factor(Gene_ID)) %>%
   spread(key = Gene_ID, value = Expression) %>%
   remove_rownames() %>%
   column_to_rownames(var = "Genotype") %>%
-  as.matrix()
-
-trans_mat <- mrna_mat %>%
-  preProcess(method = c("BoxCox", "center", "scale", "nzv")) %>%
-  predict(., mrna_mat)
-  
-trans_skewness <- trans_mat %>%
-  as_data_frame() %>%
-  (function(x) {
-    x$Genotype <- rownames(trans_mat)
-    x
-  }) %>%
-  gather(key = Gene_ID, value = Expression, -Genotype) %>%
-  mutate(Gene_ID = as.factor(Gene_ID)) %>%
-  group_by(Gene_ID) %>%
-  summarize(Skewness = e1071::skewness(Expression),
-            Skewness = round(Skewness, digits = 2),
-            p_value = compare_skewness(observed = Skewness,
-                                       simulated = random_skewness))
-
-trans_skewness %>%
-  filter(p_value <= 0.05) %>%
-  count()
-  
-saveRDS(trans_mat, "./data/derived/maizego/transformed_mrna.RDS")
+  as.matrix() %>%
+  scale(., center = TRUE, scale = TRUE) %>%
+  saveRDS(., file = "./data/derived/maizego/mrna.RDS")
