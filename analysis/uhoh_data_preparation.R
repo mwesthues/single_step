@@ -30,44 +30,12 @@ mrna_inbreds <- genos %>%
   map("G")
 
 # mRNA
-mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
-mrna <- t(mrna)
-mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
-mrna_df <- mrna %>%
-  as_data_frame() %>%
-  mutate(G = rownames(mrna)) %>%
-  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
-         Group = as.factor(Group)) %>%
-  select(-G)
-
-# Separately for each heterotic group, run a principal component analysis (PCA) 
-# on the "raw" mRNA-BLUEs and return the importance of the first three PCs.
-rm_grp <- function(x) {
-  x$Group <- NULL
-  x
-}
-
-## Data pre-processing
-# Pre-process the data in the following order:
-# 
-# 1.    Near-zero-variance filtering.
-# 2.    Box-Cox tranformation
-# 3.    Centering
-# 4.    Scaling
-mrna_lst <- mrna_df %>% 
-  split(.$Group) %>%
-  map(rm_grp) %>%
-  map(~as.matrix(.))
-
-
-# Data transformation
-trans_mat <- mrna_lst %>%
-  map(preProcess,
-      method = c("BoxCox", "center", "scale", "nzv")) %>%
-  map2(.y = mrna_lst, .f = predict) %>%
-  reduce(rbind)
-rownames(trans_mat) <- rownames(mrna)
-saveRDS(trans_mat, "./data/derived/uhoh/transformed_mrna.RDS")
+readRDS("./data/processed/subset_mrna_blues.RDS") %>%
+  .[["100%"]] %>%
+  t() %>%
+  .[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ] %>%
+  scale(., center = TRUE, scale = TRUE) %>%
+  saveRDS(., file = "./data/derived/uhoh/mrna.RDS")
 
 
 ## -- PEDIGREE DATA -------------------------------------------------------
