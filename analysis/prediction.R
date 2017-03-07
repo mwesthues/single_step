@@ -46,11 +46,11 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "mrna")
+  Sys.setenv("PRED1" = "snp")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_FRACTION" = "")
+  Sys.setenv("CORE_FRACTION" = "1.0")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -177,7 +177,8 @@ names(pred_lst) <- pred_lst_names
 # This way, we have a common reference (set of genotypes covered by mrna data)
 # for all comparisons.
 if (isTRUE(data_type == "Hybrid" &&
-           all(c("ped", "snp") %in% pred_sets))) {
+           all(c("ped", "snp") %in% pred_sets) ||
+           core_fraction == "1.0")) {
   mrna_genotypes <- readRDS(mrna_path) %>%
     rownames()
   pred_lst <- pred_lst %>%
