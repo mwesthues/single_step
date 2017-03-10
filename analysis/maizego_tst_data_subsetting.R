@@ -21,7 +21,8 @@ pheno <- pheno_path %>%
   rename(Genotype = `<Trait>`) %>%
   gather(key = Trait, value = Value, -Genotype) %>%
   filter(Genotype %in% tst_genotypes,
-         Trait %in% c("100grainweight", "cobweight", "Plantheight"))
+         Trait %in% c("100grainweight", "cobweight", "Plantheight", 
+                      "Silkingtime", "Kernelwidth", "Eardiameter"))
 
 
 # Load the gene expression data.

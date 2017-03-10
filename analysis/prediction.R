@@ -46,7 +46,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "snp")
+  Sys.setenv("PRED1" = "ped")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
@@ -184,6 +184,10 @@ if (isTRUE(data_type == "Hybrid" &&
   pred_lst <- pred_lst %>%
     map_at("snp", .f = function(x) {
       x[match(mrna_genotypes, rownames(x)), ]
+    }) %>%
+    map_at("ped", .f = function(x) {
+      x[match(mrna_genotypes, rownames(x)),
+        match(mrna_genotypes, colnames(x))]
     })
 }
 
