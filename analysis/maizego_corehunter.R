@@ -14,16 +14,40 @@ common_genotypes <- readRDS(
 )
 common_genotypes <- common_genotypes %>%
   reduce(intersect)
-snp <- readRDS("./data/processed/maizego/imputed_snp_mat.RDS")
-snp <- snp[rownames(snp) %in% common_genotypes, ]
 
 ## --- Scenario 2 SNP preparation.
 # Explore the kinship matrix.
+snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
+  readRDS() %>%
+  .[rownames(.) %in% common_genotypes, ] %>%
+  sspredr::ensure_snp_quality(
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
+    any_missing = FALSE, remove_duplicated = TRUE
+  )
+
+# Rogers distance.
+build_rogers_dist_matrix <- function(x) {
+  mat <- x %>%
+    poppr::rogers.dist() %>%
+    matrix(., nrow = nrow(x), ncol = nrow(x))
+  diag(mat) <- 0
+  mat[lower.tri(mat)] <- t(mat)[lower.tri(mat)]
+  dimnames(mat) <- rerun(.n = 2, rownames(x))
+  stopifnot(isSymmetric(mat))
+  corehunter::distances(mat)
+}
+rogers_mat <- snp %>%
+  build_rogers_dist_matrix()
+
+# Genotype data.
 geno <- snp %>%
-  genotypes(format = "biparental") %>%
-  coreHunterData(genotypes = .)
-saveRDS(geno, "./data/derived/maizego/scenario2_biparental_genotypes.RDS")
-geno <- readRDS("./data/derived/maizego/scenario2_biparental_genotypes.RDS")
+  genotypes(format = "biparental")
+
+# Corehunter input data.
+geno_dist_data <- coreHunterData(genotypes = geno,
+                                 distances = rogers_mat)
+saveRDS(geno_dist_data, 
+        file = "./data/derived/geno_dist.RDS")
 
 core_seq <- seq(from = 0.1, to = 0.9, by = 0.1)
 core_lst <- core_seq %>%
@@ -39,3 +63,99 @@ names(core_lst) <- paste0("selected_fraction_", core_seq)
 core_lst[["selected_fraction_1.0"]][["sel"]] <- common_genotypes
 core_lst[["selected_fraction_1.0"]][["EN"]][["MR"]] <- NA_real_
 saveRDS(core_lst, "./data/derived/maizego/scenario2_snp_core_list.RDS")
+
+
+
+# EVALUATE CORES ----------------------------------------------------------
+# Get the names of the core members for each core size.
+core_members <- "./data/derived/maizego/scenario2_snp_core_list.RDS" %>%
+  readRDS() %>%
+  map("sel")
+
+# Get the names of the non-core members for each core size.
+core_complement <- core_members %>%
+  map(., .f = setdiff, x = common_genotypes)
+
+# Evaluate the modified rogers distance for each core size, separately for 
+# included and excluded genotypes.
+core_statistics <- list(Members = core_members,
+     Complement = core_complement) %>%
+  at_depth(.depth = 2, .f = corehunter::evaluateCore,
+           data = geno_dist_data,
+           objective = objective(type = "EN", measure = "MR")) %>%
+  map(bind_rows, .id = "Selected_Fraction") %>%
+  bind_rows(.id = "Core_Group") %>%
+  gather(key = Fraction, value = MR, -Core_Group) %>%
+  filter(MR != 1) %>%
+  spread(key = Core_Group, value = MR)
+
+
+# PCA
+write.lfmm(snp, "./data/derived/maizego/common_tst_snp.lfmm")
+snp_pc <- LEA::pca("./data/derived/maizego/common_tst_snp.lfmm", scale = TRUE)
+
+group_membership <- list(Members = core_members,
+     Complement = core_complement) %>%
+  map(stack) %>%
+  bind_rows(.id = "Core_Group") %>%
+  as_data_frame() %>%
+  rename(G = values,
+         Fraction = ind) %>%
+  mutate(Fraction = gsub(pattern = "selected_fraction_", 
+                         replacement = "", 
+                         x = Fraction))
+
+pc_mat <- snp_pc$projections
+rownames(pc_mat) <- rownames(snp)
+colnames(pc_mat) <- paste0("PC_", seq_len(ncol(pc_mat)))
+
+pc_df <- pc_mat %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "G") %>%
+  gather(key = PC, value = Score, -G) %>%
+  as_data_frame() %>%
+  filter(PC %in% paste0("PC_", seq_len(3))) %>%
+  left_join(y = group_membership, by = "G") %>%
+  spread(key = PC, value = Score)
+
+
+pc_df %>%
+  ggplot(aes(x = PC_1, y = PC_2, color = Core_Group, shape = Core_Group)) +
+  geom_point() +
+  scale_color_tableau() +
+  facet_wrap(~Fraction) +
+  theme_bw()
+
+
+
+# SNP VS MRNA PCA ---------------------------------------------------------
+# Explore the kinship matrix.
+all_geno_snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
+  readRDS() %>%
+  sspredr::ensure_snp_quality(
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
+    any_missing = FALSE, remove_duplicated = TRUE
+  )
+
+write.lfmm(all_geno_snp, "./data/derived/maizego/all_tst_snp.lfmm")
+all_geno_pc <- LEA::pca("./data/derived/maizego/all_tst_snp.lfmm", scale = TRUE)
+
+all_geno_pc <- all_geno_pc$projections
+rownames(all_geno_pc) <- rownames(all_geno_snp)
+colnames(all_geno_pc) <- paste0("PC_", seq_len(ncol(all_geno_pc)))
+
+all_geno_pc %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "G") %>%
+  gather(key = PC, value = Score, -G) %>%
+  as_data_frame() %>%
+  filter(PC %in% paste0("PC_", seq_len(3))) %>%
+  mutate(Group = if_else(
+    G %in% common_genotypes, true = "mRNA", false = "All")
+  ) %>%
+  spread(key = PC, value = Score) %>%
+  ggplot(aes(x = PC_1, y = PC_2, color = Group, shape = Group)) +
+  geom_point() +
+  scale_color_tableau() +
+  theme_bw() +
+  theme(legend.position = "top")
