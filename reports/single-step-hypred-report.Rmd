@@ -1,0 +1,1978 @@
+---
+title: Single-step Hybrid Predition
+author: Matthias Westhues, Claas Heuer
+date: "`r Sys.Date()`"
+knit: "bookdown::render_book"
+output:
+  bookdown::pdf_book:
+    base_format: rticles::jss_article
+documentclass: book
+bibliography: ["library.bib", "cheuer.bib"]
+---
+
+
+
+# Preface {-}
+This report covers an extension of the methodology of single-step prediction 
+&mdash; which was developed for the imputation of SNP data from pedigree 
+information &mdash; to the imputation of quantitative predictor variables using
+genomic information.
+
+Here, we are working with a "full" data set &mdash; referring to the maximum 
+number of hybrids for which agronomic and genomic, but not necessarily 
+transcriptomic data are available &mdash; and a "reduced" data set with less 
+hybrids but all of their parental inbred lines having complete genomic and 
+transcriptomic records.
+
+All our predictive abilities were evaluated using a leave-one-out cross 
+validation (LOOCV) routine and results are displayed for T0-hybrids only.
+Note, that T0-hybrids are defined as hybrids having zero parents that have been
+previously tested in other hybrid combinations.
+
+The companion R-package for this analysis is [sspredr](https://github.com/mwesthues/sspredr).
+The development version can be installed from Github:
+```{r Install_sspred, eval = FALSE}
+devtools::install_github("mwesthues/sspredr")
+```
+
+
+## Objectives
+1.    Assess whether transcriptomic data with missing records for some genotypes         can be imputed successfully based on genomic information to improve 
+      prediction of unseen hybrids.
+2.    Explore the utility of various machine learning algorithms for the 
+      prediction of unseen hybrids.^[This is motivated by the fact that the 
+      success of hybrid prediction is a strongly convex function of predictive 
+      ability.]
+
+
+## Overview
+Chapter \@ref(introduction) gives a summary of the relevant literature.
+
+Chapter \@ref(data-overview) provides a brief summary of the available data 
+without delving into their properties.
+
+Chapter \@ref(agronomic-data) gives an overview of the distribution of the 
+agronomic traits as well as correlations among them, separately for the full
+set of hybrids as well as the reduced set of hybrids.
+
+Chapter \@ref(transcriptomic-data) explores the distribution and correlations
+of/among transcriptomic predictors for "raw" and transformed mRNA BLUEs.
+
+Chapter \@ref(genotype-wise-mrna-imputation) examines the correlation between
+the original and imputed transcriptomic BLUEs.
+
+Chapter \@ref(predictor-subsetting) introduces the different predictor sets that
+were used for predictions.
+
+Chapter \@ref(original-kernels) gives the distribution of coefficients in the 
+different kernel matrices used in hybrid prediction.
+
+Chapter \@ref(transformed-kernels) gives the distribution of coefficients in 
+$\mathbf{W}$ after applying centering, scaling, transformations and feature 
+filtering on the original matrices.
+
+Chapter \@ref(loocv-transformed-kernel-prediction) deals with the results of hybrid prediction for 
+the reduced set of data and a comparison of predictive abilities with the full 
+data set.
+
+<!--chapter:end:index.Rmd-->
+
+# Introduction
+The integration of different sources of information for the prediction of 
+breeding or production values is one of the major challenges in current genomic 
+prediction research.
+In the early years of genomic prediction, a 2-step procedure was the most 
+intuitive choice for establishing a new selection scheme.
+The first consists of conventionally estimating breeding values based on 
+pedigree relationships and therefore the phenotypes of relatives.
+Individuals with accurate breeding values out of the first step (i.e. high 
+number of offspring), enter the second step in which SNP genotypes are regressed 
+against the conventional breeding values.
+Those markers can then be used to predict genomic breeding values for solely 
+genotyped and potentially very young individuals.
+Considering the two sources of information &mdash; pedigree and high density SNP 
+genotypes &mdash; the process can be described as follows:
+
+
+### First Step
+Denote $\mathbf{y}$ as the vector of measured phenotypes for a normally 
+distributed trait for all individuals available in the population.
+The relationship &mdash; and therefore the strucure of the additive genetic 
+covariance &mdash; across individuals is based on the numerator relationship 
+matrix $\mathbf{A}$.
+In order to obtain breeding values for any individual in the population, we 
+consider the following model:
+
+\begin{equation}
+	(\#eq:animal-model)
+	\mathbf{y} = \mathbf{Xb} + \mathbf{Za} + \mathbf{e},
+\end{equation}
+
+where $\mathbf{X}$ is a design matrix for fixed effects, $\mathbf{b}$ is a 
+vector of fixed effects, $\mathbf{Z}$ is the design matrix for the random animal 
+effects, which associate observations in $\mathbf{y}$ with elements in 
+$\mathbf{A}$, $\mathbf{a}$ is the vector of random animal effects (=breeding 
+values) and $\mathbf{e}$ is a vector of iid residual errors with expectation 
+$0$ and variance $\sigma^2_e$.
+The distribution of the random vector $\mathbf{a}$ is 
+$MVN(0, \mathbf{A}\sigma^2_a)$.
+
+
+
+### Second Step
+In the second step, a subset of the individuals for which conventional breeding 
+values have been estimated, is selected and enters the reference population for 
+training a genomic prediction model.
+That selection requires that the individual is genotyped and has 
+$\text{PEV}(a_{\text{candidate}}) \leq \text{threshold}$.
+As the breeding values from step one enter the genomic prediction model as 
+phenotypes, one has to be careful about the residual error distribution of
+such a model.
+For instance, if the range of the prediction error variances is very broad in 
+the reference population, the residual errors will not be identically 
+distributed anymore, e.g. they should be weighted differently or estimated 
+individually.
+One popular approach to account for that problem is *Deregressing* the breeding 
+values and weighting the residuals according to the prediction error variances 
+[@Garrick2009].
+Genomic breeding values for any animal in the population can then be obtained 
+by:
+
+\begin{equation}
+  (\#eq:gebv)
+	\mathbf{\tilde{g}} =  (\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}},
+\end{equation}
+
+where $\mathbf{p}$ is a row-vector of allele frequencies in the base population,
+$\mathbf{M}$ is a matrix of marker covariates and $\mathbf{u}$ is a vector of
+marker effects.
+The prediction error variance of the vector $\mathbf{\tilde{g}}$ is usually 
+globally obtained using cross validation. 
+Alternatively they could be obtained individually by the posterior distribution 
+of $(\mathbf{M} - 2\mathbf{p})\mathbf{\hat{u}}$ when a Bayesian model is used.
+
+
+## Single Step Transciptomic prediction of Breeding Values
+The breeding values in a mRNA prediction model are in general given by:
+\begin{equation}
+	(\#eq:mrnaebv)
+	\mathbf{\tilde{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
+\end{equation}
+
+where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model 
+equaivalent to the GBLUP model but using mRNA covariates ($\mathbf{W}$) instead of 
+marker genotypes.
+
+Consider now the situation in which only a subset of the population has 
+transcriptomic information but all have SNP genotypes.
+We can take a similar route as in @fernando_class_2014 and impute missing
+mRNA data.
+The difference here is that &mdash; instead of predicting SNP covariates using 
+pedigree relationship &mdash; we impute mRNA covariates using SNP or genomic 
+relationships.
+Let the subscript $1$ denote individuals for which SNP genotypes but no mRNA 
+data are available.
+Individuals with subscript $2$ have both, SNP and mRNA information.
+The covariates in $\mathbf{W}$ are centered.
+The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
+expectation given $\mathbf{g}_2$ and a residual error term:
+\begin{align}
+	(\#eq:mrna1)
+	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
+	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
+	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
+\end{align}
+
+The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$
+[@legarra_relationship_2009].
+
+The structure of the residual imputation/prediction error is known and can 
+therefore be modelled.
+The missing mRNA covariates can be predicted using the expectation of a 
+multivariate normal random vector given correlated observations, which are 
+related to the Best Linear Predictor.
+
+### Extending the single step model
+
+To this point, we have only taken the general idea behind single step genomic prediction and applied
+it to the situation in which the breeding values are defined as the sum of mRNA effects plus an *imputation error*
+term from using genomic relationships to impute missing mRNA data.
+It might also be interesting to include individuals which have neither mRNA nor SNP data available,
+but phenotypes.
+The general mRNA model for that situation could be written as:
+
+\begin{equation}
+  (\#eq:mrna-model)
+\mathbf{y} = \mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U}_{Ped} \boldsymbol{\epsilon}_{Ped} 
++ \mathbf{U}_{SNP} \boldsymbol{\epsilon}_{SNP}+ \mathbf{e},
+\end{equation}
+
+with
+
+\begin{equation}
+ (\#eq:mrna-submatrices)
+\mathbf{X} = 
+\begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix},
+ \mathbf{W} = 
+\begin{bmatrix}
+  Z_0\hat{\mathbf{W}_0} \\
+  Z_1\hat{\mathbf{W}_1} \\
+  \mathbf{W}_2 
+ \end{bmatrix},
+ \mathbf{U}_{Ped} = 
+\begin{bmatrix}
+  Z_0 \\
+  0 \\
+  0 
+ \end{bmatrix},
+ \mathbf{U}_{SNP} = 
+\begin{bmatrix}
+  0 \\
+  Z_1 \\
+  0 
+ \end{bmatrix},
+\end{equation}
+
+The subscript 0 denotes animals with Pedigree information and neither
+SNP nor mRNA data, 1 individuals with SNP but no mRNA data and 2 individuals with mRNA data.
+
+Following the notation in @fernando_class_2014 the phenotypes can be untangled like this:
+
+\begin{align}
+ (\#eq:entangled-augmented-mrna-model)
+\begin{bmatrix}
+  y_0 \\
+  y_1 \\
+  y_2 
+ \end{bmatrix}
+& =
+ \begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_0 & 0 & 0 \\
+  0 & Z_1 & 0 \\
+  0 & 0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  g_0 \\
+  g_1 \\
+  g_2 
+ \end{bmatrix}
+  + \mathbf{e} \\
+    & = 
+ \begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_0 & 0 & 0 \\
+  0 & Z_1 & 0 \\
+  0 & 0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  \mathbf{A}_{02}\mathbf{A}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{Ped} \\
+  \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{SNP}  \\
+  \mathbf{W}_2\boldsymbol{\alpha} \\
+ \end{bmatrix}
+  + \mathbf{e} \\
+    & = 
+ \begin{bmatrix}
+  X_0 \\
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_0 & 0 & 0 \\
+  0 & Z_1 & 0 \\
+  0 & 0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  \hat{\mathbf{W}_0}\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{Ped} \\
+  \hat{\mathbf{W}_1}\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{SNP} \\
+  \mathbf{W}_2\boldsymbol{\alpha} \\
+ \end{bmatrix}
+  + \mathbf{e} \\
+\end{align}
+
+The breeding values from that model are:
+
+\begin{equation}
+ (\#eq:breeding-values)
+\tilde{\mathbf{g}} = 
+ \begin{bmatrix}
+  \hat{\mathbf{W}_0} \\
+  \hat{\mathbf{W}_1} \\
+  \mathbf{W}_2 
+ \end{bmatrix}
+ \hat{\boldsymbol{\alpha}}
+ + 
+ \begin{bmatrix}
+  \mathbf{Z}_0 \\
+  0 \\
+  0
+ \end{bmatrix}
+ \hat{\boldsymbol{\epsilon}}_{Ped}
+ + 
+ \begin{bmatrix}
+  0 \\
+  \mathbf{Z}_1 \\
+  0
+ \end{bmatrix}
+ \hat{\boldsymbol{\epsilon}}_{SNP} 
+\end{equation}
+
+
+
+
+
+
+When dealing with hybrid performance as phenotypes, we are interested in estimating
+general combining abilitiy (GCA) for every line of a specific subpopulation.
+In our case, the subpopulations comprise *dent* and *flint*.
+Hence, our final model looks like this:
+
+\begin{align}
+ (\#eq:final-model)
+\mathbf{y} &= \mathbf{Xb} \\ 
+  &+ \mathbf{Z}_{dent}\mathbf{W}_{dent} \boldsymbol{\alpha}_{dent} + \mathbf{Z}_{dent}\mathbf{U}_{dent_{Ped}} \boldsymbol{\epsilon}_{dent_{Ped}}
++ \mathbf{Z}_{dent}\mathbf{U}_{dent_{SNP}} \boldsymbol{\epsilon}_{dent_{SNP}} \\
+  &+ \mathbf{Z}_{flint}\mathbf{W}_{flint} \boldsymbol{\alpha}_{flint} + \mathbf{Z}_{flint}\mathbf{U}_{flint_{Ped}} \boldsymbol{\epsilon}_{flint_{Ped}}
++ \mathbf{Z}_{flint}\mathbf{U}_{flint_{SNP}} \boldsymbol{\epsilon}_{flint_{SNP}} \\
+  &+ \mathbf{e},
+\end{align}
+
+where $\mathbf{Z}_{dent}$ and $\mathbf{Z}_{flint}$ are design matrices that map hybrids to their respective
+parents in the dent and flint lines.
+The obtained GCA effects for the inbred lines represent half their breeding values.
+The predicted hybrid performance is:
+
+\begin{equation}
+ (\#eq:predicted-performance)
+\tilde{\mathbf{h}} = \mathbf{Z}_{dent}\tilde{\mathbf{g}}_{dent} + \mathbf{Z}_{flint}\tilde{\mathbf{g}}_{flint} 
+\end{equation}
+
+
+
+
+<!--chapter:end:intro.Rmd-->
+
+# Data Overview
+```{r setup-overview, message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
+               "viridis", "tidyr", "knitr", "tibble", "purrr")
+
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+```{r Load-Agro-Data, message = FALSE, cache = TRUE}
+pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+
+full_hybrid <- genos %>%
+  filter(Pool == "Hybrid") %>%
+  .$G
+all_pheno <- pheno %>%
+  rename(Observed = EST) %>%
+  as_data_frame() %>%
+  filter(G %in% full_hybrid) %>%
+  dplyr::select(G, Observed, Trait) %>%
+  filter(Trait != "ADL") %>%
+  mutate(Trait = fct_recode(Trait, 
+    "FAT" = "FETT",
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "PRO" = "RPR",
+    "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, 
+    c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
+    ))
+traits <- all_pheno %>%
+  .$Trait %>%
+  levels()
+
+# Hybrids of parents with records for both endophenotypes
+red_inbreds <- genos %>% 
+  filter(Pool != "Hybrid", Data_Type %in% c("snp", "mrna")) %>%
+  split(.$Pool) %>%
+  map(~split(., .$Data_Type)) %>%
+  at_depth(.depth = 2, "G") %>%
+  map(function(x) intersect(x$mrna, x$snp))
+
+red_hybrid <- full_hybrid %>%
+  as_data_frame() %>%
+  separate(value, into = c("DF", "Dent", "Flint")) %>%
+  mutate(Avail_Dent = ifelse(Dent %in% red_inbreds$Dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% red_inbreds$Flint, yes = 1, no = 0),
+         Tested_Parents = Avail_Dent + Avail_Flint) %>%
+  filter(Tested_Parents == 2) %>%
+  unite(Hybrid, DF, Dent, Flint) %>%
+  .$Hybrid
+saveRDS(red_hybrid, "./data/processed/hybrids_685.RDS")
+genos <- genos %>%
+  rbind(tibble(G = red_hybrid,
+               Pool = "Hybrid",
+               Data_Type = "mrna")
+        )
+```
+
+```{r Feature-Number, echo = FALSE}
+snp <- readRDS("./data/processed/snp_mat.RDS")
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+```
+
+
+
+Agronomic data for `r length(traits)` traits (including dry-matter yield (DMY))
+and `r length(full_hybrid)` hybrids are available 
+(Table \@ref(tab:Geno-Number)).
+After applying a series of quality checks, `r ncol(snp)` SNPs and 
+best linear unbiased estimates of `r ncol(mrna)` were available for further 
+analyses.
+Genomic, pedigree and transcriptomic records, were collected for inbred parent 
+lines of `r length(red_hybrid)` hybrids.
+
+
+```{r Geno-Number, echo = FALSE}
+geno_tab_cap <- paste("Number of genotypes for Dent and Flint parent lines and",
+                      "their hybrid progeny for which genomic and/or",
+                      "transcriptomic data are available.",
+                      "All genotypes for which transcriptomic data are", 
+                      "available, also have genomic data.",
+                      "Agronomic data are available for all 1,521 hybrid",
+                      "genotypes.")
+# Number of genotypes for either SNPs or mRNAs separated by hybrids and their
+# parental Dent and Flint lines, respectively.
+genos %>% 
+  mutate(Data_Type = fct_recode(Data_Type,
+                                Agronomic = "agro",
+                                Transcriptomic = "mrna",
+                                Genomic = "snp",
+                                Pedigree = "ped")) %>%
+  group_by(Pool, Data_Type) %>%
+  count() %>%
+  rename(`Data Type` = Data_Type) %>%
+  knitr::kable(caption = geno_tab_cap, booktabs = TRUE)
+```
+
+<!--chapter:end:data_overview.Rmd-->
+
+# Agronomic Data
+```{r setup-agro, echo = FALSE, message = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
+               "viridis", "tidyr", "knitr", "tibble", "purrr")
+
+knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
+                      warning = FALSE, echo = FALSE)
+```
+
+```{r echo = FALSE}
+# Load data
+pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
+
+# Prepare agronomic data.
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+hybrid <- genos %>%
+  filter(Data_Type == "agro", Pool == "Hybrid") %>%
+  .$G
+all_pheno <- pheno %>%
+  rename(Observed = EST) %>%
+  as_data_frame() %>%
+  filter(G %in% hybrid) %>%
+  select(G, Observed, Trait) %>%
+  filter(Trait != "ADL") %>%
+  mutate(Trait = fct_recode(Trait, 
+    "FAT" = "FETT",
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "PRO" = "RPR",
+    "SUG" = "XZ"),
+         Trait = fct_relevel(Trait, 
+    c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
+    ))
+
+# Select hybrids for which both parents have genomic as well as transcriptomic
+# records.
+mrna_inbreds <- genos %>%
+  filter(Pool != "Hybrid", Data_Type == "mrna") %>%
+  split(.$Pool) %>%
+  map("G")
+hybrid <- hybrid %>%
+  as_data_frame() %>%
+  separate(value, into = c("DF", "Dent", "Flint")) %>%
+  mutate(Avail_Dent = ifelse(Dent %in% mrna_inbreds$Dent, yes = 1, no = 0),
+         Avail_Flint = ifelse(Flint %in% mrna_inbreds$Flint, yes = 1, no = 0),
+         Tested_Parents = Avail_Dent + Avail_Flint) %>%
+  filter(Tested_Parents == 2) %>%
+  unite(Hybrid, DF, Dent, Flint) %>%
+  .$Hybrid
+
+# All hybrids
+all_pheno <- all_pheno %>%
+  mutate(Reduced_Data = "no")
+
+# Only hybrids for which parents have both, genomic and transcriptomic data
+reduced_pheno <- all_pheno %>%
+  mutate(Reduced_Data = ifelse(G %in% hybrid, yes = "yes", no = "no")) %>%
+  filter(Reduced_Data == "yes")
+```
+  
+## Skewness
+A general rule of thumb to consider is that skewed data whose ratio of the 
+highest value to the lowest value is greater than 20 have significant skewness.
+The formula for the skewness statistic is
+$$
+\text{skewness}  = \frac{\sum (x_i - \bar{x})^{3}}{(n - 1)v^{3/2}},
+$$
+where $v = \frac{\sum (x_i - \bar{x})^2}{(n - 1)}$ with $x$ denoting the 
+predictor variable, $n$ denoting the number of values and $\bar{x}$ denoting the 
+sample mean of the predictor.
+```{r Agro-Skewness, echo = FALSE}
+skew_tab_cap <- paste(
+  "Skewness of seven agronomic traits for the full set of hybrids and the",
+  "reduced set of hybrids, respectively."
+)
+all_skewness <- all_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2))
+reduced_skewness <- reduced_pheno %>%
+  group_by(Trait) %>%
+  summarize(Skewness = e1071::skewness(Observed),
+            Skewness = round(Skewness, digits = 2))
+full_join(x = all_skewness, y = reduced_skewness,
+          by = "Trait",
+          suffix = c(" (Full)", " (Reduced)")) %>%
+  kable(caption = skew_tab_cap, booktabs = TRUE)
+```
+
+
+## Distribution
+```{r Agro-Distribution, message = FALSE, echo = FALSE, fig.cap = "Histogram of the distribution of seven agronomic traits. Black bins show the distribution of the reduced set of hybrids whereas light grey bins show the distribution of the full set of hybrids."}
+ggplot(all_pheno, aes(x = Observed)) +
+  geom_histogram(fill = "grey", alpha = 0.5) +
+  geom_histogram(data = reduced_pheno, color = "black") +
+  facet_wrap(~ Trait, scales = "free") +
+  theme_bw()
+```
+
+
+## Correlation
+```{r Agro-Correlation, echo = FALSE, fig.cap = "Pairwise correlations among seven agronomic traits for the full set of hybrids (upper diagonal) and the reduced set of hybrids (lower diagonal), respectively."}
+cor_coeffs <- all_pheno %>%
+  rbind(., reduced_pheno) %>%
+  spread(key = Trait, value = Observed) %>%
+  split(.$Reduced_Data) %>%
+  map(~select(., -Reduced_Data)) %>%
+  map(as.data.frame) %>%
+  map(remove_rownames) %>%
+  map(column_to_rownames, var = "G") %>%
+  map(cor) %>%
+  map_at(.at = "no", .f = ~.[upper.tri(., diag = FALSE)]) %>%
+  map_at(.at = "yes", .f = ~.[lower.tri(., diag = FALSE)])
+traits <- levels(all_pheno$Trait)
+cor_mat <- diag(nrow = 7, ncol = 7)
+cor_mat[upper.tri(cor_mat, diag = FALSE)] <- cor_coeffs$no
+cor_mat[lower.tri(cor_mat, diag = FALSE)] <- cor_coeffs$yes
+dimnames(cor_mat) <- list(traits, traits)
+cor_mat %>%
+  corrplot::corrplot(col = viridis(256),
+                     method = "color",
+                     diag = FALSE,
+                     cl.pos = "b",
+                     tl.pos = "d",
+                     tl.srt = 60,
+                     order = "hclust",
+                     addCoef.col = "black",
+                     mar = c(0, 1, 1, 0))
+```
+
+<!--chapter:end:agronomic_data.Rmd-->
+
+# Transcriptomic Data
+Keep only genotypes for which both, transcriptomic and genomic data are 
+available.
+```{r setup-transcriptomic, echo = FALSE}
+pacman::p_load("sspredr", "tidyverse", "caret", "e1071", "viridis")
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", small.mark = ".", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, 
+                      warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+```{r mRNA-Data, cache = TRUE}
+# Common genotypes
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+mrna_inbreds <- genos %>%
+  filter(Pool != "Hybrid", Data_Type == "mrna") %>%
+  split(.$Pool) %>%
+  map("G")
+
+# mRNA
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+mrna_df <- mrna %>%
+  as_data_frame() %>%
+  mutate(G = rownames(mrna)) %>%
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  select(-G)
+```
+
+Separately for each heterotic group, run a principal component analysis (PCA) on 
+the "raw" mRNA-BLUEs and return the importance of the first three PCs.
+```{r Raw-PCA, cache = TRUE}
+rm_grp <- function(x) {
+  x$Group <- NULL
+  x
+}
+pca_var_imp <- function(x) {
+  var_imp <- x$sd ^ 2 / sum(x$sd ^ 2) * 100
+  sum(var_imp[1:3])
+}
+# Variable importance in PCA (first three PCs)
+raw_varimp <- mrna_df %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(prcomp) %>%
+  map(pca_var_imp) %>%
+  bind_rows(.id = "Type") %>%
+  mutate(Type = "Raw")
+```
+
+
+## Data pre-processing
+Pre-process the data in the following order:
+
+1.    Near-zero-variance filtering.
+2.    Box-Cox tranformation
+3.    Centering
+4.    Scaling
+```{r Transform-Data, cache = TRUE}
+mrna_lst <- mrna_df %>% 
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(~as.matrix(.))
+
+# Data transformation
+trans_lst <- mrna_lst %>%
+  map(preProcess,
+      method = c("BoxCox", "center", "scale", "nzv")) %>%
+  map2(.y = mrna_lst, .f = predict)
+
+# Variable importance in PCA (first three PCs)
+trans_varimp <- trans_lst %>%
+  map(prcomp) %>%
+  map(pca_var_imp) %>%
+  bind_rows(.id = "Type") %>%
+  mutate(Type = "Trans")
+
+# Compare variable importances for raw and transformed mRNA data.
+rbind(raw_varimp, trans_varimp) %>%
+  knitr::kable(caption = "Importance of the first three PCs (in %)",
+               digits = 2)
+```
+
+
+```{r Tidy-Data, cache = TRUE}
+mrna_lst <- list(Raw = mrna_lst, Trans = trans_lst)
+tidy_mrna <- mrna_lst %>% 
+  at_depth(.depth = 2, .f = ~as.data.frame(.)) %>%
+  at_depth(.depth = 1, .f = ~bind_rows(., .id = "Group")) %>%
+  bind_rows(.id = "Type") %>%
+  as_tibble() %>%
+  gather(key = "mRNA", value = "Expression", -Group, -Type) %>%
+  mutate(Type = as.factor(Type),
+         Group = as.factor(Group))
+```
+
+
+## Skewness
+```{r Check-Normality, cache = TRUE}
+mrna_skew <- tidy_mrna %>%
+  group_by(Group, Type, mRNA) %>%
+  summarize(Skewness = e1071::skewness(Expression),
+            Shapiro = stats::shapiro.test(Expression)$statistic)
+```
+
+
+```{r, mRNA-Skewness, cache = TRUE, fig.cap = "Distribution of skewness values across all mRNAs, separately for transformed and raw BLUEs."}
+mrna_skew %>%
+  ggplot(aes(x = Skewness, fill = Type)) +
+  xlim(c(-2, 2)) +
+  geom_density(alpha = 0.2) +
+  facet_grid(. ~ Group) +
+  theme(legend.position = "top") +
+  ylab("Density")
+```
+
+```{r Association-Shapiro-Wilks-Skewness, cache = TRUE, fig.cap = "Shapiro-Wilks Test Statistic vs absolute skewness for transcriptomic BLUEs depending on whether the BLUEs were transformed or not."}
+mrna_skew %>%
+  mutate(Abs_Skewness = abs(Skewness)) %>%
+  ggplot(aes(x = Shapiro, y = Abs_Skewness)) +
+  xlim(c(0.8, 1)) +
+  ylim(c(0, 2)) +
+  geom_point() +
+  facet_grid(Group ~ Type) +
+  xlab("Shapiro-Wilks Test Statistic") +
+  ylab("Absolute Skewness")
+```
+
+<!--chapter:end:transcriptomic_data.Rmd-->
+
+# Genotype-Wise mRNA-Imputation
+```{r setup-impute, echo = FALSE}
+pacman::p_load("sspredr", "tidyverse", "caret", "e1071", "viridis",
+               "forcats", "knitr", "rmarkdown", "purrr", "rprojroot",
+               "methods", "parallel")
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", small.mark = ".", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 14, fig.height = 10, 
+                      warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+
+```{r Predictor-Data, cache = TRUE}
+# Common genotypes
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+mrna_inbreds <- genos %>%
+  filter(Data_Type == "mrna") %>%
+  split(.$Pool) %>%
+  map("G")
+
+# Remove the 'Group' variable after splitting Dent and Flint data.
+rm_grp <- function(x) {
+  x$Group <- NULL
+  x
+}
+
+# mRNA
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+mrna_lst <- mrna %>%
+  as_data_frame() %>%
+  mutate(G = rownames(mrna)) %>%
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(~as.matrix(.))
+
+# SNPs
+snp <- readRDS("./data/processed/snp_mat.RDS")
+snp_lst <- snp %>%
+  as_data_frame() %>%
+  mutate(G = rownames(snp)) %>%
+  filter(G %in% (mrna_inbreds %>% flatten_chr())) %>%
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(~as.matrix(.))
+
+# Pedigree
+ped <- readRDS("./data/processed/ped-datafull-GTP.RDS")
+ped_lst <- ped %>%
+  mutate(G = rownames(ped)) %>%
+  filter(G %in% (mrna_inbreds %>% flatten_chr())) %>%
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group)) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  split(.$Group) %>%
+  map(rm_grp) %>%
+  map(as.matrix) %>%
+  map(function(x) x[, match(rownames(x), colnames(x))]) %>%
+  map(function(x) x * 2) %>%
+  map(function(x) {
+    x[is.na(x)] <- 0
+    x
+  })
+```
+
+
+
+```{r Impute-mRNA-Function}
+## Function for the imputation of a single mRNA
+impute_mrna_genotype <- function(x, y) {
+  geno <- rownames(x)
+  # Names of genotypes for which transcriptomic records exist
+  nm2 <- rownames(y)
+  # Names of genotypes for which transcriptomic records are missing.
+  nm1 <- setdiff(rownames(x), nm2)
+  # Hybrid parents not in y.
+  geno1 <- geno[geno %in% nm1]
+  # Hybrid parents in y.
+  geno2 <- geno[geno %in% nm2]
+  x <- x[match(unique(geno), rownames(x)), ]
+  # Design matrix mapping GCA effects from genotypes with transcriptomic
+  # records to y2.
+  Z2 <- Matrix::sparse.model.matrix(~-1 + factor(geno2),
+                                    drop.unused.levels = FALSE)
+  colnames(Z2) <- gsub("factor\\(geno2\\)", replacement = "", x = colnames(Z2))
+  Z2 <- Z2[, match(nm2, colnames(Z2))]
+  rownames(Z2) <- geno2
+  # Hybrid parents not in y.
+  geno1 <- geno[geno %in% nm1]
+  # Hybrid parents in y.
+  geno2 <- geno[geno %in% nm2]
+  x <- x[match(unique(geno), rownames(x)), ]
+  y <- y[nm2, ]
+  M2 <- y[, matrixStats::colVars(y) != 0]
+  x <- x[, matrixStats::colVars(x) != 0]
+  A <- build_kernel(M = x, lambda = 0.01, algorithm = "RadenII")
+  A11 <- A[nm1, nm1, drop = FALSE]
+  A12 <- A[nm1, nm2, drop = FALSE]
+  A21 <- A[nm2, nm1, drop = FALSE]
+  A22 <- A[nm2, nm2, drop = FALSE]
+  Ainv <- solve(A)
+  dimnames(Ainv) <- dimnames(A)
+  A_up11 <- Ainv[nm1, nm1]
+  A_up12 <- Ainv[nm1, nm2]
+  # Eq.21
+  M1 <- A12 %*% solve(A22) %*% M2
+  J2 <- matrix(-1, nrow = ncol(A12), ncol = 1)
+  # Eq.22
+  J1 <- A12 %*% solve(A22) %*% J2
+  # Eq.10
+  epsilon <- t(chol(solve(Ainv[nm1, nm1])))
+  # Eq.20
+  W2 <- Z2 %*% M2
+  w1 <- A12 %*% solve(A22) %*% Z2 %*% M2
+  as.matrix(w1)
+}
+
+# Shuffled version of the imputation function above.
+shuffled_imputation <- function(x, y) {
+  cor_lst <- lapply(seq(from = 1, to = nrow(y) - 2), FUN = function(i) {
+    idx <- sample(nrow(y), size = i, replace = FALSE)
+    z <- y[-idx, ]
+    imp_mrna <- impute_mrna_genotype(x = x, y = z)
+    orig_mrna <- y[match(rownames(imp_mrna), rownames(y)), , drop = FALSE]
+    stopifnot(identical(rownames(imp_mrna), rownames(orig_mrna)))
+    cor(c(imp_mrna), c(orig_mrna))
+  })
+  cor_lst %>%
+    flatten_dbl() %>%
+    tbl_df() %>%
+    rownames_to_column(var = "Number_NA_Geno") %>%
+    rename(Value = value)
+}
+```
+
+
+## Correlations between vectors of original and imputed mRNAs.
+### General idea:
+*    Impute transcriptomic data for different numbers of genotypes (from 1 to
+     number of genotypes with transcriptomic data).
+*    For each number of genotypes without transcriptomic data, randomly sample 
+     1000 sets of genotypes, which will be imputed.
+     This will allow us to aggregate and summarize the correlation between 
+     observed and imputed mRNAs with high confidence.
+
+
+The computations were run using multiple cores with 
+[this script](../analysis/impute_single_mrna.R).
+```{r Shuffle-Genotypes-Correlate-Imputation, eval = FALSE}
+repl <- 1000
+donors <- c("snp_lst", "ped_lst")
+imp_lst <- lapply(donors, FUN = function(type) {
+  par_lst <- vector(mode = "list", length = repl)
+  names(par_lst) <- paste0("Replication_", seq_len(repl))
+  par_lst[] <- mclapply(par_lst, FUN = function(iter, ...) {
+    try(map2(.x = get(type), .y = mrna_lst, .f = shuffled_imputation))
+  }, mc.cores = use_cores)
+  par_lst
+})
+names(imp_lst) <- donors
+```
+
+
+
+```{r Plot-Correlation-Imputed-vs-NonImputed, cache = TRUE, fig.width = 12, fig.height = 12, fig.cap = "Pearson correlation coefficients between original and imputed mRNA genotypes for two heterotic groups and two sources of information (i.e. genomic and pedigree), depending on the number of genotypes without mRNA records. Genotypes without mRNA records were declared as such at random."}
+par_lst <- readRDS("./data/derived/impute_single_mrna.RDS")
+par_lst %>%
+  map(~keep(., is_list)) %>%
+  at_depth(.depth = 2, ~bind_rows(., .id = "Group")) %>%
+  map(~bind_rows(., .id = "Replication")) %>%
+  bind_rows(.id = "Data_Type") %>%
+  mutate(Data_Type = fct_recode(Data_Type,
+                                Genomic = "snp_lst",
+                                Pedigree = "ped_lst")) %>%
+  mutate(Number_NA_Geno = as.factor(Number_NA_Geno)) %>%
+  mutate(Number_NA_Geno = fct_inorder(Number_NA_Geno)) %>%
+  ggplot(aes(x = Number_NA_Geno, y = Value)) +
+  geom_boxplot() +
+  facet_wrap(Data_Type ~ Group, scales = "free") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1)) +
+  xlab("Number of Genotypes Without mRNA-Data") +
+  ylab("Correlation Between Original and Imputed mRNA BLUEs")
+```
+
+<!--chapter:end:impute_single_mrna.Rmd-->
+
+# Predictor Subsetting
+```{r setup-predictor-subsets, message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
+               "stringr", "forcats")
+
+devtools::install_github("mwesthues/sspredr")
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+
+Goal: Generate nine subsets of predictors for later comparisons between their
+predictive abilities:
+
+a.    100% SNP (`snp100`)
+b.    100% pedigree (`ped100`)
+c.    42% mRNA (`mrna42`)
+d.    42% pedigree (`ped42`)
+e.    42% SNP (`snp42`)
+f.    100% pedigree & 77% SNP (`ped100_snp77`)
+g.    100% pedigree & 42% mRNA (`ped100_mrna42`)
+h.    100% SNP & 42% mRNA (`snp100_mrna42`)
+i.    100% pedigree & 77% SNP & 42% mRNA (`ped100_snp77_mrna42`)
+
+Make comparisons between the following scenarios:
+
+1.    a, b, f, g, h, i
+2.    c, d, e
+
+
+Throughout this manuscript, digits behind the variable name of each predictor
+(ped: pedigree, snp: genomic, mrna: transcriptomic) indicate the size of 
+the subset relative to the full set of genotypes (n = 245).
+For example, we have transcriptomic data for 103 genotypes, which are roughly 
+42% of 245 genotypes, hence the name 'mrna42' and so forth.
+For the set "snp77", all genotypes &mdash; for which transcriptomic records are 
+available &mdash; were used and the remaining genotypes were sampled at random
+with equally large proportions being sampled from the Dent and the Flint 
+heterotic group, respectively.
+
+```{r Prepare-Predictor-Subsetting, cache = TRUE, results = "hide"}
+# -- Genotype information.
+# Information on the set of genotypes.
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+genos %>%
+  filter(Pool %in% c("Dent", "Flint")) %>%
+  group_by(Pool, Data_Type) %>%
+  count()
+
+# Get the names of the Dent Hybrid-parents.
+geno <- genos %>%
+  filter(Pool == "Hybrid") %>%
+  .$G %>%
+  map(~stringr::str_split(., pattern = "_")) %>%
+  at_depth(.depth = 2, .f = 2) %>%
+  flatten() %>%
+  as_vector()
+
+# -- Load predictor data.
+# pedigree
+ped100 <- readRDS("./data/processed/ped-datafull-GTP.RDS")
+ped_nms <- genos %>%
+  filter(Data_Type == "ped") %>%
+  .$G
+ped100 <- as.matrix(ped100) * 2
+ped100 <- ped100 %>%
+  .[rownames(.) %in% ped_nms, colnames(.) %in% ped_nms]
+ped100[is.na(ped100)] <- 0
+
+# snp
+snp100 <- readRDS("./data/processed/snp_mat.RDS")
+snp_nms <- genos %>%
+  filter(Data_Type == "snp") %>%
+  .$G
+snp100 <- snp100 %>%
+  .[rownames(.) %in% snp_nms, ]
+
+# mrna
+mrna42 <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna_nms <- genos %>%
+  filter(Data_Type == "mrna") %>%
+  .$G
+mrna42 <- mrna42 %>%
+  as.matrix() %>%
+  t() %>%
+  .[rownames(.) %in% mrna_nms, ]
+```
+
+
+
+
+```{r Resample-Predictor-Data, cache = TRUE, results = "hide"}
+## Resample predictor data 
+# Remove some genomic records so that we can impute them via pedigree 
+# information.
+set.seed(314)
+snp35 <- snp100 %>%
+  as_tibble() %>%
+  mutate(G = rownames(snp100)) %>%
+  filter(!G %in% rownames(mrna42)) %>%
+  left_join(genos %>% filter(Data_Type == "snp") %>% select(-Data_Type),
+            by = "G") %>%
+  group_by(Pool) %>%
+  sample_frac(size = 0.6) %>%
+  ungroup() %>%
+  select(-Pool) %>%
+  as.data.frame() %>%
+  column_to_rownames(var = "G") %>%
+  as.matrix()
+snp77 <- snp100 %>%
+  .[rownames(.) %in% rownames(mrna42), ] %>%
+  rbind(snp35)
+stopifnot(all(rownames(mrna42) %in% rownames(snp77)))
+
+ped42 <- ped100 %>%
+  .[match(rownames(mrna42), rownames(.)), 
+    match(rownames(mrna42), colnames(.))]
+snp42 <- snp100 %>%
+  .[match(rownames(mrna42), rownames(.)), ]
+
+# Store the new objects
+storage_dir <- "./data/derived/predictor_subsets/"
+ls() %>%
+  .[. != "snp35"] %>%
+  .[stringr::str_detect(., pattern = "[:digit:]")] %>%
+  as.list() %>%
+  map_if(.p = ~get(.) %>% is.matrix,
+         .f = ~saveRDS(get(.), file = paste0(storage_dir, ., ".RDS"),
+                       compress = TRUE))
+```
+
+<!--chapter:end:predictor_subsetting.Rmd-->
+
+# Original Kernels
+```{r setup-kernel-inspection, message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+if (!require("devtools")) install.packages("devtools")
+devtools::install_github("mwesthues/sspredr", update = TRUE)
+pacman::p_load("BGLR","data.table", "tidyverse", "dtplyr", "caret", "e1071",
+               "stringr")
+pacman::p_load_gh("mwesthues/sspredr")
+
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+With the original configuration of the predictors, very low predictive abilities
+were obtained for the amalgamation of pedigree, genomic and transcriptomic 
+information, regardless of the phenotypic trait.
+One of the possible causes were inconsistencies in the functions `impute_eta()`
+and `impute2` from the `sspredr` package regarding the factorization of 
+matrices.
+After tackling those bugs, we wanted to revisit the distribution of the 
+coefficients from the matrix $\mathbf{W}$ in \@ref(eq:mrna-model).
+
+```{r Prepare-Kernel-Inspection, cache = TRUE}
+## -- DATA SELECTION -----------------------------------------------------
+# Specify the predictor sets.
+preds <- c("ped42-none-none", "snp42-none-none", "mrna42-none-none",
+           "ped100-none-none", "snp100-none-none", "ped100-snp77-none",
+           "ped100-mrna42-none", "snp100-mrna42-none", "ped100-snp77-mrna42")
+
+# Load the predictor data.
+pred_lst <- preds %>%
+  as.list() %>%
+  map(~str_split(string = ., pattern = "-")) %>%
+  at_depth(.depth = 2, ~discard(., . == "none")) %>%
+  at_depth(.depth = 2, as.list) %>%
+  at_depth(.depth = 2, 
+           .f = ~paste0("./data/derived/predictor_subsets/", ., ".RDS")) %>%
+  at_depth(.depth = 3, .f = readRDS) %>%
+  flatten()
+names(pred_lst) <- preds
+
+# For each predictor set and for each heterotic group, select the corresponding
+# hybrids for which phenotpyic data are available.
+# Then, store the names of all Dent and Flint hybrid parents in a list in order 
+# to correctly augment the predictor matrices with their help.
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+hybrid <- genos %>%
+  filter(Pool == "Hybrid") %>%
+  mutate(G = stringr::str_replace(G, pattern = "DF_", replacement = "")) %>%
+  separate(G, into = c("Dent", "Flint"), sep = "_")
+geno_nms <- pred_lst %>%
+  at_depth(.depth = 2, .f = rownames) %>%
+  map(.f = ~reduce(., union))
+hybrid_parent_nms <- lapply(seq_along(geno_nms), FUN = function(i) {
+  ind_nms <- geno_nms[[i]] 
+  hybrid %>%
+    filter(Dent %in% ind_nms, Flint %in% ind_nms) %>%
+    unite(col = Hybrid, Dent, Flint, sep = "_", remove = FALSE) %>%
+    mutate(Hybrid = paste0("DF_", Hybrid)) %>%
+    gather(key = "Group", value = "G", Dent, Flint) %>%
+    split(.$Group) %>%
+    map("G")
+})
+names(hybrid_parent_nms) <- names(pred_lst)
+hybrid_parent_nms <- transpose(hybrid_parent_nms)
+
+
+## -- PREPARE DATA FOR KERNEL BUILDING ------------------------------------
+# Split the predictor matrices into Dent and Flint.
+# Then, transform the data frames back to matrices in order to be able build 
+# kernels from them.
+merge_pred <- function(x, genos) {
+  y <- genos %>%
+    select(G, Pool) %>%
+    distinct(G, .keep_all = TRUE)
+  x %>%
+    as.data.frame() %>%
+    rownames_to_column(., var = "G") %>%
+    as_tibble() %>%
+    left_join(., y = y, by = "G") %>%
+    split(., .$Pool)
+}
+pred_df_to_matrix <- function(x) {
+  x %>%
+    select(-Pool) %>%
+    as.data.frame() %>%
+    column_to_rownames(var = "G") %>%
+    as.matrix()
+}
+feat_lst <- pred_lst %>%
+  at_depth(.depth = 2,
+           .f = merge_pred, genos = genos) %>%
+  map(transpose) %>%
+  at_depth(.depth = 3, .f = pred_df_to_matrix)
+names(feat_lst) <- str_replace_all(preds, pattern = "-", replacement = "_")
+feat_lst <- transpose(feat_lst)
+
+# As a requirement of the kernel-generating functions, add the names of the 
+# hybrid parents to each predictor-set/group combination.
+cat_lst <- lapply(seq_along(feat_lst), FUN = function(i) {
+  x_lvl1 <- feat_lst[[i]] 
+  y_lvl1 <- hybrid_parent_nms[[i]]
+  lvl1_nms <- x_lvl1 %>%
+    names() %>%
+    str_replace_all(., pattern = "_none", replacement = "") %>%
+    strsplit(., split = "_")
+  geno_lst <- lapply(seq_along(x_lvl1), FUN = function(j) {
+    x_lvl2 <- x_lvl1[[j]]
+    y_lvl2 <- y_lvl1[[j]]
+    names(x_lvl2) <- lvl1_nms[[j]]
+    x_lvl2[["geno"]] <- y_lvl2
+    x_lvl2
+  })
+  names(geno_lst) <- names(x_lvl1)
+  geno_lst
+})
+names(cat_lst) <- names(feat_lst)
+
+# Remove empty names (i.e. 'none') from predictor set names.
+cat_lst <- cat_lst %>%
+  map(function(x) {
+    names(x) <- str_replace_all(names(x), pattern = "_none", replacement = "")
+    x
+  })
+saveRDS(cat_lst,
+        file = "./data/derived/pred_sub_list.RDS")
+
+
+## -- BUILD KERNELS --------------------------------------------------------
+# Apply kernel building functions to different predictor sets.
+# The choice of function depends on the number of predictors as well as on the
+# type of predictor (are pedigree data involved or not?).
+ped100_snp77_mrna42 <- cat_lst %>%
+  transpose() %>%
+  .[["ped100_snp77_mrna42"]] %>%
+  map(~impute2(ped = .[[1]],
+               snp = .[[2]],
+               mrna = .[[3]],
+               geno = .[["geno"]],
+               as_kernel = TRUE,
+               bglr_model = "BRR"
+    )
+  ) %>%
+  map(2) %>%
+  map("X")
+
+snp100_mrna42 <- cat_lst %>%
+  transpose() %>%
+  .[["snp100_mrna42"]] %>%
+  map(~impute_eta(
+     x = .[[1]],
+     y = .[[2]],
+     geno = .[["geno"]],
+     as_kernel = TRUE,
+     is_pedigree = FALSE,
+     bglr_model = "BRR"
+    )
+  ) %>%
+  map(2) %>%
+  map("X")
+
+ped100_x <- cat_lst %>%
+  transpose() %>%
+  .[names(.) %in% c("ped100_mrna42", "ped100_snp77")] %>%
+  at_depth(.depth = 2, .f = ~impute_eta(
+    x = .[[1]],
+    y = .[[2]],
+    geno = .[["geno"]], 
+    as_kernel = TRUE,
+    is_pedigree = TRUE,
+    bglr_model = "BRR"
+    )
+  ) %>%
+  at_depth(.depth = 2, .f = 2) %>%
+  at_depth(.depth = 2, .f = "X")
+
+pedx <- cat_lst %>%
+  transpose() %>%
+  .[names(.) %in% c("ped100", "ped42")] %>%
+  at_depth(.depth = 2, .f = ~complete_eta(
+    x = .[[1]],
+    geno = .[["geno"]],
+    as_kernel = FALSE,
+    is_pedigree = TRUE,
+    bglr_model = "BRR"
+    )
+  ) %>%
+  at_depth(.depth = 2, .f = 1) %>%
+  at_depth(.depth = 2, .f = "X")
+
+single_pred <- cat_lst %>%
+  transpose() %>%
+  .[names(.) %in% c("snp42", "mrna42", "snp100")] %>%
+  at_depth(.depth = 2, .f = ~complete_eta(
+    x = .[[1]],
+    geno = .[["geno"]],
+    as_kernel = TRUE,
+    is_pedigree = FALSE,
+    bglr_model = "BRR"
+    )
+  ) %>%
+  at_depth(.depth = 2, .f = 1) %>%
+  at_depth(.depth = 2, .f = "X")
+    
+# Combine the results in a single list to reduce code replications (the
+# following steps are the same for all predictor sets).
+W_lst <- c(list(ped100_snp77_mrna42 = ped100_snp77_mrna42),
+           list(snp100_mrna42 = snp100_mrna42),
+           pedx,
+           ped100_x,
+           single_pred)
+```
+
+
+```{r Plot-kernel-coefficients, cache = TRUE, fig.cap = "Distribution of coefficients that are elements of the unmodified kernel matrices ($\\mathbf{W}$) used in single step or regular prediction of hybrid performance."}
+## -- PLOT KERNEL COEFFICIENTS ---------------------------------------------
+# Extract the coefficients from the lower triangle of the kernels for
+# subsequent plotting of their distributions.
+W_df <- W_lst %>%
+  at_depth(.depth = 2, .f = ~.[match(colnames(.), rownames(.)), ]) %>%
+  at_depth(.depth = 2, .f = ~.[lower.tri(., diag = FALSE)]) %>%
+  map(function(x) {
+    names(x) <- c("Dent", "Flint")
+    x 
+  }) %>%
+  map(.f = stack) %>%
+  bind_rows(.id = "id") %>%
+  rename(Predictor = id, 
+         Values = values,
+         Group = ind) %>%
+  as_tibble()
+
+# For each predictor set and each heterotic group, plot the distribution of the
+# coefficients from the kernels.
+W_df %>%
+  ggplot(aes(x = Values, fill = Group)) +
+  geom_histogram(alpha = 0.5, position = "identity", bins = 80) +
+  facet_wrap(~ Predictor, scales = "free") +
+  theme_bw() +
+  theme(legend.position = "top") +
+  scale_fill_manual(values = c("#669933", "#FFCC66")) +
+  xlim(c(-1.0, 1.0))
+```
+
+
+
+<!--chapter:end:single_step_kernels.Rmd-->
+
+# Transformed Kernels
+```{r setup-kernel-transformation, message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+if (!require("devtools")) install.packages("devtools")
+devtools::install_github("mwesthues/sspredr", update = TRUE)
+pacman::p_load("BGLR","data.table", "tidyverse", "dtplyr", "caret", "e1071",
+               "stringr")
+pacman::p_load_gh("mwesthues/sspredr")
+
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+
+After noticing extremely narrow distributions in the coefficients of 
+$\mathbf{W}$ (defined in Eq. \@ref(eq:mrna-model), Fig.
+\@ref(fig:Plot-kernel-coefficients)), we decided to explore the effect of several
+data pre-processing procedures on the distribution of the coefficients.
+Separately for each heterotic group, the following data pre-processing 
+procedures were applied to the transcriptomic data: i) Box-Cox transformation,
+ii) centering, iii) scaling, removal of features with a correlation 
+$\rho \geq 0.999$, using the function `preProcess` from the R package `caret` 
+[@Kuhn2013].
+Separately for each heterotic group and each subset of features (i.e. `snp100`, 
+`snp77` and `snp42`), only SNPs that were not in perfect linkage disequilibrium
+with another marker were kept. 
+From Fig. \@ref(fig:Plot-transformed-kernel-coefficients) we can glean that 
+data processing had a considerable, positive effect on the distribution of 
+coefficients in $\mathbf{W}$, which became wider in the case of predictor 
+combinations such as `ped100_snp77_mrna42` compared to unprocessed features 
+(Fig \@ref(fig:Plot-kernel-coefficients)).
+
+```{r Raw-Kernel-Transformation, cache = TRUE}
+genos <- readRDS("./data/processed/common_genotypes.RDS")
+cat_lst <- readRDS("./data/derived/pred_sub_list.RDS")
+
+mrna_inbreds <- genos %>%
+  filter(Pool != "Hybrid", Data_Type == "mrna") %>%
+  split(.$Pool) %>%
+  map("G")
+
+# mRNA
+mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
+mrna <- t(mrna)
+mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
+mrna_df <- mrna %>%
+  as_data_frame() %>%
+  mutate(G = rownames(mrna)) %>%
+  mutate(Group = ifelse(G %in% mrna_inbreds$Dent, yes = "Dent", no = "Flint"),
+         Group = as.factor(Group))
+
+## Data pre-processing
+# Pre-process the data in the following order:
+# 1.    Box-Cox tranformation
+# 2.    Centering
+# 3.    Scaling
+# 4.    Remove highly correlated features
+mrna_lst <- mrna_df %>% 
+  split(.$Group) %>%
+  map(as.data.frame) %>%
+  map(~column_to_rownames(., var = "G")) %>%
+  map(.f = function(x) {
+    x$Group <- NULL
+    x
+  }) %>%
+  map(~as.matrix(.))
+
+# Data transformation
+trans_lst <- mrna_lst %>%
+  map(preProcess,
+      method = c("BoxCox", "center", "scale")) %>%
+  map2(.y = mrna_lst, .f = predict)
+
+mrna_cor_idx <- trans_lst %>%
+  map(cor) %>%
+  map(~findCorrelation(x = ., cutoff = 0.999))
+
+mrna42 <- lapply(seq_along(trans_lst), FUN = function(i) {
+  mat <- trans_lst[[i]]
+  high_cor_idx <- mrna_cor_idx[[i]]
+  if (isTRUE(length(high_cor_idx) != 0)) {
+    mat <- mat[, -high_cor_idx]
+  }
+  mat
+})
+names(mrna42) <- names(mrna_lst)
+saveRDS(mrna42, 
+        file = "./data/derived/predictor_subsets/transformed-mrna42.RDS")
+
+# Remove perfect LD
+snp42 <- cat_lst %>% 
+  purrr::transpose() %>%
+  .[names(.) == "snp42"] %>%
+  at_depth(.depth = 2, .f = 1) %>%
+  .[[1]]
+
+snp77 <- cat_lst %>% 
+  purrr::transpose() %>%
+  .[names(.) == "ped100_snp77"] %>%
+  at_depth(.depth = 2, .f = 2) %>%
+  .[[1]]
+
+snp100 <- cat_lst %>%
+  purrr::transpose() %>%
+  .[names(.) == "snp100"] %>%
+  at_depth(.depth = 2, .f = 1) %>%
+  .[[1]]
+
+snp_lst <- list(snp100 = snp100, snp77 = snp77, snp42 = snp42)
+snp_lst[] <- lapply(snp_lst , FUN = function(x) {
+  thinned_snp <- x %>%
+    map(unique, MARGIN = 2)
+  names(thinned_snp) <- c("Dent", "Flint")
+  thinned_snp
+})
+invisible(list2env(snp_lst, envir = globalenv()))
+
+# Get pedigree data
+ped100 <- cat_lst %>% 
+  purrr::transpose() %>%
+  .[names(.) == "ped100_snp77"] %>%
+  at_depth(.depth = 2, .f = 1) %>%
+  .[[1]]
+names(ped100) <- c("Dent", "Flint")
+
+ped42 <- cat_lst %>% 
+  purrr::transpose() %>%
+  .[names(.) == "ped42"] %>%
+  at_depth(.depth = 2, .f = 1) %>%
+  .[[1]]
+names(ped42) <- c("Dent", "Flint")
+```
+
+
+
+```{r Kernel-assembly, cache = TRUE}
+nms100 <- cat_lst %>%
+  purrr::transpose() %>%
+  .[names(.) == "ped100"] %>%
+  at_depth(.depth = 2, "geno") %>%
+  .[[1]]
+
+nms42 <- cat_lst %>%
+  purrr::transpose() %>%
+  .[names(.) == "mrna42"] %>%
+  at_depth(.depth = 2, "geno") %>%
+  .[[1]]
+
+# Specify the predictor sets.
+pred_sets <- c(
+  "snp42", "mrna42", "snp100", "ped100-snp77", "ped100-mrna42",
+  "snp100-mrna42", "ped100-snp77-mrna42"
+  ) %>%
+  strsplit(., split = "[-]")
+
+trans_cat_lst <- lapply(pred_sets, FUN = function(x) {
+  cmb_lst <- x %>% 
+    map(~get(.))
+  names(cmb_lst) <- x
+  cmb_lst <- cmb_lst %>% 
+    purrr::transpose()
+  largest_pred_size <- x %>%
+    str_extract(., pattern = "[0-9]+") %>%
+    as.integer() %>% 
+    max()
+
+  if (isTRUE(largest_pred_size == 100)) {
+    hyb_names_pred_size <- nms100
+  } else {
+    hyb_names_pred_size <- nms42
+  }
+  names(hyb_names_pred_size) <- c("Dent", "Flint")
+
+  cmb_lst[] <- lapply(seq_along(cmb_lst), FUN = function(i) {
+    nm <- names(cmb_lst)[i]
+    dat <- cmb_lst[[nm]]
+    dat$geno <- hyb_names_pred_size[[nm]]
+    dat
+  })
+  cmb_lst
+})
+names(trans_cat_lst) <- pred_sets %>%
+  map(~paste(., collapse = "_")) %>%
+  flatten_chr()
+trans_cat_lst <- trans_cat_lst %>%
+  purrr::transpose()
+saveRDS(trans_cat_lst, 
+        file = "./data/derived/transformed_pred_sub_list.RDS")
+
+## -- BUILD KERNELS --------------------------------------------------------
+# Apply kernel building functions to different predictor sets.
+# The choice of function depends on the number of predictors as well as on the
+# type of predictor (are pedigree data involved or not?).
+ped100_snp77_mrna42 <- trans_cat_lst %>%
+  purrr::transpose() %>%
+  .[["ped100_snp77_mrna42"]] %>%
+  map(~impute2(ped = .[[1]],
+               snp = .[[2]],
+               mrna = .[[3]],
+               geno = .[["geno"]],
+               as_kernel = TRUE,
+               bglr_model = "BRR"
+    )
+  ) %>%
+  map(2) %>%
+  map("X")
+
+snp100_mrna42 <- trans_cat_lst %>%
+  purrr::transpose() %>%
+  .[["snp100_mrna42"]] %>%
+  map(~impute_eta(
+     x = .[[1]],
+     y = .[[2]],
+     geno = .[["geno"]],
+     as_kernel = TRUE,
+     is_pedigree = FALSE,
+     bglr_model = "BRR"
+    )
+  ) %>%
+  map(2) %>%
+  map("X")
+
+ped100_x <- trans_cat_lst %>%
+  purrr::transpose() %>%
+  .[names(.) %in% c("ped100_mrna42", "ped100_snp77")] %>%
+  at_depth(.depth = 2, .f = ~impute_eta(
+    x = .[[1]],
+    y = .[[2]],
+    geno = .[["geno"]], 
+    as_kernel = TRUE,
+    is_pedigree = TRUE,
+    bglr_model = "BRR"
+    )
+  ) %>%
+  at_depth(.depth = 2, .f = 2) %>%
+  at_depth(.depth = 2, .f = "X")
+
+single_pred <- trans_cat_lst %>%
+  purrr::transpose() %>%
+  .[names(.) %in% c("snp42", "mrna42", "snp100")] %>%
+  at_depth(.depth = 2, .f = ~complete_eta(
+    x = .[[1]],
+    geno = .[["geno"]],
+    as_kernel = TRUE,
+    is_pedigree = FALSE,
+    bglr_model = "BRR"
+    )
+  ) %>%
+  at_depth(.depth = 2, .f = 1) %>%
+  at_depth(.depth = 2, .f = "X")
+    
+# Combine the results in a single list to reduce code replications (the
+# following steps are the same for all predictor sets).
+W_lst <- c(list(ped100_snp77_mrna42 = ped100_snp77_mrna42),
+           list(snp100_mrna42 = snp100_mrna42),
+           ped100_x,
+           single_pred)
+```
+
+```{r Plot-transformed-kernel-coefficients, cache = TRUE, fig.cap = "Distribution of coefficients that are elements of the transformed kernel matrices $\\mathbf{W}$ used in single step or regular prediction of hybrid performance."}
+## -- PLOT KERNEL COEFFICIENTS ---------------------------------------------
+# Extract the coefficients from the lower triangle of the kernels for
+# subsequent plotting of their distributions.
+W_df <- W_lst %>%
+  at_depth(.depth = 2, .f = ~.[match(colnames(.), rownames(.)), ]) %>%
+  at_depth(.depth = 2, .f = ~.[lower.tri(., diag = FALSE)]) %>%
+  map(function(x) {
+    names(x) <- c("Dent", "Flint")
+    x 
+  }) %>%
+  map(.f = stack) %>%
+  bind_rows(.id = "id") %>%
+  rename(Predictor = id, 
+         Values = values,
+         Group = ind) %>%
+  as_tibble()
+
+# For each predictor set and each heterotic group, plot the distribution of the
+# coefficients from the kernels.
+W_df %>%
+  ggplot(aes(x = Values, fill = Group)) +
+  geom_histogram(alpha = 0.5, position = "identity", bins = 80) +
+  facet_wrap(~ Predictor, scales = "free") +
+  theme_bw() +
+  theme(legend.position = "top") +
+  scale_fill_manual(values = c("#669933", "#FFCC66")) +
+  xlim(c(-1.0, 1.0))
+```
+
+<!--chapter:end:transformed_kernels.Rmd-->
+
+# LOOCV-Transformed-Kernel-Prediction
+```{r setup-transformed-kernel-prediction, message = FALSE, echo = FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
+               "stringr", "forcats")
+
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
+                      warning = FALSE, echo = FALSE)
+```
+
+
+
+```{r Load-LOOCV-Data, cache = TRUE}
+# Specify which predictions are based on the updated single-step prediction
+# algorithms in 'sspredr'.
+commit <-  "mwesthues/sspredr@26447a1"
+session_files <- list.files("./data/derived/session_info/")
+session_files <- session_files[grep(session_files,
+                                    pattern = "interactive", invert = TRUE)]
+session_filter <- session_files %>%
+  map(~readLines(paste0("./data/derived/session_info/", .))) %>%
+  grepl(., pattern = commit)
+upd_algo_runs <- session_files[session_filter]
+upd_algo_runs <- gsub(upd_algo_runs, pattern = ".txt", replacement = "")
+rep_log_file <- fread("./data/derived/repeated_snp77_prediction_log.txt") %>%
+  filter(Cores == 16,
+         Job_ID %in% upd_algo_runs)
+
+# Load all prediction results based on the resampling of 'snp77'.
+rep_df <- rep_log_file %>%
+  .$Job_ID %>%
+  as.list() %>%
+  map(~paste0("./data/derived/predictions/", ., ".RDS")) %>%
+  map(readRDS) %>%
+  bind_rows() %>%
+  left_join(y = rep_log_file %>% select(Job_ID, Pred1, Pred2, Pred3, Iter,
+                                        Replication),
+            by = "Job_ID") %>%
+  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-")
+
+
+# Load all other predictions, which did not involve 'snp77'.
+reg_log <- fread("./data/derived/pred_log.txt") %>%
+  select(-Model, -PI, -PriorPiCount) %>%
+  filter(Cores == 16,
+        # Job_ID %in% upd_algo_runs,
+         Transformation == TRUE | Pred1 %in% c("ped42", "ped100"),
+         Pred1 != "snp77",
+         Pred2 != "snp77",
+         Pred3 != "snp77") %>% 
+  select(-Transformation)
+reg_df <- reg_log %>%
+  .$Job_ID %>%
+  as.list() %>%
+  map(~paste0("./data/derived/predictions/", ., ".RDS")) %>%
+  map(readRDS) %>%
+  bind_rows() %>%
+  left_join(y = reg_log %>% select(Job_ID, Pred1, Pred2, Pred3, Iter),
+            by = "Job_ID") %>%
+  unite(col = Predictor, Pred1, Pred2, Pred3, sep = "-")
+
+# Combine all data for ease of handling.
+pred_df <- rbind(reg_df, rep_df %>% select(-Replication))
+pred_df <- pred_df %>%
+  mutate(Trait = as.factor(Trait),
+         Trait = fct_recode(Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
+  mutate(Trait = fct_relevel(Trait,
+                             "DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG"),
+         Predictor = as.factor(Predictor)) %>%
+  select(-Job_ID, -Iter)
+```
+
+
+```{r Reduce-Hybrid-Data, dependson="Load-Agro-Data"}
+red_hybrid <- readRDS("./data/processed/hybrids_685.RDS")
+pred_df <- pred_df %>%
+  filter(Geno %in% red_hybrid)
+```
+
+
+## Distribution of predicted and observed values
+```{r Distribution-y-yhat, cache = TRUE, fig.height = 12, fig.cap = "Frequency polygon of observed and predicted values for seven agronomic traits (columns) and nine sets of predictors (rows)."}
+# Specify a unified predictor order.
+pred_order <- c("ped42-none-none", "snp42-none-none", "mrna42-none-none",
+                "ped100-none-none", "snp100-none-none", "ped100-snp77-none",
+                "ped100-mrna42-none", "snp100-mrna42-none",
+                "ped100-snp77-mrna42")
+legend_labs <- expression(y, hat(y))
+pred_df %>%
+  filter(Predictor != "snp77-none-none") %>%
+  gather(key = Value, value = `Phenotypic Value`, y, yhat) %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order),
+         Value = as.factor(Value)) %>%
+  ggplot(aes(x = `Phenotypic Value`, color = Value)) +
+  geom_freqpoly() +
+  scale_color_manual(values = c("#1f78b4", "#e31a1c"), labels = legend_labs) +
+  facet_grid(Predictor ~ Trait, scales = "free") +
+  theme_bw() +
+  theme(legend.position = "top",
+        strip.text.y = element_text(size = 7)) +
+  guides(color = guide_legend(override.aes = list(size = 2))) +
+  ylab("Frequency")
+```
+
+## Coefficient of variation for predicted values
+We are interested in the variation in the predicted values relative to the 
+arithmetic mean of the predicted values, separately for each agronomic trait and
+each set of predictors:
+
+$$
+\begin{equation}
+  \label{eq:CV}
+CV = \sqrt{\frac{\sum_{i = 1}^{N} \sigma^{2}_{\hat{y}(i)} / N}{\sum_{i=1}^{N}\hat{y}_{i} / N}},
+\end{equation}
+$$
+
+where $N$ denotes the number of hybrids.
+
+
+```{r Coefficient-of-Variation, cache = TRUE}
+coefficient_of_variation <- function(x, y) {
+  sqrt(mean(x)) / mean(y)
+}
+cv_df <- pred_df %>%
+  split(list(.$Trait, .$Predictor)) %>%
+  map(~coefficient_of_variation(x = .$var_yhat, y = .$yhat)) %>%
+  stack() %>%
+  separate(col = ind, into = c("Trait", "Predictor"), sep = "[.]") %>%
+  rename(CV = values) %>%
+  tbl_dt() %>%
+  mutate(Predictor = as.factor(Predictor),
+         Trait = as.factor(Trait))
+
+overview_df <- pred_df %>%
+  group_by(Predictor, Trait) %>%
+  summarize(r = cor(y, yhat)) %>%
+  ungroup() %>%
+  as.data.frame() %>%
+  left_join(y = cv_df, by = c("Predictor", "Trait")) %>%
+  as_tibble() %>%
+  mutate(Predictor = as.factor(Predictor),
+         Predictor = forcats::fct_reorder(Predictor, CV),
+         Trait = fct_relevel(Trait,
+                             "DMY", "DMC", "ADF", "FAT", "PRO",
+                             "STA", "SUG"),
+         Group = ifelse(Predictor %in% c("snp42-none-none",
+                                         "ped42-none-none",
+                                         "mrna42-none-none"),
+                        yes = "Reduced", no = "Full")
+  ) %>%
+  mutate(Group = as.factor(Group))
+```
+
+
+
+```{r Coefficient-of-Variation-Plot, cache = TRUE, fig.cap = "Coefficient of variation for seven agronomic traits and nine sets of predictors."}
+overview_df %>%
+  filter(Predictor != "snp77-none-none") %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
+  ggplot(aes(x = CV, y = Predictor)) +
+  geom_segment(aes(yend = Predictor), xend = 0, color = "gray50") +
+  geom_point(aes(color = Predictor), size = 3) +
+  scale_color_viridis(discrete = TRUE, option = "inferno") +
+  facet_wrap(~ Trait, scales = "free_x") +
+  theme_bw() +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = c(0.7, 0.13)
+  ) +
+  guides(color = guide_legend(ncol = 2,
+                              reverse = FALSE)) +
+  xlab("Coefficient of Variation") +
+  ylab("Predictor Set") +
+  xlim(0, NA)
+```
+
+## Predictive Abilities
+For an introduction to the abbreviations used for the different predictors, and
+combinations thereof, please refer to chapter \@ref(predictor-subsetting).
+
+```{r Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for seven agronomic traits (rows) and nine predictor sets (columns). The predictor sets are split into the categories 'Reduced' (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids). For both categories, predictive abilities are based solely on the set of 685 common hybrids. Predictions including 'snp77' are based on 20 runs where each run was assembled by selecting a set of genotypes at random. The resampling procedure took into account the difference in absolute size between sets of Dent and the Flint parent lines. In these instances, the arithmetic mean of predictive abilities across all 20 runs is displayed."}
+overview_df %>%
+  as_tibble() %>%
+  filter(Predictor != "snp77-none-none") %>%
+  mutate(Predictor = fct_relevel(Predictor, pred_order),
+         Group = fct_relevel(Group, "Reduced", "Full")
+  ) %>%
+  ggplot(aes(x = Predictor, y = r)) +
+  geom_bar(stat = "identity", aes(fill = Predictor), color = "black") +
+  geom_text(aes(label = round(r, digits = 3)), vjust = -0.2) +
+  scale_fill_viridis(discrete = TRUE, option = "inferno") +
+  facet_grid(Trait ~ Group, space = "free", scales = "free_x") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position = "bottom",
+    legend.key = element_rect(color = "white")
+  ) +
+  guides(fill = guide_legend(nrow = 3,
+                             byrow = TRUE,
+                             keywidth = 0.25,
+                             keyheight = 0.25,
+                             default.unit = "inch",
+                             title.position = "top")
+  ) +
+  ylim(c(0, 1))
+```
+
+
+### Findings
+a)   Reduced
+   
+   -   For dry matter yield, transcriptomic data clearly perform best.
+
+   -   Genomic data perform decisively better than pedigree data for DMY, ADF 
+     and FAT.
+
+   -   Relative to pedigree and genomic data, transcripts perform poorly for 
+     DMC and STA.
+
+b)   Full
+
+   -   SNP data perform better for all traits compared to pedigree information.
+
+   -   Predictive abilities for the combination of pedigree, SNP and 
+     transcriptomic data "ped100-snp77-mrna42" seem to be the sum of the
+     predictive abilities of the individual predictors weighted by their share
+     of the genotypes. 
+     For example 
+     $$r(\text{ped100-snp77-mrna42}) = r(\text{ped100}) * (1 - 0.77) +
+     r(\text{snp77}) * (0.77 - 0.42) + r(\text{mrna42}) * 0.42$$
+
+   -   The predictive ability of only two predictors is typically higher than a
+     weighted average of the predictive abilities of the constituting
+     individual predictors.
+
+   -   Predictive abilities for FAT and the predictor combination
+     "ped100-snp77-mrna42" are difficult to explain. **Suggestions???**
+
+c)   General
+
+   -   If a reduced predictor performed better than another predictor in the 
+     reduced data set (e.g. 'mrna42' vs. 'snp42' for DMY), it will boost the 
+     performance of the other predictor (here 'snp100') in the full set when the 
+     two predictors are combined in a single-step approach (here 
+     'snp100-mrna-42-none').
+
+
+
+#### Predictive abilities for predictor sets with resampling.
+```{r Resampled-Predictive-Ability-Plots, cache = TRUE, fig.height = 10, fig.cap = "Predictive ability for two scenarios and seven agronomic traits where the composition of the set of genomic predictors 'snp77' is based on sampling at random for 20 times. Predictive abilities are based solely on the set of 685 common hybrids."}
+# Plot the distribution of predictive abilities over 20 rounds of resampled
+# 'snp77'.
+rep_df %>%
+  mutate(Trait = as.factor(Trait),
+         Trait = fct_recode(Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
+  mutate(Trait = fct_relevel(
+    Trait, "DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG"
+    )
+  ) %>%
+  group_by(Trait, Replication, Predictor) %>%
+  summarize(r = cor(y, yhat)) %>%
+  ggplot(aes(x = Predictor, y = r, fill = Predictor)) +
+  geom_boxplot() +
+  facet_wrap(~Trait) +
+  theme_bw(base_size = 10) +
+  theme(axis.text.x = element_blank(),
+        legend.position = "top")
+```
+
+
+
+
+<!--chapter:end:transformed_kernel_predictions.Rmd-->
+
+# Outlook
+## Size of individual predictors
+We have not yet investigated the influence of the size (in terms of the number
+of parental genotypes) of an individual predictor on the predictive ability
+achieved with a combination of multiple predictors in a single-step prediction
+settting.
+Consider the following predictors in single-step prediction, where nothing
+changes but the coverage of genotypes through genomic data in increments of 10%:
+
+1.   'ped100-snp90' or &nbsp;&nbsp;&nbsp;&nbsp; 'ped100-snp90-mrna42'
+
+2.   'ped100-snp80' or &nbsp;&nbsp;&nbsp;&nbsp; 'ped100-snp80-mrna42'
+
+3.   $\dots$        or  &nbsp;&nbsp;&nbsp;&nbsp; $\dots$
+
+4.   'ped100-snp10' or &nbsp;&nbsp;&nbsp;&nbsp; 'ped100-snp10-mrna42'
+
+
+Using such an iterative approach, we might get closer to describing the
+contribution of individual predictors to the predictive ability in a combined
+single-step predictor.
+
+One caveat here is that, so far, we have sampled 'snp77' at random (except for
+the adjustment to sampling, in relative terms, equally large fractions from the
+Dent and the Flint group, respectively).
+If we run the scenario proposed above, we would have a high computational load.
+What I am looking for is a way to sample 'snpXX' --- where XX reprents the
+fraction of all possible genotypes covered --- such that it covers the genetic
+target space (i.e. the whole set of 142 parental Dent and 103 parental Flint
+lines) equally well.
+@Bustos-Korts2016 have described a uniform sampling procedure that we might be
+able to use for this purpose.
+To evaluate the soundness of the method described in this publication, we could
+compare the predictive ability obtained with 'snp77' from uniform sampling with
+the mean (or median) of the predictive ability for 'snp77' from repeated random
+sampling (20 replications, see Figure
+\@ref(fig:Resampled-Predictive-Ability-Plots)).
+
+
+## Algorithm validation
+To validate the algorithms from @Fernando2014 and its extension in
+\@ref(introduction), we could perhaps have a look at an independent data set,
+such as the one described by @Guo2016, who used data from the [Yan
+lab](http://www.maizego.org/Resources.html).
+
+<!--chapter:end:outlook.Rmd-->
+
+# References
+
+<!--chapter:end:references.Rmd-->
+

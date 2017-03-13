@@ -4,7 +4,8 @@ if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("mwesthues/sspredr", update = TRUE)
 options(java.parameters = "-Xmx25G")
-pacman::p_load("tidyverse", "data.table", "dtplyr", "corehunter")
+pacman::p_load("tidyverse", "data.table", "dtplyr", "corehunter", "LEA", 
+               "ggthemes")
 pacman::p_load_gh("mwesthues/sspredr")
 
 # For the second scenario, keep only names of genotypes, which are covered by 
@@ -122,7 +123,7 @@ pc_df <- pc_mat %>%
 pc_df %>%
   ggplot(aes(x = PC_1, y = PC_2, color = Core_Group, shape = Core_Group)) +
   geom_point() +
-  scale_color_tableau() +
+  ggthemes::scale_color_tableau() +
   facet_wrap(~Fraction) +
   theme_bw()
 
