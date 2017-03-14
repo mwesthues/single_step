@@ -1,105 +1,76 @@
-# Methods
-## Genetic Material and Phenotyping
-```{r setup-overview, message = FALSE, echo = FALSE}
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load("data.table", "ggplot2", "ggthemes", "dplyr", "forcats", 
-               "viridis", "tidyr", "knitr", "tibble", "purrr")
+# Materials and Methods
 
-knit_hooks$set(inline = function(x) {
-  prettyNum(x, big.mark = ",", digits = 2)
-})
-knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
-knitr::opts_chunk$set(fig.width = 8, fig.height = 6,
-                      warning = FALSE, echo = FALSE)
-```
+## Data
+<!--
+./reports/methods_data.R
+-->
 
-```{r Load-Agro-Data, message = FALSE, cache = TRUE}
-pheno <- readRDS("./data/processed/Pheno_stage2.RDS")
-genos <- readRDS("./data/processed/common_genotypes.RDS")
+### Agronomic dat
+The maize hybrid data set comprises 1,521 hybrids produced in 16 factorial
+mating designs between 142 Dent and 103 Flint parent lines [@Westhues2017]. 
+Evaluations of six agronomically important traits were recorded on all hybrids
+in field experiments at three or more agro-ecologically diverse locations 
+across Germany.
 
-full_hybrid <- genos %>%
-  filter(Pool == "Hybrid") %>%
-  .$G
-all_pheno <- pheno %>%
-  rename(Observed = EST) %>%
-  as_data_frame() %>%
-  filter(G %in% full_hybrid) %>%
-  dplyr::select(G, Observed, Trait) %>%
-  filter(Trait != "ADL") %>%
-  mutate(Trait = fct_recode(Trait, 
-    "FAT" = "FETT",
-    "DMY" = "GTM",
-    "DMC" = "GTS",
-    "PRO" = "RPR",
-    "SUG" = "XZ"),
-         Trait = fct_relevel(Trait, 
-    c("DMY", "DMC", "ADF", "FAT", "PRO", "STA", "SUG")
-    ))
-traits <- all_pheno %>%
-  .$Trait %>%
-  levels()
+The maize inbred line data set originally comprised 513 maize lines representing 
+the global maize diversity and was reduced to the set of tropical and
+subtropical lines ($n = 211$) given that it is the largest of the four
+pre-classified subgroups [@Yang2014].
+All inbred lines were evaluated in five Chinese environments ranging from
+$18^{\circ}$ to $30^{\circ}$N and from $102^{\circ}$ to $110^{\circ}$E
+[@Yang20114].
+Best linear unbiased predictors (BLUPs) were calculated for 17 traits of which 
+we will evaluate six in our prediction models.
 
-# Hybrids of parents with records for both endophenotypes
-red_inbreds <- genos %>% 
-  filter(Pool != "Hybrid", Data_Type %in% c("snp", "mrna")) %>%
-  split(.$Pool) %>%
-  map(~split(., .$Data_Type)) %>%
-  at_depth(.depth = 2, "G") %>%
-  map(function(x) intersect(x$mrna, x$snp))
 
-red_hybrid <- full_hybrid %>%
-  as_data_frame() %>%
-  separate(value, into = c("DF", "Dent", "Flint")) %>%
-  mutate(Avail_Dent = ifelse(Dent %in% red_inbreds$Dent, yes = 1, no = 0),
-         Avail_Flint = ifelse(Flint %in% red_inbreds$Flint, yes = 1, no = 0),
-         Tested_Parents = Avail_Dent + Avail_Flint) %>%
-  filter(Tested_Parents == 2) %>%
-  unite(Hybrid, DF, Dent, Flint) %>%
-  .$Hybrid
-genos <- genos %>%
-  rbind(tibble(G = red_hybrid,
-               Pool = "Hybrid",
-               Data_Type = "mrna")
-        )
-```
+#### Predictor data
+All parental inbred lines of the maize hybrids were genotyped using the Illumina 
+SNP BeadChip MaizeSNP50 [@Ganal2011].
 
-```{r Feature-Number, echo = FALSE}
-snp <- readRDS("./data/processed/snp_mat.RDS")
-mrna <- readRDS("./data/processed/subset_mrna_blues.RDS")[["100%"]]
-mrna <- t(mrna)
-mrna <- mrna[grep("Exp|Sigma", x = rownames(mrna), invert = TRUE), ]
-```
+
+MaizeSNP50 BeadChip-data were available for the entire set of lines from the
+diversity panel.
+Additionally, RNA sequencing was performed for 368 lines on young seedlings 15 
+days after sowing.
+By exploting identify by descent (IBD) between 49,728 SNPs on the BeadChip 
+overlapping with the RNA-seq data, 556,809 high quality SNPs could be inferred 
+for these lines [@Fu2013,Li2013].
+For the remaining 145 maize lines without RNA-seq data, high density markers
+were inferred via projection of IBD regions onto the BeadChip, using this core 
+set of markers [@Yang2014].
+Gene expression data were normalized using a normal quantile transformation to
+satisfy modelling assumptions [@Fu2013].
+
+
+After filtering for minor allele frequency ($ \geq 5\%$), heterozygosity rate
+($\geq 5\%$) and call frequency ($\geq 95\%$), missing genotypes were imputed 
+using the Beagle software [@Browning2009].
+The final number of polymorphic marker loci was 7,013 for parental Dent and
+6,212 for parental Flint lines, respectively.
+
+
+### Pedigree Data (Hybrid)
 
 
 
-Agronomic data for `r length(traits)` traits (including dry-matter yield (DMY))
-and `r length(full_hybrid)` hybrids are available 
-(Table \@ref(tab:Geno-Number)).
-After applying a series of quality checks, `r ncol(snp)` SNPs and 
-best linear unbiased estimates of `r ncol(mrna)` were available for further 
-analyses.
-Genomic, pedigree and transcriptomic records, were collected for inbred parent 
-lines of `r length(red_hybrid)` hybrids.
+## Structure
+
+### PCA
+
+### Population Structure Analysis
 
 
-```{r Geno-Number, echo = FALSE}
-geno_tab_cap <- paste("Number of genotypes for Dent and Flint parent lines and",
-                      "their hybrid progeny for which genomic and/or",
-                      "transcriptomic data are available.",
-                      "All genotypes for which transcriptomic data are", 
-                      "available, also have genomic data.",
-                      "Agronomic data are available for all 1,521 hybrid",
-                      "genotypes.")
-# Number of genotypes for either SNPs or mRNAs separated by hybrids and their
-# parental Dent and Flint lines, respectively.
-genos %>% 
-  mutate(Data_Type = fct_recode(Data_Type,
-                                Agronomic = "agro",
-                                Transcriptomic = "mrna",
-                                Genomic = "snp",
-                                Pedigree = "ped")) %>%
-  group_by(Pool, Data_Type) %>%
-  count() %>%
-  rename(`Data Type` = Data_Type) %>%
-  knitr::kable(caption = geno_tab_cap, booktabs = TRUE)
-```
+
+## Core Sampling
+
+
+
+## Prediction
+
+### Kernels
+
+### Imputation
+
+### Models
+
+### Leave-one-out cross-validation (LOOCV)
