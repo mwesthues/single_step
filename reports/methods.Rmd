@@ -90,13 +90,61 @@ MR was computed using the *rogers.dist()*-function from the R-pacakge *poppr*
 
 
 
-
 ## Prediction
 
 ### Kernels
+BLUP models are computationally attractive when the number of features $p$
+exceeds the number of genotypes $n$ and are equivalent to a selection index
+when fixed effect have been accomodated by the dependent variable
+(@Mrode2014, pp. 34, 311, 312).
+Depending on the data set, up to three predictors were available for agronomic
+trait predictions, namely pedigree data (P), genomic data (G) and
+transcriptompic data (T).
+The corresponding feature matrix of the $l$-th group of inbred lines and the 
+$o$-th predictor ($\mathbf{W_{lo}}$) has dimensions $n \times p$ where $n$
+pertains to the number of gneotypes in the $l$-th group and $p$ pertains to 
+the number of features.
+For the diversity panel maize lines, $n$ corresponds to the number of genotypes
+whereas, in the case of the hybrid data, $n$ corresponds to the number of
+parent lines in the corresponding heterotic group.
+In generating kernels for each predictor, all features in $\mathbf{W_{lo}}$ were
+centered and standardized to unit variance.
+Then, each kernel can be defined as
 
-### Imputation
+$$
+\begin{equation} \label{eq:GenomicRelationship}
+  \mathbf{G}_{lo} = \frac{1}{W_{lo}} \mathbf{W}_{lo} \mathbf{W}_{lo}^{\top},
+\end{equation}
+$$
+where $W$ denotes the number of features [@VanRaden2008].
+In the case of pedigree data (P), coancestry coefficients were used directly
+for $\mathbf{G}_{lo}$.
+
+
 
 ### Models
 
-### Leave-one-out cross-validation (LOOCV)
+
+
+
+### Imputation
+
+
+### Leave-one-out cross-validation
+In the case of the diversity panel maize inbred lines, leave-one-out cross
+validation (LOOCV) was done by simply using a single genotype as a hold-out
+sample, which will subsequently be predicted, while using all other inbred 
+lines for model training.
+This process is repeated until all inbred lines have been used once for testing
+and $n - 1$ times for model training.
+
+For the hybrid data, LOOCV was carried out as follows:
+Let $D$ and $F$ denote the set of parental inbred lines from the Dent and the 
+Flint group, respectively.
+Further, let $H \cap [D \times F]$ denote the set of hybrids from crosses 
+between $D$ and $F$.
+The training set ($H_{TRN}$) for the hybrid to be predicted ($H_{ij}$) --- 
+where $i \in D_{TRN}$ and $j \in F_{TRN}$ --- was assembled as 
+$H_{TRN} = [H \cap (D_{TRN}^{C} \times F_{TRN}^{C})]$, where 
+$D_{TRN}^{C} = D \setminus D_{TRN}$ and $F_{TRN}^{C} = F \setminus F_{TRN}$.
+
