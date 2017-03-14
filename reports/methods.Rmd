@@ -54,23 +54,40 @@ were applied to the 211 inbred lines from the tropical/subtropical subset,
 yielding 37,760 SNPs.
 Gene expression data were normalized using a normal quantile transformation to
 satisfy modelling assumptions [@Fu2013].
-A subset of 28,850 annotated genes was kept for further analyses [@Li2013].
+A subset of 28,850 annotated genes was available for 149 out of the 211
+genotypes and was kept for further analyses [@Li2013].
 
 
 
-### Pedigree Data (Hybrid)
 
-
-
-## Structure
-
-### PCA
-
-### Population Structure Analysis
+## Population structure
+Principal component analyses (PCA) were run on scaled and centered predictor 
+matrices using the *pca()* function from the R-package *LEA* [@Frichot2015].
+Estimates of ancestry coefficients were estimated based on parse nonnegative
+matrix factorization algorithms [@Frichot2014] using the *snmf()* function 
+in *LEA*.
+Algorithms were run for $K=2, \dots 5$ putative ancestral gene pools with 25
+repetitions for each value of $K$. 
+For each $K$, only the repetition with the lowest cross-entropy was kept for 
+further analyses.
 
 
 
 ## Core Sampling
+In order to evaluate the influence of the genetic constitution of the set of
+genotypes that has only data on one out of two predictors, we generated core 
+samples using the R-package *corehunter* [@Thachuk2009].
+These core samples were based on the 149 maize inbred lines from the diversity
+panel which had gene expression as well as genomic information.
+The size of the core set was varied in increments of ten percentage points and 
+ranged from 10% to 90% of all 149 inbred lines.
+For assembling the various core sets, we first computed the Modifed Rogers (MR)
+distance between each pair of genotypes and then aimed at maximizing the
+average distance between each member of the selected core.
+MR was computed using the *rogers.dist()*-function from the R-pacakge *poppr*
+[@Kamvar2015].
+
+
 
 
 
