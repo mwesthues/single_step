@@ -1,10 +1,11 @@
 # Data and packages -------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "LEA", "stringr", "viridis")
+
+
 snp <- readRDS("./data/processed/maizego/imputed_snp_mat.RDS")
-unique_genotypes <- readRDS(
-  "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
-  ) %>%
+unique_genotypes <- "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS" %>%
+  readRDS() %>%
   keep(names(.) == "snp") %>%
   flatten_chr()
 
@@ -12,8 +13,7 @@ unique_genotypes <- readRDS(
 # PCA ---------------------------------------------------------------------
 write.lfmm(snp, "./data/derived/maizego/snp.lfmm")
 
-# Determine the structure of the data using genotypic and gene expression data,
-# respectively.
+# Determine the structure of the data using genotypic data.
 snp_pc <- LEA::pca(input.file = "./data/derived/maizego/snp.lfmm",
                    scale = TRUE)
 # Perform Tracy-Widom tests on all eigenvalues to determine the optimal number
@@ -24,7 +24,7 @@ tw_K <- snp_tw %>%
   flatten_dbl() %>%
   keep(~ .x <= 0.0001) %>%
   length()
-tw_K <- min(c(tw_K, 10))
+tw_K <- min(c(tw_K, 5))
 
 snp_tw %>%
   .["percentage"] %>%
@@ -38,7 +38,7 @@ lfmm2geno("./data/derived/maizego/snp.lfmm",
 project <- snmf(input.file = "./data/derived/maizego/snp.geno",
                 K = seq_len(tw_K),
                 project = "new",
-                repetitions = 10,
+                repetitions = 25,
                 CPU = 3,
                 entropy = TRUE)
 
@@ -75,11 +75,47 @@ pc_with_assignment %>%
   geom_point() 
 
 
-# Evaluate the population structure when considering the first K principal 
-# components.
-K <- 10
-ce <- cross.entropy(project, K = K)
-best <- which.min(ce)
-barplot(t(Q(project, K = K, run = best)), col = viridis(n = K))
 
+# ADMIXTURE ---------------------------------------------------------------
+K_lst <- seq(from = 2, to = tw_K, by = 1) %>%
+  as.list()
 
+# Function to compute the cross entropy.
+ce_fun <- function(x, k) {
+  x %>%
+    cross.entropy(K = k) %>%
+    which.min()
+}
+
+# For each K, get the run with the smallest cross entropy criterion.
+ce_lst <- K_lst %>%
+  map(., .f = ~ce_fun(x = project, k = .))
+
+# Return the admixture coefficients for each chosen run with K ancestral 
+# populations.
+structure_df <- K_lst %>%
+  map2(.y = ce_lst, .f = ~Q(object = project, K = .x, run = .y)) %>%
+  map(as_data_frame) %>%
+  map(function(x) {
+    x$G <- rownames(pc_mat)
+    x
+  }) %>%
+  map(., ~gather(., key = Component, value = Value, -G)) %>%
+  bind_rows(.id = "K")
+
+# For each genotype and for each run with K ancestral populations, plot the 
+# admixture coefficients by genotype.
+structure_df %>%
+  mutate(
+    K = as.numeric(K),
+    K = K + 1,
+    K = paste0("K=", as.character(K))
+  ) %>%
+  mutate_at(vars(K, G, Component), as.factor) %>%
+  ggplot(aes(x = G, y = Value, fill = Component)) +
+  geom_bar(stat = "identity", width = 1) +
+  facet_wrap(~K, ncol = 1, strip.position = "right") +
+  scale_fill_viridis(discrete = TRUE) +
+  ggthemes::theme_pander() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "none")

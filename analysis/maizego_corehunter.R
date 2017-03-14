@@ -160,3 +160,9 @@ all_geno_pc %>%
   scale_color_tableau() +
   theme_bw() +
   theme(legend.position = "top")
+
+
+
+# STRUCTURE ANALYSIS ------------------------------------------------------
+
+
