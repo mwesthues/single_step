@@ -14,18 +14,18 @@ agronomically important traits.
 All 245 parent lines have pedigree records back to the generation of their 
 grandparents or deeper [@Westhues2017] and were genotyped using the Illumina 
 SNP BeadChip MaizeSNP50 [@Ganal2011].
-After filtering for minor allele frequency ($ \geq 5\%$), heterozygosity rate
-($\geq 5\%$) and call frequency ($\geq 95\%$), missing genotypes were imputed 
+After filtering for minor allele frequency ($\geq 5$%), heterozygosity rate
+($\geq 5$%) and call frequency ($\geq 95$%), missing genotypes were imputed 
 using the Beagle software [@Browning2009].
 The final number of polymorphic marker loci was 7,013 for parental Dent and
 6,212 for parental Flint lines, respectively.
 Gene expression data for seedlings seven days after sowing were obtained for a 
 subset of 60 parental Dent and 43 parental Flint lines through two-color
 hybridizations using a custom 2K microarray (GPL22267) [@Westhues2017].
-After applying established normalization procedures [@Smyth2003,Ritchie2007], 
+After applying established normalization procedures [@Smyth2003;@Ritchie2007], 
 gene expression BLUEs were computed for 1,323 transcripts in reference to 
-established protocols [@Symth2003,Ritchie2007,Frisch2010] using the R-package 
-*limma* [@Ritchie2015].
+established protocols [@Smyth2003;@Ritchie2007;@Frisch2010] using the R-package 
+*limma* [@Ritchie2015a].
 
 
 
@@ -36,7 +36,7 @@ subtropical lines ($n = 211$) given that it is the largest of the four
 pre-classified subgroups [@Yang2014].
 All inbred lines were evaluated in five Chinese environments ranging from
 $18^{\circ}$ to $30^{\circ}$N and from $102^{\circ}$ to $110^{\circ}$E
-[@Yang20114].
+[@Yang2014].
 Best linear unbiased predictors (BLUPs) were calculated for 17 traits of which 
 we will evaluate six in our prediction models.
 MaizeSNP50 BeadChip-data were available for the entire set of lines from the
@@ -45,7 +45,7 @@ Additionally, RNA sequencing was performed for 368 lines on young seedlings 15
 days after sowing.
 By exploting identify by descent (IBD) between 49,728 SNPs on the BeadChip 
 overlapping with the RNA-seq data, 556,809 high quality SNPs could be inferred 
-for these lines [@Fu2013,Li2013].
+for these lines [@Fu2013;@Li2013].
 For the remaining 145 maize lines without RNA-seq data, high density markers
 were inferred via projection of IBD regions onto the BeadChip, using this core 
 set of markers [@Yang2014].
@@ -102,7 +102,7 @@ trait predictions, namely pedigree data (P), genomic data (G) and
 transcriptompic data (T).
 The corresponding feature matrix of the $l$-th group of inbred lines and the 
 $o$-th predictor ($\mathbf{W_{lo}}$) has dimensions $n \times p$ where $n$
-pertains to the number of gneotypes in the $l$-th group and $p$ pertains to 
+pertains to the number of genotypes in the $l$-th group and $p$ pertains to 
 the number of features.
 For the diversity panel maize lines, $n$ corresponds to the number of genotypes
 whereas, in the case of the hybrid data, $n$ corresponds to the number of
@@ -111,11 +111,10 @@ In generating kernels for each predictor, all features in $\mathbf{W_{lo}}$ were
 centered and standardized to unit variance.
 Then, each kernel can be defined as
 
-$$
 \begin{equation} \label{eq:GenomicRelationship}
   \mathbf{G}_{lo} = \frac{1}{W_{lo}} \mathbf{W}_{lo} \mathbf{W}_{lo}^{\top},
 \end{equation}
-$$
+
 where $W$ denotes the number of features [@VanRaden2008].
 In the case of pedigree data (P), coancestry coefficients were used directly
 for $\mathbf{G}_{lo}$.
@@ -123,18 +122,201 @@ for $\mathbf{G}_{lo}$.
 
 
 ### Models
+The universal model for breeding values was:
+
+\begin{equation} \label{eq:GBLUPModel}
+  \mathbf{y} = \mu + 
+  \sum_{l=1}^{L} \mathbf{Z}_{lo} \mathbf{g}_{lo} +
+  \mathbf{\epsilon},
+\end{equation}
+
+
+where $\mathbf{y}$ is the vector of observed inbred line or hybrid performance,
+respectively, $\mu$ is the fixed model intercept, $\mathbf{Z}_{lo}$ is the 
+corresponding design matrix associating the random genotype effects (*i.e.*, 
+breeding values) of the lines in the $l$-th inbred line group and the $o$-th 
+predictor type with $\mathbf{y}$.
+Note that, in the case of hybrid data, $\mathbf{Z}_{lo}$ associates the random
+general combining ability effects in the parental inbred lines (either Dent or
+Flint, as expressed by $l$) with the vector of observed hybrid performance
+$\mathbf{y}$.
+The random effects ($\mathbf{g}_{lo}$) have expectation zero and variance equal 
+to $\mathbf{G}_{lo} \sigma^{2}_{{u}^{lo}}$ and $\mathbf{I} \sigma^2_{\epsilon}$ 
+for the residual error.
+All prediction models were implemented using the R-package *BGLR* [@Perez2014]. 
+
+
+
+### Single Step Prediction
+
+The breeding values in a prediction model are in general given by:
+\begin{equation} \label{eq:mrnaebv}
+	\mathbf{\tilde{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
+\end{equation}
+
+where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model,
+which is equivalent to the BLUP model.
+
+Consider now the situation in which one predictor is complete in the sense that
+it contains information on the whole population but a second predictor is
+incomplete and covers only a subset of the population.
+We can take a similar route as in @Fernando2014 and impute covariates of the 
+incomplete predictor by using covariates of the complete predictor.
+Let the subscript $1$ denote individuals covered only by the complete
+predictor whereas individuals covered by both, the complete and the
+incomplete predictor, are indicated by the subscript $2$.
+Furhter, the covariates in $\mathbf{W}$ are centered.
+The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
+expectation given $\mathbf{g}_2$ and a residual error term:
+\begin{align} \label{eq:mrna1}
+	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
+	&= \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{G_{12}}\mathbf{G_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
+	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
+\end{align}
+
+The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{G}_{11} - \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{G}_{21} = (\mathbf{G}^{11})^{-1}$
+[@Legarra2009].
+
+The structure of the residual imputation/prediction error is known and can 
+therefore be modelled.
+The covariates not covered by the incomplete predictor can be predicted using 
+the expectation of a multivariate normal random vector given correlated 
+observations, which are related to the Best Linear Predictor.
+
+The general model for the single step procedure can then be written as 
+
+\begin{equation}
+  (\#eq:single-step-model)
+\mathbf{y} = \mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U}_{Full} \boldsymbol{\epsilon}_{Full} + \mathbf{e},
+\end{equation}
+
+with
+
+\begin{equation}
+ (\#eq:single-step-submatrices)
+\mathbf{X} = 
+\begin{bmatrix}
+  X_1 \\
+  X_2 
+ \end{bmatrix},
+ \mathbf{W} = 
+\begin{bmatrix}
+  Z_1\hat{\mathbf{W}_1} \\
+  \mathbf{W}_2 
+ \end{bmatrix},
+ \mathbf{U}_{Full} = 
+\begin{bmatrix}
+  Z_1 \\
+  0 
+ \end{bmatrix}
+\end{equation}
+
+Following the notation in @Fernando2014 the phenotypes can be untangled like this:
+
+\begin{align}
+ (\#eq:entangled-augmented-single-step-model)
+\begin{bmatrix}
+  y_1 \\
+  y_2 
+ \end{bmatrix}
+& =
+ \begin{bmatrix}
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_1 & 0 \\
+  0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  g_1 \\
+  g_2 
+ \end{bmatrix}
+  + \mathbf{e} \\
+    & = 
+ \begin{bmatrix}
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_1 & 0 \\
+  0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  \mathbf{G}_{12}\mathbf{G}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{Full}  \\
+  \mathbf{W}_2\boldsymbol{\alpha} \\
+ \end{bmatrix}
+  + \mathbf{e} \\
+    & = 
+ \begin{bmatrix}
+  X_1 \\
+  X_2 
+ \end{bmatrix}
+ \boldsymbol{\beta} + 
+ \begin{bmatrix}
+  Z_1 & 0 \\
+  0 & Z_2 
+ \end{bmatrix}
+\begin{bmatrix}
+  \hat{\mathbf{W}_1}\boldsymbol{\alpha} + \boldsymbol{\epsilon}_{Full} \\
+  \mathbf{W}_2\boldsymbol{\alpha} \\
+ \end{bmatrix}
+  + \mathbf{e} \\
+\end{align}
+
+The breeding values from that model are:
+
+\begin{equation}
+ (\#eq:breeding-values)
+\tilde{\mathbf{g}} = 
+ \begin{bmatrix}
+  \hat{\mathbf{W}_1} \\
+  \mathbf{W}_2 
+ \end{bmatrix}
+ \hat{\boldsymbol{\alpha}}
+ + 
+ \begin{bmatrix}
+  \mathbf{Z}_1 \\
+  0
+ \end{bmatrix}
+ \hat{\boldsymbol{\epsilon}}_{Full} 
+\end{equation}
 
 
 
 
-### Imputation
 
 
-### Leave-one-out cross-validation
-In the case of the diversity panel maize inbred lines, leave-one-out cross
-validation (LOOCV) was done by simply using a single genotype as a hold-out
-sample, which will subsequently be predicted, while using all other inbred 
-lines for model training.
+Our final model looks like this:
+
+\begin{align}
+ (\#eq:final-model)
+\mathbf{y} &= \mathbf{Xb} +
+\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{W}_{l} \boldsymbol{\alpha}_{l} + 
+\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{U}_{l{Full}} \boldsymbol{\epsilon}_{l{Full}} +
+\mathbf{e}.
+\end{align}
+
+For the hybrid data, the obtained GCA effects for the inbred lines represent 
+half their breeding values.
+The predicted agronomic performance is:
+
+\begin{equation}
+ (\#eq:predicted-performance)
+\tilde{\mathbf{h}} = \sum_{l=1}^{L} \mathbf{Z}_{l}\tilde{\mathbf{g}}_{l} 
+\end{equation}
+
+
+
+
+### Model validation
+For the validation of our predictions, we employed leave-one-out
+cross-validation (LOOCV) routines.
+In the case of the diversity panel maize inbred lines, LOOCV was done by simply 
+using a single genotype as a hold-out sample, which will subsequently be 
+predicted, while using all other inbred lines for model training.
 This process is repeated until all inbred lines have been used once for testing
 and $n - 1$ times for model training.
 
@@ -145,6 +327,6 @@ Further, let $H \cap [D \times F]$ denote the set of hybrids from crosses
 between $D$ and $F$.
 The training set ($H_{TRN}$) for the hybrid to be predicted ($H_{ij}$) --- 
 where $i \in D_{TRN}$ and $j \in F_{TRN}$ --- was assembled as 
-$H_{TRN} = [H \cap (D_{TRN}^{C} \times F_{TRN}^{C})]$, where 
+$H_{TRN} = [H \cap (D_{TRN}^{C} \times F_{TRN}^{C})]$ with
 $D_{TRN}^{C} = D \setminus D_{TRN}$ and $F_{TRN}^{C} = F \setminus F_{TRN}$.
 

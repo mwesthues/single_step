@@ -1,5 +1,5 @@
 ---
-title: Single-step Hybrid Predition
+title: Omics-based Single-step Trait Predition
 author:
   - name: Matthias Westhues
     email: matthias.westhues@uni-hohenheim.de
@@ -29,7 +29,7 @@ knit: "bookdown::render_book"
 output:
   bookdown::pdf_book:
     base_format: rticles::elsevier_article
-bibliography: ["library.bib", "cheuer.bib"]
+bibliography: ["~/Dropbox/Paper/library.bib"]
 abstract: |
   This is the abstract.
 
