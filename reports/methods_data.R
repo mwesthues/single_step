@@ -107,7 +107,7 @@ maizego_imp_snp %>%
 # *** ./analysis/prediction.R ***
 # 1) Number of SNPs for inbred lines covered by mRNA data.
 # 2) Number of SNPs for all inbred lines.
-common_genotypes %>%
+maizego_genotypes %>%
   discard(names(.) == "pheno") %>%
   map(function(x) {
     maizego_imp_snp[rownames(maizego_imp_snp) %in% x, ]

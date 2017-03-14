@@ -5,13 +5,31 @@
 ./reports/methods_data.R
 -->
 
-### Agronomic dat
+### Hybrid data
 The maize hybrid data set comprises 1,521 hybrids produced in 16 factorial
 mating designs between 142 Dent and 103 Flint parent lines [@Westhues2017]. 
-Evaluations of six agronomically important traits were recorded on all hybrids
-in field experiments at three or more agro-ecologically diverse locations 
-across Germany.
+Best linear unbiased estimates (BLUEs) were computed across all factorials and 
+three or more agro-ecologically diverse locations across Germany for six 
+agronomically important traits.
+All 245 parent lines have pedigree records back to the generation of their 
+grandparents or deeper [@Westhues2017] and were genotyped using the Illumina 
+SNP BeadChip MaizeSNP50 [@Ganal2011].
+After filtering for minor allele frequency ($ \geq 5\%$), heterozygosity rate
+($\geq 5\%$) and call frequency ($\geq 95\%$), missing genotypes were imputed 
+using the Beagle software [@Browning2009].
+The final number of polymorphic marker loci was 7,013 for parental Dent and
+6,212 for parental Flint lines, respectively.
+Gene expression data for seedlings seven days after sowing were obtained for a 
+subset of 60 parental Dent and 43 parental Flint lines through two-color
+hybridizations using a custom 2K microarray (GPL22267) [@Westhues2017].
+After applying established normalization procedures [@Smyth2003,Ritchie2007], 
+gene expression BLUEs were computed for 1,323 transcripts in reference to 
+established protocols [@Symth2003,Ritchie2007,Frisch2010] using the R-package 
+*limma* [@Ritchie2015].
 
+
+
+#### Diversity panel
 The maize inbred line data set originally comprised 513 maize lines representing 
 the global maize diversity and was reduced to the set of tropical and
 subtropical lines ($n = 211$) given that it is the largest of the four
@@ -21,13 +39,6 @@ $18^{\circ}$ to $30^{\circ}$N and from $102^{\circ}$ to $110^{\circ}$E
 [@Yang20114].
 Best linear unbiased predictors (BLUPs) were calculated for 17 traits of which 
 we will evaluate six in our prediction models.
-
-
-#### Predictor data
-All parental inbred lines of the maize hybrids were genotyped using the Illumina 
-SNP BeadChip MaizeSNP50 [@Ganal2011].
-
-
 MaizeSNP50 BeadChip-data were available for the entire set of lines from the
 diversity panel.
 Additionally, RNA sequencing was performed for 368 lines on young seedlings 15 
@@ -38,15 +49,13 @@ for these lines [@Fu2013,Li2013].
 For the remaining 145 maize lines without RNA-seq data, high density markers
 were inferred via projection of IBD regions onto the BeadChip, using this core 
 set of markers [@Yang2014].
+The same SNP quality checks as for the parental inbred lines of the hybrids
+were applied to the 211 inbred lines from the tropical/subtropical subset,
+yielding 37,760 SNPs.
 Gene expression data were normalized using a normal quantile transformation to
 satisfy modelling assumptions [@Fu2013].
+A subset of 28,850 annotated genes was kept for further analyses [@Li2013].
 
-
-After filtering for minor allele frequency ($ \geq 5\%$), heterozygosity rate
-($\geq 5\%$) and call frequency ($\geq 95\%$), missing genotypes were imputed 
-using the Beagle software [@Browning2009].
-The final number of polymorphic marker loci was 7,013 for parental Dent and
-6,212 for parental Flint lines, respectively.
 
 
 ### Pedigree Data (Hybrid)
