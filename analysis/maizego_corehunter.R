@@ -115,54 +115,11 @@ pc_df <- pc_mat %>%
   rownames_to_column(var = "G") %>%
   gather(key = PC, value = Score, -G) %>%
   as_data_frame() %>%
-  filter(PC %in% paste0("PC_", seq_len(3))) %>%
+  filter(PC %in% paste0("PC_", seq_len(2))) %>%
   left_join(y = group_membership, by = "G") %>%
-  spread(key = PC, value = Score)
-
-
-pc_df %>%
-  ggplot(aes(x = PC_1, y = PC_2, color = Core_Group, shape = Core_Group)) +
-  geom_point() +
-  ggthemes::scale_color_tableau() +
-  facet_wrap(~Fraction) +
-  theme_bw()
-
-
-
-# SNP VS MRNA PCA ---------------------------------------------------------
-# Explore the kinship matrix.
-all_geno_snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
-  readRDS() %>%
-  sspredr::ensure_snp_quality(
-    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
-    any_missing = FALSE, remove_duplicated = TRUE
-  )
-
-write.lfmm(all_geno_snp, "./data/derived/maizego/all_tst_snp.lfmm")
-all_geno_pc <- LEA::pca("./data/derived/maizego/all_tst_snp.lfmm", scale = TRUE)
-
-all_geno_pc <- all_geno_pc$projections
-rownames(all_geno_pc) <- rownames(all_geno_snp)
-colnames(all_geno_pc) <- paste0("PC_", seq_len(ncol(all_geno_pc)))
-
-all_geno_pc %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "G") %>%
-  gather(key = PC, value = Score, -G) %>%
-  as_data_frame() %>%
-  filter(PC %in% paste0("PC_", seq_len(3))) %>%
-  mutate(Group = if_else(
-    G %in% common_genotypes, true = "mRNA", false = "All")
+  mutate(
+    PC = gsub("PC_", replacement = "PC", x = PC)
   ) %>%
-  spread(key = PC, value = Score) %>%
-  ggplot(aes(x = PC_1, y = PC_2, color = Group, shape = Group)) +
-  geom_point() +
-  scale_color_tableau() +
-  theme_bw() +
-  theme(legend.position = "top")
-
-
-
-# STRUCTURE ANALYSIS ------------------------------------------------------
-
+  spread(key = PC, value = Score)
+saveRDS(pc_df, "./data/derived/maizego/core_sampling_pca.RDS")
 

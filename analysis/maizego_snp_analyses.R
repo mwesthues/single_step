@@ -1,6 +1,7 @@
 # Data and packages -------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "LEA", "stringr", "viridis")
+pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "cowplot", 
+               "ggthemes")
 
 
 snp <- readRDS("./data/processed/maizego/imputed_snp_mat.RDS")
@@ -48,31 +49,52 @@ project <- snmf(input.file = "./data/derived/maizego/snp.geno",
 project <- load.snmfProject("./data/derived/maizego/snp.snmfProject")
 
 
-# Get labels for the different subpopulations of the genotypes.
-pop_struc <- fread("./data/input/maizego/genotype_annotation.txt")
+# SNP VS MRNA PCA ---------------------------------------------------------
+# For the second scenario, keep only names of genotypes, which are covered by 
+# all data types (i.e. phenotypic, genotypic and transcriptomic).
+common_genotypes <- readRDS(
+  "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
+)
+common_genotypes <- common_genotypes %>%
+  reduce(intersect)
 
-pc_mat <- snp_pc$projections
-rownames(pc_mat) <- rownames(snp)
-pc_with_assignment <- pc_mat %>%
+# Explore the kinship matrix.
+all_geno_snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
+  readRDS() %>%
+  sspredr::ensure_snp_quality(
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
+    any_missing = FALSE, remove_duplicated = TRUE
+  )
+
+write.lfmm(all_geno_snp, "./data/derived/maizego/all_tst_snp.lfmm")
+all_geno_pc <- LEA::pca("./data/derived/maizego/all_tst_snp.lfmm", scale = TRUE)
+
+all_geno_pc <- all_geno_pc$projections
+rownames(all_geno_pc) <- rownames(all_geno_snp)
+colnames(all_geno_pc) <- paste0("PC_", seq_len(ncol(all_geno_pc)))
+
+g1 <- all_geno_pc %>%
   as.data.frame() %>%
-  rownames_to_column(var = "Lines") %>%
-  gather(key = PC, value = Score, -Lines) %>%
-  left_join(y = pop_struc, by = "Lines") %>%
-  mutate(PC = str_replace_all(PC, pattern = "V", replacement = "PC"))
-
-pc_with_assignment %>%
-  filter(PC %in% c("PC1", "PC2")) %>%
+  rownames_to_column(var = "G") %>%
+  gather(key = PC, value = Score, -G) %>%
+  as_data_frame() %>%
+  filter(PC %in% paste0("PC_", seq_len(3))) %>%
+  mutate(Group = if_else(
+    G %in% common_genotypes, true = "mRNA", false = "All"),
+    PC = gsub("PC_", replacement = "PC", x = PC)
+  ) %>%
   spread(key = PC, value = Score) %>%
-  mutate(Lines = as.factor(Lines)) %>%
-  ggplot(., aes(x = PC1, y = PC2, color = Origin)) +
-  geom_point() 
+  ggplot(aes(x = PC1, y = PC2, color = Group, shape = Group)) +
+  geom_point() +
+  scale_color_tableau() +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "top")
+ggsave(plot = g1,
+       filename = "./paper/tables_figures/maizego_pca.pdf",
+       width = 6,
+       height = 4, 
+       units = "in")
 
-pc_with_assignment %>%
-  filter(PC %in% c("PC1", "PC3")) %>%
-  spread(key = PC, value = Score) %>%
-  mutate(Lines = as.factor(Lines)) %>%
-  ggplot(., aes(x = PC1, y = PC3, color = Origin)) +
-  geom_point() 
 
 
 
@@ -97,7 +119,7 @@ structure_df <- K_lst %>%
   map2(.y = ce_lst, .f = ~Q(object = project, K = .x, run = .y)) %>%
   map(as_data_frame) %>%
   map(function(x) {
-    x$G <- rownames(pc_mat)
+    x$G <- rownames(snp)
     x
   }) %>%
   map(., ~gather(., key = Component, value = Value, -G)) %>%
@@ -105,7 +127,7 @@ structure_df <- K_lst %>%
 
 # For each genotype and for each run with K ancestral populations, plot the 
 # admixture coefficients by genotype.
-structure_df %>%
+g2 <- structure_df %>%
   mutate(
     K = as.numeric(K),
     K = K + 1,
@@ -116,6 +138,30 @@ structure_df %>%
   geom_bar(stat = "identity", width = 1) +
   facet_wrap(~K, ncol = 1, strip.position = "right") +
   scale_fill_viridis(discrete = TRUE) +
-  ggthemes::theme_pander() +
+  ggthemes::theme_pander(base_size = 10) +
   theme(axis.text.x = element_blank(),
-        legend.position = "none")
+        legend.position = "none") +
+  xlab("Genotype") +
+  ylab("Ancestry Coefficient")
+
+# Core sampling PCA results.
+pc_df <- "./data/derived/maizego/core_sampling_pca.RDS" %>%
+  readRDS()
+
+g3 <- pc_df %>%
+  filter(Fraction != "1.0") %>%
+  rename(`Core Group` = Core_Group) %>%
+  ggplot(aes(x = PC1, y = PC2, color = `Core Group`, shape = `Core Group`)) +
+  geom_point(size = 0.5) +
+  ggthemes::scale_color_tableau() +
+  facet_wrap(~Fraction, nrow = 3, ncol = 3) +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "top")
+
+
+g23 <- plot_grid(g2, g3, labels = c("A", "B"), ncol = 2, nrow = 1)
+ggsave(plot = g23,
+       filename = "./paper/tables_figures/maizego_admixture_pca.pdf",
+       width = 7,
+       height = 4,
+       units = "in")
