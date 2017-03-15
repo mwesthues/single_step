@@ -1,12 +1,10 @@
 # LOOCV-Prediction
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "data.table", "dtplyr", "stringr", "forcats",
-               "xtable")
+               "xtable", "gsubfn")
 source("./software/prediction_helper_functions.R")
 
 # xtable options
-options(xtable.floating = FALSE)
-options(xtable.timestamp = "")
 options(width = 60)
 
 log_path <- "./data/derived/uhoh_maizego_prediction_log.txt"
@@ -22,8 +20,8 @@ filtered_log_file <- log_file %>%
   ) %>%
   mutate(Core_Fraction = as.numeric(Core_Fraction)) %>%
   filter(Core_Fraction >= 1) %>%
-  mutate(Reduced = if_else(Core_Fraction == 1, true = "yes", false = "no"),
-         Reduced = if_else(Pred1 == "mrna", true = "yes", false = Reduced)
+  mutate(Reduced = if_else(Core_Fraction == 1, true = TRUE, false = FALSE),
+         Reduced = if_else(Pred1 == "mrna", true = TRUE, false = Reduced)
   )
 
 # Read the results from the prediction models based on the log files and 
@@ -40,6 +38,20 @@ pred_df <- filtered_log_file %>%
   unite(col = Predictor, Pred1, Pred2, sep = "-") %>%
   droplevels() %>%
   select(-Job_ID)
+
+# Replace long predictor names by short, one-character versions.
+pred_df <- pred_df %>%
+  mutate(
+    Predictor = gsubfn(
+      pattern = "\\S+", 
+      replacement = list(
+        "snp-none" = "G",
+        "mrna-none" = "T",
+        "snp-mrna" = "GT"
+      ),
+      x = Predictor
+    )
+  )
 
 
 # For each combination of trait, genotype coverage and predictor, compute the 
@@ -58,7 +70,7 @@ pred_lst <- pred_df %>%
   ungroup() %>%
   mutate(
     r = round(r, digits = 2),
-    CV = round(CV, digits = 4),
+    CV = round(CV, digits = 2),
     Value = paste0(
       r, " (", CV, ")"
   )) %>%

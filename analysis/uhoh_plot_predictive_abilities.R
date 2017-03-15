@@ -1,16 +1,21 @@
 # LOOCV-Prediction
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "data.table", "dtplyr", "xtable", "stringr",
-               "forcats")
+               "forcats", "gsubfn")
+# xtable options
+options(width = 60)
+
 source("./software/prediction_helper_functions.R")
+
+
+
 
 log_path <- "./data/derived/uhoh_maizego_prediction_log.txt"
 prediction_path <- "./data/derived/predictions/"
 log_file <- fread(log_path)
 
 # Specify a unified predictor order.
-pred_order <- c("mrna-none", "ped-none", "snp-none",
-                "ped-snp", "ped-mrna", "snp-mrna")
+pred_order <- c("T", "P", "G", "PG", "PT", "GT")
 
 # Specify a unique trait order.
 trait_order <- c("DMY", "DMC", "FAT", "PRO", "STA", "SUG")
@@ -27,7 +32,6 @@ raw_pred_df <- log_file %>%
     ) %>%
   unite(col = Predictor, Pred1, Pred2, sep = "-") %>%
   filter(Trait != "ADL") %>%
-  mutate(Predictor = fct_relevel(Predictor, pred_order)) %>%
   droplevels() %>%
   mutate(Trait = fct_recode(Trait,
     "DMY" = "GTM",
@@ -36,11 +40,29 @@ raw_pred_df <- log_file %>%
     "PRO" = "RPR",
     "SUG" = "XZ"
   )) %>%
-  mutate(Trait = fct_relevel(Trait, trait_order),
-         Predictor = as.factor(Predictor)
+  mutate(
+    Trait = fct_relevel(Trait, trait_order)
   ) %>%
   select(-Job_ID)
-  
+
+# Replace long predictor names by short, one-character versions.
+raw_pred_df <- raw_pred_df %>%
+  mutate(
+    Predictor = gsubfn(
+      pattern = "\\S+", 
+      replacement = list(
+        "mrna-none" = "T",
+        "ped-none" = "P",
+        "snp-none" = "G",
+        "ped-snp" = "PG",
+        "ped-mrna" = "PT",
+        "snp-mrna" = "GT"
+      ),
+      x = Predictor
+    ),
+    Predictor = fct_relevel(Predictor, pred_order)
+  )
+ 
   
 pred_lst <- raw_pred_df %>%
   mutate(
