@@ -1,5 +1,5 @@
 ---
-title: Omics-based Single-step Trait Predition
+title: Omics-based Single Step Trait Prediction
 author:
   - name: Matthias Westhues
     email: matthias.westhues@uni-hohenheim.de
