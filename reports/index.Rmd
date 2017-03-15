@@ -31,8 +31,6 @@ output:
     base_format: rticles::elsevier_article
 bibliography: ["~/Dropbox/Paper/library.bib"]
 abstract: |
-  This is the abstract.
-
-  It consists of two paragraphs.
+  $\dots$
 ---
 
