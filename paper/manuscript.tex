@@ -103,7 +103,7 @@ ability.
 
 
 \section{Materials and Methods}
-\subsection{Maize hybrids}
+\Genetics2level{Maize hybrids}
 The maize hybrid data set comprises 1,521 hybrids produced in 16 factorial
 mating designs between 142 Dent and 103 Flint parent lines \cite{Westhues2017}. 
 Best linear unbiased estimates (BLUEs) were computed across all factorials and 
@@ -128,7 +128,7 @@ transcripts in reference to established protocols
 
 
 
-\subsection{Maize diversity panel}
+\Genetics2level{Maize diversity panel}
 The maize inbred line data set originally comprised 513 maize lines representing 
 the global maize diversity and was reduced to the set of tropical and
 subtropical lines ($n = 211$) given that it is the largest of the four
@@ -157,7 +157,7 @@ genotypes and was kept for further analyses \cite{Li2013}.
 
 
 
-\subsection{Population structure}
+\Genetics2level{Population structure}
 Principal component analyses (PCA) were run on scaled and centered predictor 
 matrices using the \emph{pca} function from the R-package \textit{LEA} 
 \cite{Frichot2015}.
@@ -171,7 +171,7 @@ further analyses.
 
 
 
-\subsection{Core sampling}
+\Genetics2level{Core sampling}
 In order to evaluate the influence of the genetic constitution of the set of
 genotypes that has only data on one out of two predictors, we generated core 
 samples using the R-package \textit{corehunter} \cite{Thachuk2009}.
@@ -186,8 +186,8 @@ MR was computed using the \emph{rogers.dist} function from the R-pacakge
 \textit{poppr} \cite{Kamvar2015}.
 
 
-\subsection{Prediction}
-\subsubsection{Kernels}
+\Genetics2level{Prediction}
+\subsection{Kernels}
 BLUP models are computationally attractive when the number of features $p$
 exceeds the number of genotypes $n$ and are equivalent to a selection index
 when fixed effects have been accomodated by the dependent variable 
@@ -218,7 +218,7 @@ for $\mathbf{K}_{lo}$.
 
 
 
-\subsubsection{Universal breeding value model}
+\subsection{Universal breeding value model}
 The universal model for breeding values was:
 
 \begin{equation} \label{eq:KBLUPModel}
@@ -247,7 +247,7 @@ All prediction models were implemented using the R-package \textit{BGLR}
 
 
 
-\subsubsection{Single step prediction}
+\subsection{Single step prediction}
 The breeding values in a prediction model are in general given by:
 \begin{equation} \label{eq:mrnaebv}
 	\mathbf{\tilde{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
@@ -402,7 +402,7 @@ The predicted agronomic performance is:
 
 
 
-\subsubsection{Predictive ability and model validation}
+\subsection{Predictive ability and model validation}
 For the validation of our predictions, we employed leave-one-out
 cross-validation (LOOCV) routines.
 In the case of the diversity panel maize inbred lines, LOOCV was performed by 
@@ -459,8 +459,40 @@ diversity panel.
 \label{fig:CoreSetInfluence}
 \end{figure}
 
+
+\begin{figure}[H]
+\centering
+\includegraphics{./tables_figures/uhoh_dent_flint_pca.pdf}
+\caption{
+  Principal component (PC) analysis of the two heterotic groups of the maize 
+  hybrids.
+  All inbred lines, which are covered by genomic and transcriptomic features
+  are depicted as orange triangles whereas genotypes for which only genomic
+  information are available are depicted as blue dots.
+}
+\label{fig:UHOH-PCA}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics{./tables_figures/maizego_admixture_pca.pdf}
+\caption{
+  (\textbf{A}) Ancestry coefficients for 211 tropical/subtropical inbred lines
+  from the maize diversity panel considering $K=2 \dots 5$ ancestral
+  populations.
+  (\textbf{B}) Principal component analysis for nine different core sets of the
+  set of tropical/subtropical maize inbred lines.
+  For each size of the core set, its members are plotted as orange dots whereas 
+  all genotypes that are not elements of the cores sets (\textit{i.e.},
+  'Complement') are depicted as blue dots.
+}
+\label{fig:PopStructure}
+\end{figure}
+
+
 % latex table generated in R 3.3.3 by xtable 1.8-2 package
-% Wed Mar 15 10:35:35 2017
+% Wed Mar 15 17:33:34 2017
 % Script: ./analysis/maizego_plot_predictive_abilities.R
 \begin{table}[ht]
 \centering
@@ -469,13 +501,13 @@ diversity panel.
   \toprule
  & 100grainweight & cobweight & Eardiameter & Kernelwidth & Plantheight & Silkingtime \\ 
   \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: no}}\\
-snp-mrna & 0.44 (0.0748) & 0.33 (0.1727) & 0.4 (0.0543) & 0.34 (0.0425) & 0.4 (0.0707) & 0.53 (0.0285) \\ 
-  snp-none & 0.43 (0.0733) & 0.37 (0.1734) & 0.39 (0.0535) & 0.34 (0.0455) & 0.45 (0.0755) & 0.53 (0.0297) \\ 
+\multicolumn{6}{l}{{\bfseries Only incomplete predictor: FALSE}}\\
+G & 0.43 (0.07) & 0.37 (0.17) & 0.39 (0.05) & 0.34 (0.05) & 0.45 (0.08) & 0.53 (0.03) \\ 
+  GT & 0.44 (0.07) & 0.33 (0.17) & 0.4 (0.05) & 0.34 (0.04) & 0.4 (0.07) & 0.53 (0.03) \\ 
    \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: yes}}\\
-mrna-none & 0.4 (0.0747) & 0.15 (0.1568) & 0.37 (0.0509) & 0.36 (0.0423) & 0.32 (0.0692) & 0.49 (0.0279) \\ 
-  snp-none1 & 0.36 (0.0773) & 0.21 (0.1678) & 0.3 (0.0527) & 0.34 (0.0472) & 0.41 (0.078) & 0.45 (0.0302) \\ 
+\multicolumn{6}{l}{{\bfseries Only incomplete predictor: TRUE}}\\
+G & 0.36 (0.08) & 0.21 (0.17) & 0.3 (0.05) & 0.34 (0.05) & 0.41 (0.08) & 0.45 (0.03) \\ 
+  T & 0.4 (0.07) & 0.15 (0.16) & 0.37 (0.05) & 0.36 (0.04) & 0.32 (0.07) & 0.49 (0.03) \\ 
    \bottomrule
 \multicolumn{6}{l}{}\\
 \end{tabular}
@@ -483,8 +515,9 @@ mrna-none & 0.4 (0.0747) & 0.15 (0.1568) & 0.37 (0.0509) & 0.36 (0.0423) & 0.32 
 
 
 
+
 % latex table generated in R 3.3.3 by xtable 1.8-2 package
-% Wed Mar 15 11:11:37 2017
+% Wed Mar 15 17:31:28 2017
 % Script: ./analysis/uhoh_plot_predictive_abilities.R
 \begin{table}[ht]
 \centering
@@ -494,16 +527,16 @@ mrna-none & 0.4 (0.0747) & 0.15 (0.1568) & 0.37 (0.0509) & 0.36 (0.0423) & 0.32 
  & DMY & DMC & FAT & PRO & STA & SUG \\ 
   \midrule
 \multicolumn{6}{l}{{\bfseries Only incomplete predictor: FALSE}}\\
-ped-none & 0.54 (0.0493) & 0.48 (0.0521) & 0.21 (0.0365) & 0.6 (0.0187) & 0.35 (0.0427) & 0.42 (0.117) \\ 
-  snp-none & 0.74 (0.0517) & 0.63 (0.0521) & 0.43 (0.0356) & 0.65 (0.0223) & 0.46 (0.0458) & 0.47 (0.1261) \\ 
-  ped-snp & 0.71 (0.054) & 0.57 (0.0545) & 0.35 (0.0375) & 0.62 (0.0235) & 0.39 (0.0478) & 0.42 (0.1298) \\ 
-  ped-mrna & 0.73 (0.056) & 0.53 (0.0594) & 0.35 (0.0398) & 0.61 (0.0254) & 0.31 (0.0504) & 0.37 (0.1396) \\ 
-  snp-mrna & 0.75 (0.0533) & 0.61 (0.0553) & 0.43 (0.0374) & 0.65 (0.0239) & 0.44 (0.048) & 0.44 (0.1342) \\ 
+T & 0.75 (0.0552) & 0.34 (0.0619) & 0.4 (0.0412) & 0.47 (0.0293) & 0.16 (0.0496) & 0.27 (0.1447) \\ 
+  P & 0.54 (0.0493) & 0.48 (0.0521) & 0.21 (0.0365) & 0.6 (0.0187) & 0.35 (0.0427) & 0.42 (0.117) \\ 
+  G & 0.74 (0.0517) & 0.63 (0.0521) & 0.43 (0.0356) & 0.65 (0.0223) & 0.46 (0.0458) & 0.47 (0.1261) \\ 
+  PG & 0.71 (0.054) & 0.57 (0.0545) & 0.35 (0.0375) & 0.62 (0.0235) & 0.39 (0.0478) & 0.42 (0.1298) \\ 
+  PT & 0.73 (0.056) & 0.53 (0.0594) & 0.35 (0.0398) & 0.61 (0.0254) & 0.31 (0.0504) & 0.37 (0.1396) \\ 
+  GT & 0.75 (0.0533) & 0.61 (0.0553) & 0.43 (0.0374) & 0.65 (0.0239) & 0.44 (0.048) & 0.44 (0.1342) \\ 
    \midrule
 \multicolumn{6}{l}{{\bfseries Only incomplete predictor: TRUE}}\\
-mrna-none & 0.75 (0.0552) & 0.34 (0.0619) & 0.4 (0.0412) & 0.47 (0.0293) & 0.16 (0.0496) & 0.27 (0.1447) \\ 
-  ped-none1 & 0.46 (0.0469) & 0.53 (0.05) & 0.23 (0.0368) & 0.46 (0.0234) & 0.38 (0.0391) & 0.34 (0.1316) \\ 
-  snp-none1 & 0.67 (0.0534) & 0.47 (0.0552) & 0.43 (0.0384) & 0.48 (0.027) & 0.36 (0.0457) & 0.35 (0.132) \\ 
+P & 0.46 (0.0469) & 0.53 (0.05) & 0.23 (0.0368) & 0.46 (0.0234) & 0.38 (0.0391) & 0.34 (0.1316) \\ 
+  G & 0.67 (0.0534) & 0.47 (0.0552) & 0.43 (0.0384) & 0.48 (0.027) & 0.36 (0.0457) & 0.35 (0.132) \\ 
    \bottomrule
 \multicolumn{6}{l}{}\\
 \end{tabular}
@@ -512,8 +545,9 @@ mrna-none & 0.75 (0.0552) & 0.34 (0.0619) & 0.4 (0.0412) & 0.47 (0.0293) & 0.16 
 
 
 
+
 % latex table generated in R 3.3.3 by xtable 1.8-2 package
-% Wed Mar 15 11:36:08 2017
+% Wed Mar 15 17:36:40 2017
 % Script: ./analysis/maizego_core_fraction_plot_predictive_abilities.R
 \begin{table}[ht]
 \centering
@@ -523,23 +557,28 @@ mrna-none & 0.75 (0.0552) & 0.34 (0.0619) & 0.4 (0.0412) & 0.47 (0.0293) & 0.16 
  & 100grainweight & cobweight & Eardiameter & Kernelwidth & Plantheight & Silkingtime \\ 
   \midrule
 \multicolumn{6}{l}{{\bfseries Only incomplete predictor: FALSE}}\\
-snp-mrna & 0.44 (0.0748) & 0.33 (0.1727) & 0.4 (0.0543) & 0.34 (0.0425) & 0.4 (0.0707) & 0.53 (0.0285) \\ 
-  snp-none & 0.43 (0.0733) & 0.37 (0.1734) & 0.39 (0.0535) & 0.34 (0.0455) & 0.45 (0.0755) & 0.53 (0.0297) \\ 
+G & 0.43 (0.0733) & 0.37 (0.1734) & 0.39 (0.0535) & 0.34 (0.0455) & 0.45 (0.0755) & 0.53 (0.0297) \\ 
+  GT & 0.44 (0.0748) & 0.33 (0.1727) & 0.4 (0.0543) & 0.34 (0.0425) & 0.4 (0.0707) & 0.53 (0.0285) \\ 
    \midrule
 \multicolumn{6}{l}{{\bfseries Only incomplete predictor: TRUE}}\\
-mrna-none\_1.0 & 0.4 (0.0747) & 0.15 (0.1568) & 0.37 (0.0509) & 0.36 (0.0423) & 0.32 (0.0692) & 0.49 (0.0279) \\ 
-  snp-mrna\_0.3 & 0.36 (0.0711) & 0.2 (0.1566) & 0.28 (0.0503) & 0.37 (0.044) & 0.42 (0.0736) & 0.5 (0.028) \\ 
-  snp-mrna\_0.4 & 0.39 (0.0697) & 0.2 (0.1558) & 0.33 (0.0486) & 0.35 (0.0428) & 0.38 (0.0727) & 0.52 (0.028) \\ 
-  snp-mrna\_0.5 & 0.41 (0.0671) & 0.16 (0.1549) & 0.31 (0.0486) & 0.4 (0.0414) & 0.44 (0.0748) & 0.49 (0.0278) \\ 
-  snp-mrna\_0.6 & 0.4 (0.0739) & 0.13 (0.1563) & 0.27 (0.0497) & 0.37 (0.0417) & 0.42 (0.075) & 0.55 (0.0272) \\ 
-  snp-mrna\_0.7 & 0.37 (0.0734) & 0.1 (0.1555) & 0.31 (0.0508) & 0.37 (0.0422) & 0.33 (0.0755) & 0.52 (0.028) \\ 
-  snp-mrna\_0.8 & 0.4 (0.0774) & 0.21 (0.1581) & 0.36 (0.0515) & 0.41 (0.0458) & 0.29 (0.0737) & 0.49 (0.0288) \\ 
-  snp-mrna\_0.9 & 0.39 (0.0792) & 0.21 (0.1692) & 0.38 (0.0561) & 0.41 (0.0459) & 0.29 (0.075) & 0.49 (0.0311) \\ 
-  snp-none\_1.0 & 0.36 (0.0773) & 0.21 (0.1678) & 0.3 (0.0527) & 0.34 (0.0472) & 0.41 (0.078) & 0.45 (0.0302) \\ 
+G\_1.0 & 0.36 (0.0773) & 0.21 (0.1678) & 0.3 (0.0527) & 0.34 (0.0472) & 0.41 (0.078) & 0.45 (0.0302) \\ 
+  GT\_0.3 & 0.36 (0.0711) & 0.2 (0.1566) & 0.28 (0.0503) & 0.37 (0.044) & 0.42 (0.0736) & 0.5 (0.028) \\ 
+  GT\_0.4 & 0.39 (0.0697) & 0.2 (0.1558) & 0.33 (0.0486) & 0.35 (0.0428) & 0.38 (0.0727) & 0.52 (0.028) \\ 
+  GT\_0.5 & 0.41 (0.0671) & 0.16 (0.1549) & 0.31 (0.0486) & 0.4 (0.0414) & 0.44 (0.0748) & 0.49 (0.0278) \\ 
+  GT\_0.6 & 0.4 (0.0739) & 0.13 (0.1563) & 0.27 (0.0497) & 0.37 (0.0417) & 0.42 (0.075) & 0.55 (0.0272) \\ 
+  GT\_0.7 & 0.37 (0.0734) & 0.1 (0.1555) & 0.31 (0.0508) & 0.37 (0.0422) & 0.33 (0.0755) & 0.52 (0.028) \\ 
+  GT\_0.8 & 0.4 (0.0774) & 0.21 (0.1581) & 0.36 (0.0515) & 0.41 (0.0458) & 0.29 (0.0737) & 0.49 (0.0288) \\ 
+  GT\_0.9 & 0.39 (0.0792) & 0.21 (0.1692) & 0.38 (0.0561) & 0.41 (0.0459) & 0.29 (0.075) & 0.49 (0.0311) \\ 
+  T\_1.0 & 0.4 (0.0747) & 0.15 (0.1568) & 0.37 (0.0509) & 0.36 (0.0423) & 0.32 (0.0692) & 0.49 (0.0279) \\ 
    \bottomrule
 \multicolumn{6}{l}{}\\
 \end{tabular}
 \end{table}
+
+
+
+
+
 
 
 \Genetics2level{Some results section}
@@ -576,18 +615,12 @@ $\dots$
 
 
 \section{Acknowledgments} 
-We thank the staff of the Agricultural Experimental Research station,
-University of Hohenheim, for excellent technical assistance in
-conducting the field experiments. We are indebted to the group of R.
-Fries from Technische Universit{\"a}t M{\"u}nchen for the SNP genotyping of the
-parent inbred lines, to X. Mi for his assistance in preparing auxiliary
-figures based on the Mathematica software, to C. Zenke for advice on the
-computation of transcriptomic BLUEs and to P. Schopp for advice on
-prediction models. The authors acknowledge support by the state of
-Baden-W{\"u}rttemberg through bwHPC. This project was funded by the German
-Federal Ministry of Education and Research (BMBF) within the projects
-OPTIMAL (FKZ: 0315958B,0315958F), SYNBREED (FKZ: 0315528D) and by the
-German Research Foundation (DFG, Grants No. ME 2260/5-1 and SCHO 764/6-1).
+This project was funded by the German Federal Ministry of Education and 
+Research (BMBF) within the projects OPTIMAL (FKZ: 0315958B,0315958F),
+SYNBREED (FKZ: 0315528D) and by the German Research Foundation 
+(DFG, Grants No. ME 2260/5-1 and SCHO 764/6-1).
+The authors acknowledge support by the state of Baden-W{\"u}rttemberg through 
+bwHPC.
 Financial support for M.W. was provided by the Fiat Panis foundation, Ulm,
 Germany.
 
