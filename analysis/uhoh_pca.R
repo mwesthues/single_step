@@ -89,61 +89,6 @@ pca_df <- pca_lst %>%
   )
 
 
-
-# *******************************  HYBRIDS ********************************
-hybrid_parents <- common_genotypes %>%
-  filter(Data_Type == "snp") %>%
-  split(.$Pool) %>%
-  map("G") %>%
-  reduce(union)
-
-hyb_lfmm_path <- "./data/derived/uhoh/snp_Hybrid.lfmm"
-hybrid_snp <- snp %>%
-  .[rownames(.) %in% hybrid_parents, ] %>%
-  ensure_snp_quality(
-    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
-    any_missing = FALSE, remove_duplicated = TRUE
-  )
-write.lfmm(hybrid_snp, hyb_lfmm_path)
-
-
-# Determine the structure of the data using genotypic data.
-hyb_pca_mat <- hyb_lfmm_path %>%
-  LEA::pca(input.file = ., scale = TRUE) %>%
-  .$projections 
-rownames(hyb_pca_mat) <- rownames(hybrid_snp)
-
-
-# Convert the PCA list for Dent and Flint material to a data frame and add 
-# information on predictor coverage of the genotypes.
-parental_dent_lines <- common_genotypes %>%
-  filter(Data_Type == "snp",
-         Pool == "Dent") %>%
-  select(G) %>%
-  flatten_chr()
-
-hybrid_pca_df <- hyb_pca_mat %>%
-  as.data.frame() %>%
-  rownames_to_column(., var = "G") %>%
-  gather(., key = PC, value = Score, -G) %>%
-  as_data_frame() %>%
-  mutate(PC = str_replace_all(PC, pattern = "V", replacement = "PC")) %>%
-  filter(PC %in% paste0("PC", seq_len(2))) %>%
-  mutate(
-    Group = if_else(
-      G %in% parental_dent_lines,
-      true = "Dent",
-      false = "Flint"
-    ),
-    Type = "Hybrid",
-    Reduced = FALSE
-  ) 
-pca_df$Type <- "Inbred"
-
-
-
-
-
 # PCA plot
 g1 <- pca_df %>%
   spread(key = PC, value = Score) %>%
