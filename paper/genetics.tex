@@ -1,0 +1,1018 @@
+\documentclass[12pt,titlepage]{article}
+
+%% THE USEPACKAGES NECESSARY FOR THIS EXAMPLE
+%% NOTE THAT genetics_manu_style MUST BE CALLED AFTER mychicago
+\usepackage{graphicx}
+\usepackage{endfloat}
+\usepackage{amsfonts}
+\usepackage{mychicago}
+\usepackage{subfigure}
+\usepackage{genetics_manu_style}
+\usepackage{authblk} % improved citations
+\usepackage{setspace} %double spacing
+\usepackage{lineno} % line numbers
+\usepackage{booktabs} % book-quality tables
+\usepackage{multicol} % list corresponding authors in two separate columns
+
+%% Probably unnecessary packages.
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+
+\usepackage{xr}
+\externaldocument{supp_info}
+
+
+
+%% THE MANUSCRIPT TITLE
+\title{Omics-based Hybrid Prediction in Maize}
+
+
+% Allow for multiple authors to share the same institution.
+\newcommand*\samethanks[1][\value{footnote}]{\footnotemark[#1]}
+
+\author{
+  Matthias Westhues\thanks{equally contributing}\thanks{Institute of Plant Breeding, Seed Science and Population Genetics, University of Hohenheim, D-70599 Stuttgart, Germany},
+  Tobias A. Schrag\samethanks[1]\samethanks[2],
+  Claas Heuer\thanks{Institute of Animal Breeding and Husbandry, Christian-Albrechts-University Kiel, D-24098 Kiel, Germany},
+  Georg Thaller\samethanks[3],
+  H. Friedrich Utz\samethanks[2],
+  Wolfgang Schipprack\samethanks[2],
+  Alexander Thiemann\thanks{Biocenter Klein Flottbeck, Developmental Biology and Biotechnology, University of Hamburg, D-22609 Hamburg, Germany},
+  Felix Seifert\samethanks,
+  Anita Ehret\samethanks[3],
+  Armin Schlereth\thanks{Max-Planck Institute of Molecular Plant Physiology,
+  D-14476 Potsdam, Germany},
+  Mark Stitt\samethanks,
+  Zoran Nikoloski\samethanks,
+  Lothar Willmitzer\samethanks,
+  Chris C. Sch{\"o}n\thanks{Plant Breeding, Technische Universit{\"a}t
+  M{\"u}nchen, D-85354 Freising, Germany},
+  Stefan Scholten\samethanks[4],
+  Albrecht E. Melchinger\samethanks[2]
+}
+
+
+\renewcommand{\CorrespondingAddressA}{%
+    University of Hohenheim \\
+    Institute of Plant Breeding, Seed Science and Population Genetics \\ 
+    Fruwirthstr. 21 \\ 
+    Stuttgart 70599, GERMANY \\
+    Tel.: (+49) 0711 459-22334 \\
+    Fax: (+49) 0711 459-22343 \\ 
+    \texttt{melchinger@uni-hohenheim.de} \vfill}
+
+\renewcommand{\CorrespondingAddressB}{%
+    University of Hamburg \\
+    Biocenter Klein Flottbeck, Developmental Biology and Biotechnology \\ 
+    Ohnhorststr. 18 \\ 
+    Hamburg 22609, GERMANY \\ 
+    Tel.: (+49) 40 42816-286 \\
+    Fax: (+49) 40 42816-252 \\ 
+    \texttt{stefan.scholten@uni-hamburg.de} \vfill}
+
+\renewcommand{\RunningHead}{Omics-based Hybrid Prediction}
+\renewcommand{\CorrespondingAuthorA}{Prof. Dr. A. E. Melchinger}
+\renewcommand{\CorrespondingAuthorB}{PD Dr. Stefan Scholten}
+\renewcommand{\KeyWords}{omics, hybrid breeding, prediction of complex traits, maize, endophenotype}
+
+
+
+
+%% SOME COMMANDS FOR THE CONTENT OF THIS FILE.  NOT NECESSARY FOR
+%% GENETIC_MANU_STYLE
+\newcommand{\bp}{\mathbf{p}}
+\newcommand{\LLL}{\mathcal{L}}
+
+
+
+
+%% BEGIN DOC
+\begin{document}
+
+
+\maketitle
+\doublespacing
+\linenumbers
+
+
+
+\begin{abstract}
+Accurate prediction of traits with complex genetic architecture is crucial for 
+selecting superior candidates in animal and plant breeding and for guiding 
+decisions in personalized medicine.
+Whole-genome prediction (WGP) has revolutionized these areas but has inherent 
+limitations in incorporating intricate epistatic interactions.
+Downstream 'omics' data are expected to integrate interactions within and 
+between preceding biological strata and provide the opportunity to improve trait 
+prediction.
+Yet, predicting traits from parents to progeny has not been addressed by a 
+combination of 'omics' data. 
+Here, we evaluate several 'omics' predictors --- genomic, transcriptomic and 
+metabolic data --- measured on parent lines at early developmental stages, and 
+demonstrate that the integration of transcriptomic with genomic data leads to 
+higher success rates in the correct prediction of untested hybrid progeny in 
+maize.
+Despite the high predictive ability of genomic data, transcriptomic data alone 
+outperformed them and other predictors for the most complex heterotic trait, 
+dry matter yield.
+An eQTL analysis revealed that transcriptomic data integrate genomic information
+from both, adjacent and distant sites relative to the expressed genes.
+Together, these findings suggest that downstream predictors capture
+physiological epistasis that is transmitted from parents to their hybrid
+offspring.
+We conclude that the use of downstream 'omics' data in prediction can exploit 
+important information beyond structural genomics for leveraging the efficiency 
+of hybrid breeding.
+\end{abstract}
+
+
+
+% Please add here a significance statement to explain the relevance of your work
+\section{Article Summary}
+The efficiency of modern hybrid breeding programs could be greatly improved
+by pre-selecting the very best out of millions of theoretically possible
+candidates using molecular 'omics'-features of their parents.
+% Data for the following statement from 
+% '/reduced_pred/100_Combined_Analyses/integrate.R'
+Here, we show that transcriptomic data alone increased the predictive ability
+for yield by 14.7\% compared to the gold standard, genomic data.
+This improvement translates into a substantial increase in the probability of
+success for predicting the best hybrids.
+A combination of transcriptomic with genomic data yielded optimal and stable
+predictive abilities across a wide range of traits.
+
+
+
+
+% Introduction
+\section{Introduction} 
+Hybrid breeding, which entails crossing of lines from two genetically distant
+germplasm collections --- called heterotic groups \cite{Melchinger1998} --- 
+has emerged as a prime strategy to meet demands for a sustainable
+intensification of agricultural production \cite{Duvick2005}.
+However, unlocking the full potential of hybrid breeding requires accurate
+prediction methods to efficiently identify the superior candidates out of the
+millions of possible hybrids that could potentially be produced in each
+cycle of an ordinary-sized breeding program.
+With the advent of the doubled haploid (DH) technology \cite{Wedzony2009}
+this prediction problem has become even more challenging because, based on 
+breeder's experience, the vast majority ($\approx 90$\%) of competing lines in 
+each heterotic group are "new" lines without any phenotypic records on hybrid
+progeny from previous breeding cycles.
+Consequently, among all hybrid combinations possible between lines from two
+heterotic groups, about 81\% are T0 hybrids, 18\% are T1 hybrids and 1\% are T2
+hybrids having zero, one or two parents, respectively, that have been previously
+tested in other hybrid combinations.
+Preselection of a few hundred of the most favorable hybrids with high success
+rate could significantly reduce the labor-intensive and time-consuming
+field-testing \cite{Kadam2016,Xu2016}.
+This could greatly impact the efficiency of hybrid breeding and boost the
+annual selection gain \cite{Longin2015}.
+
+Whereas yield and other heterotic traits of hybrids are generally poorly
+predicted by the performance of their parent lines \cite{Melchinger1998}, WGP
+has emerged as a major tool for tackling this challenge
+\cite{Massman2013,Technow2014}.
+Nevertheless, there is evidence that, even with complete sequence information,
+genomic prediction may not capture complex interactions between biological 
+strata or downstream regulation that act through the entire cascade from 
+genotype to phenotype \cite{Dalchau2011,Zhu2012,Rudd2015,Ritchie2015b}.
+Most studies have evaluated predictive ability by looking at only one kind of 
+endophenotype (intermediaries between genotype and phenotype 
+\cite{Gottesman2003,Mackay2009}) such as the transcriptome 
+\cite{Swanson-Wagner2006,Frisch2010,Xu2016} or the metabolome 
+\cite{Meyer2007,Xu2016,Dan2016}.
+The integration of different endophenotypic and genomic data is expected to
+reflect more closely the phenotypic variability across individuals 
+\cite{Mackay2009,Patti2012,Civelek2014}. 
+Two recent studies that integrated multiple biological strata in predicting 
+breast cancer risk \cite{Vazquez2016} and performance of maize inbred lines
+\cite{Guo2016} demonstrated the benefit of this strategy.
+However, unlike forecasting clinical or agronomic traits from endophenotypes of 
+the same individual, hybrid breeding requires the prediction of the genotypic 
+values (GV) of hybrid progeny based on parental information.
+To achieve this objective, we used the BLUP approach --- originally developed in
+animal breeding \cite{Henderson1984} --- for the more complex setting of hybrids 
+between parents from two heterotic groups 
+\cite{Bernardo1994,Bernardo1995,Bernardo1996,Massman2013}.
+Here, we measured endophenotypes of parent lines to forecast the GV of
+T0, T1 and T2 hybrid progeny by using prediction equations trained with "omics" 
+information from related parent lines and phenotypic information on their
+hybrid offspring.
+
+
+
+
+
+
+
+\section{Materials and Methods}
+\subsection{Genetic material and phenotyping}
+The entire genetic material consisted of a set of 1,536 hybrids, denoted as 
+$H_{Tot}$, produced in 16 factorial mating designs between 142 Dent and 103 
+Flint lines from the maize breeding program at the University of Hohenheim, on 
+which agronomic data for silage maize production, as well as pedigree and 
+genomic data were available.
+A subset of this material, albeit from different trials, has been used for
+genomic prediction of traits related to grain maize production
+\cite{Technow2014}.
+For hybrid prediction, we used a core set $H \subset H_{\text{Tot}}$ of 617 
+hybrids, produced in six factorials with hybrid sets $H_{\text{FAC}^{(i)}} (i =
+1, 2, \dots, 6; H = \bigcup_{i=1}^{6} H_{\text{FAC}^{(i)}})$ from crosses 
+between 57 Dent and 41 Flint inbred lines, denoted as $D = \{1, 2, \dots, 57 \}$ 
+and $F = \{1, 2, \dots, 41 \}$ (File S1).
+All hybrids were evaluated in field experiments at three or more 
+agro-ecologically diverse locations across Germany.
+In the trials of each factorial, which included at least five common check 
+genotypes, the entries were randomized in $\alpha$ lattice designs and planted 
+in 2-row plots.
+Dry matter yield (DMY, $t/ha$) and dry matter content (DMC, \%) of whole-plant
+aboveground biomass were determined by established procedures 
+\cite{Riedelsheimer2012b}. 
+For quality traits, contents of fiber (ADF, \%), fat (FAT, \textperthousand), 
+protein (PRO, \textperthousand), starch (STA, \%), and sugars (SUG,
+\textperthousand) in dry matter were measured in the harvested plant material 
+using calibrated near-infrared spectroscopy (NIRS; \citeNP{Grieder2011}, 
+File S1).
+
+
+
+\subsection{Pedigree-based relationship coefficients}
+Pedigree records were gathered for all parent lines at least back to the 
+generation of their grandparents.
+Coancestry coefficients were calculated using SAS (version 9.4, SAS Institute) 
+for all possible pairs of lines in each heterotic group according to established 
+rules \cite{Falconer1996} under the following assumptions \cite{Cox1986}:
+(i) all lines in a pedigree are genetically homogeneous and homozygous, (ii) 
+pairs of genotypes with no known common parentage are unrelated, and (iii) a 
+line derived from a cross or backcross obtained a proportional fraction of the 
+genome from each parent, as expected under Mendelian inheritance in the absence 
+of selection.
+
+
+
+\subsection{Genotyping}
+Genotyping of all inbred lines was performed with the Illumina SNP chip
+MaizeSNP50 \cite{Ganal2011}.
+After performing a commonly used quality check \cite{Technow2014} and 
+imputation of missing data \cite{Browning2009}, a total of 21,565 polymorphic 
+SNPs was available and used for all further analyses.
+
+
+
+\subsection{Metabolite profiling}
+Seedlings of all parental inbred lines were grown under controlled conditions 
+inside climate chambers to quantify their root metabolite profiles as detailed
+by \citeN{DeAbreueLima2017}.
+The experiment was laid out as a randomized incomplete block design with
+replicated germination boxes.
+For leaf metabolic profiles (known metabolites and unannotated chromatographic
+peaks), a field experiment was carried out in an $\alpha$ lattice design with 
+two replications at one location in southern Germany in the spring of 2012.
+Excision of leaves at the third leaf stage was performed according to an 
+established protocol \cite{Riedelsheimer2012b} and finalized within 45 minutes 
+for the entire experiment. 
+For both profiling procedures, all material was transferred directly into 
+containers with dry ice and then into liquid nitrogen to quench metabolic 
+activity.
+
+
+
+\subsection{Transcriptome profiling}
+For transcriptome profiling, five seeds per parent line were taken from the 
+same seed lot as used for metabolite profiling and laid out inside a climate 
+chamber in a randomized complete block design with five replications.
+Seedlings were sampled seven days after sowing, snap-frozen in liquid nitrogen,
+and stored at -80$^{\circ}$C until use.
+Prior to mRNA extraction, all replicates of a genotype were pooled and
+homogenized.
+A custom 2K-microarray (GPL22267) was assembled from a subset of the 47K maize 
+oligonucleotide array (GPL6438).
+Two-color hybridizations were carried out separately for each of the six 
+factorials using interwoven loop designs \cite{Kerr2001}.
+The average number of shared genotypes between factorials was 4.5 and ranged 
+from 2 to 10.
+
+
+\subsection{Statistical analysis of agronomic traits}
+Agronomic data were analyzed in two stages, following \citeN{Technow2014}. 
+In the first stage, and separately for each environment, adjusted-entry means 
+were computed for every hybrid using REML-based linear mixed-model analyses.
+In the second stage, best linear unbiased estimates (BLUEs) were computed for 
+all hybrids in $H_{Tot}$.
+The BLUEs of hybrids in the core set $H$ served as response variables in our 
+hybrid prediction models and cross-validation routines. 
+For all predictions we used computationally efficient best linear unbiased 
+predictor (BLUP) models, which have the same properties as those of a selection 
+index because we previously accounted for fixed effects 
+(\citeNP{Mrode2014}, pp. 34, 311, 312).
+For general and specific combining abilities (GCA and SCA) of parent lines,
+we used ASReml \cite{asreml} to compute best linear unbiased predictors (BLUPs), 
+variance components ($\sigma^2_{\text{GCA}^{D}}$, $\sigma^2_{\text{GCA}^{F}}$, 
+$\sigma^2_{\text{SCA}}$) and entry-mean heritabilities ($H^2$) of all hybrids
+in $H_{Tot}$, treating all effects in the model as random.
+The covariance matrices of the GCA and SCA effects were defined by multiplying
+the variance components with their respective genomic relationship matrices 
+(File S1). 
+
+
+
+\subsection{Statistical analysis of endophenotypes}
+Raw data were normalized using established procedures for metabolites
+\cite{VandenBerg2006} and transcripts \cite{Smyth2003,Ritchie2007}.
+From these data, we obtained BLUEs for metabolite levels and transcript 
+abundance of each line using REML-based mixed-model analyses.
+The statistical models for the analysis of metabolite profiles accounted for 
+various experimental effects as detailed by \citeN{DeAbreueLima2017}.
+After applying quality checks and computing BLUEs, 92 leaf metabolic analytes 
+and 283 root metabolic analytes remained for further analyses.
+BLUEs for transcriptomic data were computed using the R-package \emph{limma} 
+\cite{Ritchie2015a} in reference to established protocols 
+\cite{Smyth2003,Ritchie2007,Frisch2010}.
+The design matrix for the linear model was based on the dye-labeling of a 
+reference genotype and included a fixed effect for each factorial design 
+in order to account for the use of biological replicates of some genotypes in 
+different arrays. 
+All gene expression values were subsequently computed, based on the log-ratio 
+relative to this common genotype \cite{Smyth2004}.
+In total, 1,323 gene expression profiles were available.
+Repeatabilities ($w^2$) were estimated for each endophenotype at the inbred line 
+level using the same models as for the computation of BLUEs, but treating the 
+genotype effect as random.
+This analysis was performed jointly for the Dent and Flint lines allowing for
+different means and heterogeneous genotypic variances of the heterotic groups,
+but assuming a common error variance.
+Variance components were estimated by Gibbs sampling using the \emph{R} package
+\emph{MCMCglmm} \cite{Hadfield2010}.
+
+
+
+
+\subsection{Prediction models and model evaluation}
+Predictions of hybrid performance were compared on the basis of the core set
+of hybrids $H$ and the corresponding sets of parent lines $D$ and $F$ on which
+data for all five predictors (P, pedigree; G, genomic; T, transcriptomic; L,
+leaf metabolic; R, root metabolic data) were available with the exception of
+missing data in a few lines for R.
+The matrices $\mathbf{W}_{D}$ and $\mathbf{W}_{F}$ are matrices of standardized 
+feature measurements for the various predictors (G, T, L, R).
+The matrix $\mathbf{W}$ has dimension 'number of parent lines in the 
+corresponding heterotic group' times 'number of features'.
+The columns in $\mathbf{W}_{D}$ and $\mathbf{W}_{F}$ are centered and
+standardized to unit variance, respectively.
+
+The kernels pertaining to each predictor and lines from each heterotic group
+--- corresponding to genomic relationship matrices in the case of SNPs --- can 
+then be defined as
+\begin{equation} \label{eq:GenomicRelationship}
+  \mathbf{G}_{D} = \frac{1}{W} \mathbf{W}_{D} \mathbf{W}_{D}^{\top}, \
+  \mathbf{G}_{F} = \frac{1}{W} \mathbf{W}_{F} \mathbf{W}_{F}^{\top},
+\end{equation}
+
+where $W$ denotes the number of features \cite{VanRaden2008}.
+In the case of pedigree data (P), coancestry coefficients were used directly
+for $\mathbf{G}_{D}$ and $\mathbf{G}_{F}$, respectively.
+
+
+The universal model for GCA and SCA effects was:
+
+\begin{equation} \label{eq:HypredDominance}
+  \mathbf{y} = \mu + 
+  \sum_{p=1}^{P} \mathbf{Z}_{D} \mathbf{g}_{Dp} +
+  \sum_{p=1}^{P} \mathbf{Z}_{F} \mathbf{g}_{Fp} +
+  \sum_{p=1}^{P} \mathbf{Z}_{S} \mathbf{s}_{p} +
+  \mathbf{\epsilon},
+\end{equation}
+
+
+where $\mathbf{y}$ is the vector of observed hybrid performance (BLUEs), $\mu$ 
+is the fixed model intercept, $\mathbf{Z}_{D}$ is the
+corresponding design matrix associating the random GCA effects of the lines in
+$D$ ($\mathbf{g}_{Dp}$) with $\mathbf{y}$, $\mathbf{Z}_{F}$ is the 
+corresponding design matrix associating the random GCA effects of the lines in 
+$F$ ($\mathbf{g}_{Fp}$) with $\mathbf{y}$ and $\mathbf{Z}_{S}$ is a design 
+matrix associating the SCA effects ($\mathbf{s}_{p}$), pertaining to hybrid 
+combinations for the $p$-th predictor data type with the corresponding hybrid 
+measurements in $\mathbf{y}$.
+The random effects ($\mathbf{g}_{Dp}$ and $\mathbf{g}_{Fp}$) have expectation 
+zero and variance equal to $\mathbf{G}_{Dp} \sigma^{2}_{\text{GCA}^{Dp}}$ and 
+$\mathbf{G}_{Fp} \sigma^{2}_{\text{GCA}^{Fp}}$for the GCA effects of the Dent
+and Flint lines, respectively,
+$\mathbf{S}_{p} \sigma^{2}_{\text{SCA}^{p}}$ for the SCA effects and
+$\mathbf{I} \sigma^2_{\epsilon}$ for the residual error.
+For each pair of hybrids $i \times k$ and $j \times l$, the corresponding
+elements in $\mathbf{S}_{p}$ were obtained as the product of the respective
+elements $f_{ij}$ in $\mathbf{G}_{Dp}$ and $f_{kl}$ in $\mathbf{G}_{Fp}$,
+respectively \cite{Schnell1965,Bernardo1996,Massman2013} (File S1).
+In the absence of epistasis, this model is equivalent to a feature model
+accounting for dually defined additive effects in each heterotic group and
+dominance effects between them.
+Extensions of the single-predictor models were made by adding GCA and SCA
+effects for any additional predictor assuming stochastic independence of
+effects.
+In order to obtain unbiased estimates of the predictive ability and to compare
+different models and predictor combinations, following \citeN{Technow2014}, we 
+devised a cross-validation (CV) scheme, stratified by the parent lines and using 
+1,000 runs (CV1000, File S1). All prediction models were implemented using the 
+\emph{R} package \emph{BGLR} \cite{Perez2014}.
+
+
+
+\subsection{Comparison of predictive abilities}
+Predictive abilities were obtained by calculating Pearson correlations between
+predicted ($\hat{y}$) and observed phenotypes ($y$), separately for three
+test set partitions (T0, T1 and T2 hybrids).
+For each CV run, the training and validation sets were stored to ensure the
+validity of comparisons between any predictor and combinations thereof.
+For any two predictors, say $A$ and $B$, we have the corresponding vectors 
+with predictive abilities $p_{A}$ and $p_{B}$ of length 'number of cross
+validation runs'.
+For comparing predictive abilities obtained for different predictors and models,
+we first ensured that the difference between any two scenarios (\textit{i.e.}, 
+$p_{A} - p_{B}$) is normally distributed \cite{Dietterich1998}.
+Then, we applied multiple contrast tests on the mean of the distribution of 
+predictive abilities, obtained from the 1,000 CV runs, using the \emph{R} 
+package \emph{multcomp} \cite{Hothorn2008} and Tukey contrasts.
+This procedure is similar to the pairwise \textit{t}-test \cite{Guo2016} but 
+accounts for multiple comparisons.
+
+
+\subsection{Evaluation of a pre-selection bias in transcriptomic data}
+A custom 2K-microarray (GPL22267) was assembled from a subset of the 47K maize 
+oligonucleotide array (GPL6438), based on association of genes with hybrid
+performance or mid-parent heterosis for grain yield and grain dry matter
+content of maize. 
+These two traits were evaluated in separate grain-yield trials with hybrids from 
+factorial $H_{\text{FAC}^{(1)}}$ (\citeNP{Frisch2010,Thiemann2010}, File S1). 
+To ensure that no pre-selection bias was introduced in hybrid prediction using 
+these transcriptomic data, we compared predictive abilities for $H$ with 
+predictive abilities when excluding $H_{\text{FAC}^{(1)}}$.
+
+
+
+
+
+\subsection{Association mapping}
+For each of the seven agronomic traits, we performed a genome-wide association
+study (GWAS) with GCA effects of all 142 Dent and 103 Flint parent lines as
+response variables using the EMMAX-method \cite{Kang2010} as implemented in 
+\emph{cpgen} \cite{Heuer2015}.
+To avoid using the marker data twice, GCA effects were calculated using only
+pedigree information.
+Furthermore, an eQTL analysis was carried out to examine statistically 
+significant associations between genomic and transcriptomic data for the parent
+lines ($D$ and $F$) of the core set $H$ plus five additional lines.
+This was accomplished in the same way as in the GWAS for agronomic traits, but
+here the BLUPs of the transcriptomic data of each mRNA were used as the 
+response variables.
+Associations in each GWAS were declared statistically significant at 
+$\alpha = 0.05$ after Bonferroni correction.
+
+
+\subsection{Probability of success}
+Calculations of the conditional probability ($P[r, \beta]$) of a hybrid, 
+selected at random from the upper $\beta$ percent fraction of the distribution 
+of predicted values having a phenotypic value contained in the upper $\beta$ 
+percent of the distribution of observed phenotypic values, assumed a bivariate
+normal distribution
+
+\begin{align}
+  \begin{bmatrix}
+    \hat{y} \\
+    y
+   \end{bmatrix}
+  & \sim
+  N \Bigg(
+  \begin{bmatrix}
+    0 \\
+    0
+  \end{bmatrix},
+  \begin{bmatrix}
+    1 & r \\
+    r & 1
+  \end{bmatrix}
+  \Bigg).
+\end{align}
+
+and were performed within the \emph{R} statistical environment to solve the 
+required integrals \cite{Robson1967}.
+
+
+
+\subsection{Principal component analysis}
+For principal component analyses of predictor data, all variables were scaled 
+and centered.
+Clusters represent two component mixtures of bivariate t-distributions, which
+were estimated using Maximum Likelihood.
+Ellipses were drawn based on the 0.95 quantiles of the respective bivariate
+t-distributions.
+Unless stated otherwise, all statistical analyses were carried out inside the 
+\emph{R} environment for statistical computing \cite{Team2016}.
+
+
+\subsection{Data availability}
+Adjusted means of hybrid performances are provided in File S2, genomic marker
+data are provided in File S3, genomic marker positions are provided in File
+S4, transcriptomic BLUEs are provided in File S5, leaf metabolic BLUEs are
+provided in File S6 and root metabolic BLUEs are provided in File S7.
+Genotypes can be assigned to either the Dent or the Flint heterotic group using
+a classification table provided in File S8.
+Code used to analyze the data is available upon request.
+
+
+
+
+
+
+
+\section*{Results}
+\Genetics2level{Agronomic data}
+Mean values of the 1,536 hybrids for the seven evaluated agronomic traits, with 
+relevance to animal feed and biogas production, were of the same magnitude as 
+reported by \citeN{Riedelsheimer2012b} and \citeN{Grieder2011}.
+For all traits, $\sigma^{2}_{\text{GCA}^{D}}$ and
+$\sigma^{2}_{\text{GCA}^{F}}$, describing the main effects of the parents from
+each heterotic group, together explained more than 93\% of the genotypic
+variance among hybrids (Table \ref{table:VarianceComponents}).
+Heritabilities were moderate to high for all agronomic traits, indicating a 
+high precision of field experiments and data collection 
+(Table \ref{table:VarianceComponents}).
+
+
+% -- TABLE 1
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+\begin{table}[tbhp]
+\centering
+\caption{
+  Summary of agronomic traits.
+  Traits are characterized by overall mean ($\mu$), variance components of GCA
+  effects for Dent ($\sigma^2_{\text{GCA}^D}$) and Flint lines
+  ($\sigma^{2}_{\text{GCA}^{F}}$) and SCA effects ($\sigma^{2}_{SCA}$)
+  (followed by s.e.m.) as well as entry mean heritabilities ($H^2$).
+}
+\label{table:VarianceComponents}
+\begin{tabular}{@{}llllll@{}}
+\toprule
+Trait                   & $\mu$ & $\sigma^{2}_{\text{GCA}^{D}}$ & $\sigma^{2}_{\text{GCA}^{F}}$ & $\sigma^{2}_{\text{SCA}}$ & $H^{2}$         \\ \midrule
+  DMY (t/ha)                    & 19.00 & $1.51 \pm 0.22$               & $1.00 \pm 0.18$               & $0.17 \pm 0.03$           & $0.82$ \\
+  DMC (\%)                    & 34.13 & $4.17 \pm 0.59$               & $5.03 \pm 0.79$               & $0.49 \pm 0.07$           & $0.91$ \\
+  ADF (\%)                    & 20.93 & $0.27 \pm 0.06$               & $0.40 \pm 0.09$               & $0.02 \pm 0.02$           & $0.43$ \\
+  FAT (\textperthousand)                    & 30.02 & $1.01 \pm 0.19$               & $2.10 \pm 0.37$               & $0.17 \pm 0.05$           & $0.73$ \\
+  PRO (\textperthousand)                    & 69.65 & $3.11 \pm 0.53$               & $2.77 \pm 0.51$               & $0.29 \pm 0.10$           & $0.70$ \\
+  STA (\%)                    & 35.56 & $2.95 \pm 0.51$               & $3.33 \pm 0.63$               & $0.24 \pm 0.10$           & $0.69$ \\
+  SUG (\textperthousand)                    & 38.12 & $31.33 \pm 5.15$              & $31.90 \pm 5.73$              & $4.12 \pm 1.02$           & $0.77$ \\ \bottomrule
+\end{tabular}
+\end{table}
+
+
+
+
+\Genetics2level{Predictor data}
+% Repeatabilities
+Repeatabilities ($w^{2}$) for endophenotypes varied considerably in both groups
+of parents (Fig. S\ref{fig:Repeatability}\textit{A}) with average values
+ranging from 0.31 to 0.41, except for transcriptomic data in Flint material 
+where the average repeatability was only 0.18.
+Nevertheless, in the latter case, 291 out of 1,323 transcripts still
+exceeded a threshold of $w^{2} = 0.4$.
+
+Dent and Flint lines were clearly separated in principal component analyses of 
+genomic and transcriptomic data (Fig. \ref{fig:PredictorProperties}\textit{A}).
+However, they overlapped for leaf metabolic and, to an even greater extent, for
+root metabolic data.
+Off-diagonal elements of the kernels $\mathbf{G}_{D}$ and $\mathbf{G}_{F}$, 
+respectively, showed moderate correlations between genomic and transcriptomic 
+data ($\rho_{D} \approx 0.56, \rho_{F} \approx 0.44$, 
+Fig. S\ref{fig:Rel_Assoc}). 
+Correlations between the off-diagonal elements of the $\mathbf{G}$-matrices were 
+highest for the comparison between genomic and pedigree data 
+($\rho_{D} \approx 0.72$, $\rho_{F} \approx 0.63$).
+Intriguingly, the associations between the $\mathbf{G}$-matrices for the root
+and leaf metabolic data were very low ($\rho_{D} \approx 0.12$,
+$\rho_{F} \approx 0.06$).
+
+% Figure 1
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.90\linewidth]{./figures/predictor_properties_vertical.pdf}
+\caption{
+  Properties of predictor data for Dent (red) and Flint (teal)
+  parent lines.
+  (\textbf{A}) Principal component analysis (PCA) of both
+  groups for genomic (G), transcriptomic (T), leaf metabolic (L) and root
+  metabolic (R) data. The variance explained by PC 1 (x axis) and PC 2 (y
+  axis) are shown in the caption of each facet.
+  (\textbf{B}) Linkage disequilibrium decay as a function of the distance
+  between two loci using 40 bins of 0.125 Mbp width, each.
+  The median $r^2$ is depicted as a horizontal bar whereas the mean $r^2$ is 
+  depicted as a white diamond.
+  }
+\label{fig:PredictorProperties}
+\end{figure}
+
+
+We observed high median pairwise linkage disequilibrium (LD) between
+SNP markers ($r^{2} \approx 0.39$ in Dent and $r^{2} \approx 0.37$ in Flint 
+material) at a distance of $\Delta \text{Mbp} \leq 0.125$ 
+(Fig. \ref{fig:PredictorProperties}\textit{B}). 
+After an initial drop in $r^{2}$ for $\Delta > 0.125$, substantial long-range
+LD remained.
+Large differences in allele frequencies in the two heterotic groups were 
+present for 57\% of SNPs (Fig. \ref{fig:Circos}A,B) --- particularly in the 
+telomeric regions of the genome.
+An eQTL analysis performed with the parent lines suggests that transcript 
+abundance integrates variegated genetic information given the fact that i) on 
+the same chromosome, significant associations not only occurred between 
+adjacent but also between distant pairs of expressed genes and SNPs and ii) 50\% 
+of the significant associations ($\alpha = 0.05$, Bonferroni-corrected) occurred
+between expressed genes and SNPs on different chromosomes
+(Fig. \ref{fig:Circos}).
+
+% Figure 2
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{./figures/86_13_eQTL_Circos.pdf}
+\caption{
+  Distribution and relationship of genomic and transcriptomic
+  data for the ten maize chromosomes.
+  Centromeres for each chromosome are depicted as vertical red lines.
+  (\textbf{A,C}) Density of SNPs and mRNAs, respectively, across the ten maize
+  chromosomes.
+  (\textbf{B,D}) Statistical significance ($-\log_{10} \text{p-value}$) for
+  differences in SNP allele frequencies and expression levels of mRNAs,
+  respectively, between Dent and Flint lines.
+  (\textbf{Center}) Links between any statistically significant
+  ($\alpha = 0.05$ after Bonferroni correction) association between SNPs and
+  mRNAs.
+  Associations are displayed as links for SNPs on chromosome 5, for which the
+  distribution of associations is representative for the entire genome, using 
+  red color for Dent parent lines and teal color for Flint parent lines.
+}
+\label{fig:Circos}
+\end{figure}
+
+
+
+\Genetics2level{Predictive abilities}
+Assuming a polygenic architecture for all traits, as suggested by results from
+a GWAS (Fig. S\ref{fig:GCA_GWAS_Manhattan}), we chose the best linear unbiased
+predictor (BLUP) method as a baseline for prediction of T0, T1 and T2 hybrids.
+Given that we corrected for fixed effects in advance, this method is equivalent
+to a selection index.
+A cross-validation scheme with 1,000 runs (CV1000), stratified by the parent 
+lines, was devised (File S1, Fig. S\ref{fig:CV_Overview}).
+Our main emphasis was on predicting T0 hybrids given the fact that they 
+constitute the majority of possible hybrids in practical breeding programs 
+\cite{Kadam2016}.
+
+For predictive abilities ($r$) of T0 hybrids, transcriptomic data alone were the
+best predictor ($\alpha = 0.01$) for the most complex and highly heterotic
+trait, DMY, as well as for PRO (Fig. \ref{fig:PredAbility}\textit{A}).
+Intriguingly, owing to the marked non-linear relationship between $r$ and
+the probability of successfully selecting the best hybrid candidates
+$P[r, \beta]$ (Fig. \ref{fig:PredAbility}\textit{B}), the 14.7\% higher $r$ for
+DMY, when using transcriptomic over genomic data, yields an increase in
+$P[r, \beta]$ of 85\% at a selection intensity $\beta = 0.01\%$.
+This selection intensity corresponds to picking the top 100 out of $10^{6}$ 
+predicted hybrids for production and intensive testing in field trials.
+
+
+% Figure 3
+\begin{figure*}[tbph]
+\centering
+\includegraphics[width=17.8cm,height=8.89cm]{./figures/t0_pred_and_success.pdf}
+  \caption{
+  Predictive abilities (r) from BLUP models using a CV scheme with 
+  sampling of $|H_{TRN}| = 200$ hybrids, $|D_{TRN}|=40$ Dent and $|F_{TRN}|=33$ 
+  Flint parent lines for various predictors and combinations thereof 
+  (P, pedigree; G, genome; T, transcriptome; L, leaf metabolome; R, root 
+  metabolome).
+  (\textbf{A}) Comparison of $r$ values from 1,000 CV runs for T0 hybrids and
+  seven agronomic traits.
+  Differences among the means of predictive abilities were tested by Tukey's HSD 
+  and the same letter was used for non-significant ($\alpha = 0.01$) 
+  differences.
+  (\textbf{B}) Success rate of selecting superior hybrids ($P[r,\beta]$).
+  $P[r, \beta]$ is a function of the predictive ability $r=r(y,\hat{y})$ and
+  refers to the conditional probability of a hybrid, selected at random from the 
+  upper $\beta \text{\%}$ fraction of the distribution of predicted values 
+  ($\hat{y}$), having a phenotypic value contained in the upper $\beta \text{\%}$ 
+  of the distribution of phenotypic values $y$.
+  Observed predictive abilities ($r$) for T0 hybrids and the trait DMY are 
+  displayed as vertical, colored lines for three predictors.
+  }
+\label{fig:PredAbility}
+\end{figure*}
+
+Compared to other individual predictors, predictive abilities obtained with
+genomic data alone were significantly ($\alpha = 0.01$) higher for FAT and SUG.
+Root metabolites displayed moderate to high predictive abilities for DMY and
+FAT, but did not perform well otherwise.
+Leaf metabolites performed relatively poorly for all traits.
+Regardless of the trait, combinations of genomic and transcriptomic information 
+displayed robust and consistently high predictive abilities.
+Except for PRO, incorporating additional endophenotypes as predictors into our 
+models did not yield statistically significant ($\alpha = 0.01$) improvements 
+but remained at the same level compared to combining genomic and transcriptomic 
+data.
+Incorporating SCA effects into our models did not further improve predictive
+abilties ($\alpha = 0.05$, Fig. S\ref{fig:GCA_vs_SCA_PredAbility}).
+Results for the combination of other predictors with metabolic data are not
+presented because no improvement of predictive abilities over the combination 
+of genomic data with transcriptomic data and pedigree data could be achieved.
+Finally, we assessed the influence of the number of SNPs and mRNAs on predictive 
+abilities. 
+For genomic data, a subset of 5,000 SNPs already yielded the same predictive 
+ability as when using the entire available set and for transcriptomic data, the
+predictive ability improved only marginally with subsets larger than 50\% of 
+the available transcripts (Fig. S\ref{fig:Feature_Filter}).
+
+
+
+
+
+
+
+
+\section*{Discussion}
+\Genetics2level{A paradigm shift in hybrid breeding}
+Hybrid breeding programs are generally based on genetically divergent heterotic 
+groups \cite{Bernardo2010}.
+Their use enables a better exploitation of heterosis when conducting crosses 
+between them \cite{Melchinger1998} and is expected to reduce the ratio of 
+specific to general combining ability variance 
+($\sigma^{2}_{\text{SCA}} : \sigma^{2}_{\text{GCA}}$) in the crosses, thereby 
+allowing for the selection of hybrids largely on the basis of GCA of their 
+parent lines \cite{Reif2007}.
+However, obtaining accurate estimates of GCA requires the evaluation of 
+new lines in combinations with testers from the opposite heterotic group in
+multi-environment field trials.
+The promise of hybrid prediction is to accelerate breeding programs by skipping 
+a large share of these tests in favor of selecting the most promising hybrids
+before they are even produced \cite{Technow2014}.
+This approach involves the prediction of an impressive number of putative hybrid 
+candidates ($n^{2}$) using predictor data collected on only 2$n$ parent lines.
+Crucial for hybrid prediction are predictors, which not only reflect the 
+relationship between parental inbred lines but also the interaction of the two 
+parental genomes in their hybrid progeny.
+
+
+\subsection{Heterotic groups}
+Because of genetic drift and selection for hybrid performance, allele
+frequencies are expected to diverge in the two heterotic groups, thereby
+enlarging their genetic distance \cite{Falconer1996,Reif2007,Lariepe2017}.
+Consistent with this hypothesis and two pilot studies with U.S. maize lines
+\cite{Gerke2015,Hall2016}, Dent and Flint lines in our study were clearly 
+separated in principal component analyses of genomic and transcriptomic data.
+With large differences in allele frequencies $p^{I}$ and $p^{II}$ in the two
+heterotic groups, as observed for 57\% of SNPs, dominance variance
+$\sigma_{D}^{2}$ becomes very small because it is a function of the product
+$p^{I} ( 1 - p^{I} ) p^{II} ( 1 - p^{II} )$ (\citeNP{Stuber1966},
+File S1).
+$\sigma_{D}^{2}$ is the main component contributing to the variance of 
+the specific combining ability  effects ($\sigma_{\text{SCA}}^{2}$), describing 
+interactions among the parental genomes in hybrid combinations.
+It was therefore not surprising that the variances of the general combining
+ability (GCA) effects ($\sigma_{\text{GCA}^{D}}^{2}$ and 
+$\sigma_{\text{GCA}^{F}}^{2}$), describing the main effects of the parents from 
+each heterotic group, together explained more than 93\% of the genotypic 
+variance among hybrids for agronomic traits, which is consistent with an earlier
+study on silage maize of the Dent $\times$ Flint heterotic pattern
+\cite{Argillier2000}.
+The importance of GCA in our material was further corroborated by statistically 
+non-significant ($\alpha = 0.05$) differences in predictive abilities between 
+models using only GCA effects and those that additionally incorporated SCA 
+effects (Fig. S\ref{fig:GCA_vs_SCA_PredAbility}).
+Nevertheless, in crops such as wheat, with no clearly defined heterotic groups
+\cite{Zhao2015a} and greater importance of SCA, inclusion of SCA effects in
+the model should improve predictive abilities.
+
+
+\subsection{Properties of well-established predictors}
+While pedigree data reflect the expected relationship between individuals, they 
+do not necessarily depict their realized relationship.
+Genomic data and downstream endophenotypes offer to improve upon this
+pedigree-based approximation by more closely mirroring the transmission of 
+genes between individuals and their interactions.
+Genomic data have the advantage of reliably capturing Mendelian sampling, 
+thereby improving pedigree-based prediction for many traits.
+However, genomic data alone may not be the final answer for the prediction of
+complex traits for two major reasons:
+First, the number of samples in most studies is considerably smaller than the
+number of genetic markers or even nucleotides of a genome.
+This implies that just modeling additive effects already necessitates effect 
+shrinkage.
+More importantly, however, interactions between loci throughout the genome 
+can be frequent \cite{Brem2005,Brown2014}, but attempts to incorporate this 
+epistasis for the prediction of heterotic traits using genomic data have been 
+disappointing when the prediction and the training set did not share the same
+or closely related parents \cite{Jiang2015}.
+This was true even when using recently developed, efficient models 
+\cite{Jarquin2014,Martini2016} and suggests that genomic data capture 
+only statistical epistasis, referring to genetic variation at the population 
+level \cite{Sackton2016}, which is generally of negligible magnitude 
+\cite{Hill2008,Mackay2014,Guo2016,Vazquez2016}.
+
+
+
+
+\Genetics2level{Complementation of predictors}
+\subsection{Flow of biological information}
+It is well-known that genetic effects on the phenotype are mediated through
+multiple layers of endophenotypes \cite{Civelek2014,Ritchie2015b} with 
+information mainly flowing from the genome toward the phenotype via the 
+transcriptome, the proteome and the metabolome with metabolite fluxes 
+ultimately governing energy production and growth \cite{Cornish-Bowden2001}.
+For most traits in our material, metabolite- and pedigree-based predictive
+abilities were lower than those obtained with either transcriptomic or genomic
+information.
+However, consistently high predictive abilities across multiple traits could be
+realized when combining multiple predictors, as has been reported previously in 
+humans \cite{Vazquez2016} and maize inbred lines \cite{Guo2016}.
+This suggests complementary properties of the different predictors resulting in 
+better proxies for the complex interplay in gene networks than solely genomic 
+information.
+Such an advantage is particularly important for hybrid prediction when parents 
+of prediction set hybrids are not closely related to parents of training set
+hybrids (File S1) as was shown by the relative excellence of transcriptomic 
+data and the use of multiple predictors for the prediction of traits in T0 
+hybrids compared to T1 and T2 hybrids.
+
+
+\subsection{Tapping new sources of information}
+Whereas pedigree and genomic information are static, subsequent endophenotypes 
+are characterized by pervasive interactions among and between each other 
+\cite{Dalchau2011,Zhu2012} and are, to varying degrees, influenced by biotic 
+\cite{Rudd2015,Tzin2015} and abiotic perturbations \cite{Caldana2011,Witt2012}.
+So while endophenotypes do not exclusively report on physiological epistasis but 
+also on non-heritable effects, they do seem to capture important information not
+represented by the genome given their intermediate position in the
+genotype-phenotype cascade.
+We get support for this hypothesis from (i) merely low to moderate correlations 
+between off-diagonal elements of the kernels of different predictors in our 
+study, (ii) mounting evidence for further improvements of predictive abilities 
+when complementing genomic prediction with other endophenotypes despite 
+sufficient marker densities (Fig. S\ref{fig:Feature_Filter}, \citeNP{Guo2016})
+and (iii) the integration of SNP information from close and distant eQTL in the 
+transcripts analyzed in our study.
+However, we concede that the number of parental genotypes in our mRNA assays
+was too small to warrant a reasonable statistical power for detecting epistasis
+in the expression of transcripts.
+While two other studies also attempted to model interactions between different
+predictors, we refrained from this approach given that their reported predictive
+abilities based on interactions were not different from those in additive
+models despite using much larger sample sizes \cite{Vazquez2016,Guo2016}.
+
+
+
+
+\Genetics2level{Transcriptomic data}
+\subsection{Utility of transcriptomic data for trait predictions}
+Of particular note was the excellent performance of transcriptomic data in 
+predicting dry matter yield and protein.
+Evidence that parental gene expression patterns might be predictive of hybrid 
+performance is given by (i) prevailing additive expression patterns in maize 
+hybrids \cite{Springer2007,Stupar2008}, (ii) a positive correlation of the 
+proportion of additive gene expression with the yield of hybrids \cite{Guo2006}, 
+and (iii) co-localization of additively expressed genes with heterotic QTL 
+\cite{Thiemann2014}.
+According to metabolic flux theory, gene expression in hybrids at the 
+mid-parent level can generate hybrid vigor by counterbalancing opposing 
+detrimental expression levels in their parent lines on a genome-wide scale 
+\cite{Kacser1981,Springer2007a}.
+The same concept is expected to apply to other quantitative endophenotypes 
+\cite{Lisec2011}.
+
+
+\subsection{Pre-selection bias}
+As pointed out earlier, our transcripts were pre-selected based on associations
+with grain dry matter yield and grain dry matter content in hybrids, using a 
+subset of the data included in our study ($H_{\text{FAC}^{(1)}}$).
+Two findings indicate that no pre-selection was introduced:
+(i) Relative differences in predictive abilities between transcriptomic and
+pedigree or genomic data did not change when excluding genotypes from 
+$H_{\text{FAC}^{(1)}}$ from the data (Fig. S\ref{fig:NoExp1}) and 
+(ii) transcriptomic data performed rather poorly in predicting dry matter 
+content although this trait was also among the criteria for the pre-selection 
+procedure.
+Finally, an independent study using RNA-Seq data for the prediction of traits
+in maize inbred lines also reported exceptionally good performance of 
+transcriptomic data in the prediction of multiple yield-related traits 
+\cite{Guo2016}.
+
+
+ 
+
+\Genetics2level{Relative excellence of predictors for different traits}
+\subsection{Tissue and sampling time}
+Despite the great prospects of using endophenotypes for trait predictions, some
+aspects require careful consideration when using this approach.
+A particular challenge in endophenotype-based prediction efforts is the selection
+of a suitable tissue and sampling time.
+Tissue-related effects regarding gene expression were found in studies on humans 
+\cite{Yang2015,Mele2015,Searle2016} and \textit{A. thaliana} \cite{Schmid2005}
+and in maize hybrids with respect to metabolome composition and metabolite 
+abundance \cite{Witt2012}.
+Moreover, the age of an organism can selectively influence the expression of 
+genes as observed in studies on humans \cite{Mele2015,Yang2015} and 
+\textit{C. elegans} \cite{Vinuela2010,Francesconi2014}.
+The low correlations between the off-diagonal elements of the kernels calculated 
+from root and leaf metabolites might therefore be a reflection of highly dynamic 
+processes differing between tissues and during different developmental stages.
+Whereas root metabolic data and transcriptomic data were obtained from
+seedlings germinated in standard controlled conditions, leaf metabolic data were
+derived from field-grown plants at a much later developmental stage, thereby
+increasing the possibility of environmentally-induced modifications.
+One might hypothesize, that the choice of sampling time and tissue could
+influence the chances of successful trait prediction if such age- or 
+tissue-dependent transcripts and metabolites are associated with a phenotypic 
+or clinical trait.
+Generally, sampling from the seedling would be highly desirable in breeding when 
+trying to scale the use of endophenotypic data to even larger numbers of inbred 
+lines and assay genotypes independent of the season.
+
+
+\subsection{Feature selection}
+Another explanation for trait-dependent excellence of any predictor might lie
+in the sampling of features.
+In this study, only a small subset of metabolites was sampled and even very 
+recent technologies \cite{Xu2016,Dan2016} capture only a fraction of the 
+estimated set of metabolites \cite{Fernie2007}.
+Moreover, the smaller differences in metabolite levels between both heterotic 
+groups (Fig. \ref{fig:PredictorProperties}) were most likely not conducive to
+capturing basic components underlying complex heterotic traits.
+It is also possible that transcriptomic data are associated with more
+biological processes than metabolite data and better capture the genetic effects
+relevant for the prediction of T0 hybrids.
+
+
+\subsection{Prospects for metabolites}
+Previously observed moderate metabolite-based predictive abilities for T1
+hybrids \cite{Riedelsheimer2012b} were confirmed in our study
+(Fig. S\ref{fig:PredAbilityT0-T2}), but for the majority of traits, root 
+metabolites reached only medium and leaf metabolites even lower predictive 
+abilities when predicting T0 hybrids.
+Despite the aforementioned shortcomings of metabolites, they have shown to be 
+intriguing predictors due to their phsyiological proximity to the phenotype,
+which provides information that is impossible to infer from DNA or proteins
+\cite{Fernie2012}, as well as encouraging results from other studies
+\cite{Guo2016,Dan2016}.
+A recently introduced technology, allowing for live-measurements of small 
+molecules in the blood of living and awake animals \cite{Arroyo-Curras2017}, 
+might overcome the problem of poorly time-resolved snap-shots of some 
+metabolites with extremely fast turnover rates \cite{Arrivault2009} if modified
+to properly work in plants.
+
+
+
+
+
+\section*{Conclusions}
+The use of whole-genome information has considerably advanced trait prediction
+over traditional pedigree-based BLUP by incorporating previously unobservable 
+Mendelian sampling.
+Combining variegated sources of information promises to capture complex
+interactions between genes and endophenotypes, leading to stable predictions
+across traits.
+Especially if an extremely small fraction of the candidates is selected from
+the millions of possible new hybrids from each breeding cycle, the success of
+forecasts is a strongly convex function of predictive ability
+(Fig. \ref{fig:PredAbility}\textit{B}).
+Therefore, considering endophenotypes could have a substantial effect on the 
+success and economics of hybrid breeding.
+Given the anticipated technological improvements in RNA-Seq and metabolite 
+profiling, as well as the forthcoming adoption of the DH-technology for many
+crops \cite{Kelliher2017}, a paradigm shift from exclusively genomic prediction 
+models to more inclusive approaches seems imminent.
+
+
+
+
+
+\section{Acknowledgments} 
+We thank the staff of the Agricultural Experimental Research station,
+University of Hohenheim, for excellent technical assistance in
+conducting the field experiments. We are indebted to the group of R.
+Fries from Technische Universit{\"a}t M{\"u}nchen for the SNP genotyping of the
+parent inbred lines, to X. Mi for his assistance in preparing auxiliary
+figures based on the Mathematica software, to C. Zenke for advice on the
+computation of transcriptomic BLUEs and to P. Schopp for advice on
+prediction models. The authors acknowledge support by the state of
+Baden-W{\"u}rttemberg through bwHPC. This project was funded by the German
+Federal Ministry of Education and Research (BMBF) within the projects
+OPTIMAL (FKZ: 0315958B,0315958F), SYNBREED (FKZ: 0315528D) and by the
+German Research Foundation (DFG, Grants No. ME 2260/5-1 and SCHO 764/6-1).
+Financial support for M.W. was provided by the Fiat Panis foundation, Ulm,
+Germany.
+
+
+
+\nolinenumbers
+% Bibliography
+\bibliography{library}
+\bibliographystyle{mychicago}
+\end{document}

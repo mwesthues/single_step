@@ -1,7 +1,8 @@
 # LOOCV-Prediction
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
-               "stringr", "forcats")
+pacman::p_load("tidyverse", "data.table", "dtplyr", "xtable", "stringr",
+               "forcats")
+source("./software/prediction_helper_functions.R")
 
 log_path <- "./data/derived/uhoh_maizego_prediction_log.txt"
 prediction_path <- "./data/derived/predictions/"
@@ -41,80 +42,47 @@ raw_pred_df <- log_file %>%
   select(-Job_ID)
   
   
-pred_df <- raw_pred_df %>%
+pred_lst <- raw_pred_df %>%
   mutate(
     Reduced = ifelse(Predictor == "mrna-none", yes = TRUE, no = FALSE),
     Reduced = ifelse(Core_Fraction == "1.0", yes = TRUE, no = Reduced) 
   ) %>%
-  select(-Core_Fraction)
-
-
-
-## Distribution of predicted and observed values
-legend_labs <- expression(y, hat(y))
-g1 <- pred_df %>%
-  ggplot(aes(x = y, y = yhat)) +
-  geom_point() +
-  facet_wrap(Predictor ~ Trait, scales = "free") +
-  theme_pander() 
-
-## Predictive ability for seven agronomic traits (rows) and nine predictor sets 
-# (columns). The predictor sets are split into the categories 'Reduced' 
-# (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids)."
-g2 <- pred_df %>%
+  select(-Core_Fraction) %>%
   group_by(Trait, Predictor, Reduced) %>%
-  summarize(r = cor(y, yhat)) %>%
-  mutate(Predictor = fct_relevel(Predictor, pred_order)
+  summarize(
+    r = cor(y, yhat),
+    CV = coefficient_of_variation(var_yhat, yhat)
   ) %>%
-  ggplot(aes(x = Predictor, y = r)) +
-  geom_bar(stat = "identity", aes(fill = Predictor), color = "black") +
-  geom_text(aes(label = round(r, digits = 3)), vjust = -0.2) +
-  scale_fill_viridis(discrete = TRUE, option = "inferno") +
-  facet_grid(Trait ~ Reduced, space = "free", scales = "free_x") +
-  theme_bw() +
-  theme(
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    axis.title.x = element_blank(),
-    legend.position = "bottom",
-    legend.key = element_rect(color = "white")
-  ) +
-  guides(fill = guide_legend(nrow = 3,
-                             byrow = TRUE,
-                             keywidth = 0.25,
-                             keyheight = 0.25,
-                             default.unit = "inch",
-                             title.position = "top")
-  ) +
-  ylim(c(0, 1))
-
-
-
-coefficient_of_variation <- function(x, y) {
-  sqrt(mean(x)) / mean(y)
-}
-
-
-pred_df %>%
-  group_by(Trait, Predictor, Reduced) %>%
-  summarize(CV = coefficient_of_variation(var_yhat, yhat)) %>%
   ungroup() %>%
-  mutate(Predictor = fct_relevel(Predictor, pred_order),
-         Trait = fct_relevel(Trait, trait_order)) %>%
-  ggplot(aes(x = CV, y = Predictor)) +
-  geom_segment(aes(yend = Predictor), xend = 0, color = "gray50") +
-  geom_point(aes(color = Predictor), size = 3) +
-  scale_color_viridis(discrete = TRUE, option = "inferno") +
-  facet_grid(Reduced ~ Trait, scales = "free") +
-  theme_bw() +
-  theme(panel.grid.major.y = element_blank(),
-        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        legend.position = "top"
-  ) +
-  guides(color = guide_legend(ncol = 2,
-                              reverse = FALSE)) +
-  xlab("Coefficient of Variation") +
-  ylab("Predictor Set") +
-  xlim(0, NA)
+  mutate(
+    r = round(r, digits = 2),
+    CV = round(CV, digits = 4),
+    Value = paste0(
+      r, " (", CV, ")"
+    )
+  ) %>%
+  select(-r, -CV) %>%
+  spread(key = Trait, value = Value) %>%
+  split(.$Reduced) %>%
+  map(., ~select(., -Reduced)) %>%
+  map(., ~column_to_rownames(., var = "Predictor"))
+
+# Prepare the split data for being displayed inside a LaTeX table.
+names(pred_lst)
+coverage_subheading <- "Only incomplete predictor:"
+attr(pred_lst, "subheadings") <- paste(coverage_subheading, names(pred_lst))
+hybrid_caption <- paste(
+  "Predictive abilities and corresponding coefficients of variation for the",
+  "set of maize hybrids"
+)
+xtable_lst <- xtableList(pred_lst,
+                         caption = hybrid_caption)
+# Function for printing labels in bold font.
+bold <- function(x) {
+  paste0('{\\bfseries ', x, '}')
+}
+print.xtableList(xtable_lst, 
+                 label = "tbl:hybrid_list",
+                 booktabs = TRUE,
+                 sanitize.subheadings.function = bold,
+                 caption.placement = "top")

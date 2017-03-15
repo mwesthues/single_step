@@ -41,3 +41,10 @@ create_named_list <- function(...) {
     if (any(nonames <- nm == "")) nm[nonames] <- snm[nonames]
     setNames(L, nm)
 }
+
+
+
+# Function for the computation of the coefficient of variation for each scenario.
+coefficient_of_variation <- function(x, y) {
+  sqrt(mean(x)) / mean(y)
+}

@@ -1,8 +1,0 @@
-# Introduction
-$\dots$
-
-Our objectives were threefold: (1) Examine whether the single step prediction
-framework can be transfered to hybrids, (2) explore the utility of single step 
-predition with a quantitative predictor and (3) evaluate the impact of the
-particular genetic space covered by the incomplete predictor on predictive
-ability.

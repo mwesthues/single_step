@@ -1,7 +1,8 @@
 # LOOCV-Prediction
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "data.table", "dtplyr", "ggthemes", "viridis",
-               "stringr", "forcats")
+pacman::p_load("tidyverse", "data.table", "dtplyr", "xtable", "stringr",
+               "forcats", "ggthemes", "viridis")
+source("./software/prediction_helper_functions.R")
 
 log_path <- "./data/derived/uhoh_maizego_prediction_log.txt"
 prediction_path <- "./data/derived/predictions/"
@@ -31,39 +32,73 @@ pred_df <- filtered_log_file %>%
   droplevels() %>%
   select(-Job_ID)
   
-pred_df %>%
-  group_by(Predictor, Core_Fraction) %>%
-  count()
   
 
-## Predictive ability for seven agronomic traits (rows) and nine predictor sets 
-# (columns). The predictor sets are split into the categories 'Reduced' 
-# (i.e. 685 hybrids) and 'Full' (i.e. 1,521 hybrids)."
+pred_lst <- pred_df %>%
+  mutate(
+    Reduced = if_else(Core_Fraction == "Full", true = FALSE, false = TRUE)
+  ) %>%
+  group_by(Trait, Predictor, Core_Fraction, Reduced) %>%
+  summarize(
+    r = cor(y, yhat),
+    CV = coefficient_of_variation(var_yhat, yhat)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    r = round(r, digits = 2),
+    CV = round(CV, digits = 4),
+    Value = paste0(
+      r, " (", CV, ")"
+    )
+  ) %>%
+  select(-r, -CV) %>%
+  spread(key = Trait, value = Value) %>%
+  split(.$Reduced) %>%
+  map(., ~select(., -Reduced)) %>%
+  map_at("TRUE", .f = ~mutate(
+    ., Predictor = paste0(Predictor, "_", Core_Fraction)
+  )) %>%
+  map(., ~select(., -Core_Fraction)) %>%
+  map(., ~column_to_rownames(., var = "Predictor"))
+
+# Prepare the split data for being displayed inside a LaTeX table.
+names(pred_lst)
+coverage_subheading <- "Only incomplete predictor:"
+attr(pred_lst, "subheadings") <- paste(coverage_subheading, names(pred_lst))
+core_caption <- paste(
+  "Predictive abilities and corresponding coefficients of variation for",
+  "different core sets from the tropical/subtropical material of the maize",
+  "diversity panel."
+)
+xtable_lst <- xtableList(pred_lst,
+                         caption = core_caption)
+# Function for printing labels in bold font.
+bold <- function(x) {
+  paste0('{\\bfseries ', x, '}')
+}
+print.xtableList(xtable_lst, 
+                 label = "tbl:core_list",
+                 booktabs = TRUE,
+                 sanitize.subheadings.function = bold,
+                 caption.placement = "top")
+
+
+
+# PLOT THE TREND IN R OVER CORE SETS --------------------------------------
 g1 <- pred_df %>%
-  group_by(Trait, Predictor, Core_Fraction) %>%
+  filter(!Core_Fraction %in% c("Full", "1.0")) %>%
+  group_by(Trait, Core_Fraction) %>%
   summarize(r = cor(y, yhat)) %>%
-  ggplot(aes(x = Predictor, y = r)) +
-  geom_bar(stat = "identity", aes(fill = Predictor), color = "black") +
-  geom_text(aes(label = round(r, digits = 3)), vjust = -0.2) +
-  scale_fill_viridis(discrete = TRUE, option = "inferno") +
-  facet_grid(Trait ~ Core_Fraction, space = "free", scales = "free_x") +
-  theme_bw() +
-  theme(
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    axis.title.x = element_blank(),
-    legend.position = "top",
-    legend.key = element_rect(color = "white")
-  ) +
-  guides(fill = guide_legend(nrow = 1,
-                             byrow = TRUE,
-                             keywidth = 0.25,
-                             keyheight = 0.25,
-                             default.unit = "inch",
-                             title.position = "top")
-  ) +
-  ylim(c(0, 1))
-g1
-
-
+  rename(`Core Fraction` = Core_Fraction) %>%
+  ggplot(aes(x = `Core Fraction`, y = r, color = Trait, group = Trait)) +
+  geom_line() +
+  scale_color_viridis(discrete = TRUE) +
+  theme_bw(base_size = 10)
+plot_name <- "./paper/tables_figures/core_fraction_predictive_ability_trend.pdf"
+ggsave(plot = g1, 
+       filename = plot_name,
+       width = 4,
+       height = 4,
+       units = "in")
+  
 
