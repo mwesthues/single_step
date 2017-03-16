@@ -1,7 +1,7 @@
 # LOOCV-Prediction
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "data.table", "dtplyr", "xtable", "stringr",
-               "forcats", "ggthemes", "viridis")
+               "forcats", "ggthemes", "viridis", "gsubfn")
 source("./software/prediction_helper_functions.R")
 
 log_path <- "./data/derived/uhoh_maizego_prediction_log.txt"
@@ -19,7 +19,7 @@ filtered_log_file <- log_file %>%
     (Pred1 == "mrna" & Pred2 == "none"), true = "1.0", false = Core_Fraction
   ))
 
-pred_df <- filtered_log_file %>%
+raw_pred_df <- filtered_log_file %>%
   select(Job_ID) %>%
   flatten_chr() %>%
   map(~readRDS(paste0(prediction_path, ., ".RDS"))) %>%
@@ -32,9 +32,20 @@ pred_df <- filtered_log_file %>%
   droplevels() %>%
   select(-Job_ID)
   
+abbrev_pred_df <- raw_pred_df %>%
+  mutate(
+    Predictor = gsubfn(
+      pattern = "\\S+",
+      replacement = list(
+        "snp-none" = "G",
+        "mrna-none" = "T",
+        "snp-mrna" = "GT"
+      ),
+      x = Predictor
+    )
+  )
   
-
-pred_lst <- pred_df %>%
+pred_df <- abbrev_pred_df %>%
   mutate(
     Reduced = if_else(Core_Fraction == "Full", true = FALSE, false = TRUE)
   ) %>%
@@ -53,11 +64,14 @@ pred_lst <- pred_df %>%
   ) %>%
   select(-r, -CV) %>%
   spread(key = Trait, value = Value) %>%
+  arrange(Reduced, desc(Core_Fraction), Predictor) %>%
+  mutate(
+    Predictor = paste0(Predictor, "_", Core_Fraction)
+  )
+  
+pred_lst <- pred_df %>%
   split(.$Reduced) %>%
   map(., ~select(., -Reduced)) %>%
-  map_at("TRUE", .f = ~mutate(
-    ., Predictor = paste0(Predictor, "_", Core_Fraction)
-  )) %>%
   map(., ~select(., -Core_Fraction)) %>%
   map(., ~column_to_rownames(., var = "Predictor"))
 
@@ -68,7 +82,10 @@ attr(pred_lst, "subheadings") <- paste(coverage_subheading, names(pred_lst))
 core_caption <- paste(
   "Predictive abilities and corresponding coefficients of variation for",
   "different core sets from the tropical/subtropical material of the maize",
-  "diversity panel."
+  "diversity panel. As predictors, genomic (G) data, transcriptomic (T)", 
+  "data and their combination (GT) were used. The decimal after the predictor",
+  "name indicates the size of the genetic material that was covered by inbred", 
+  "lines in the core set."
 )
 xtable_lst <- xtableList(pred_lst,
                          caption = core_caption)

@@ -86,7 +86,9 @@ coverage_subheading <- "Only incomplete predictor:"
 attr(pred_lst, "subheadings") <- paste(coverage_subheading, names(pred_lst))
 inbred_caption <- paste(
   "Predictive abilities and corresponding coefficients of variation for the",
-  "set of 211 tropical/subtropical lines from the maize diversity panel."
+  "set of 211 tropical/subtropical lines from the maize diversity panel.",
+  "As predictors, genomic data (G), transcriptomic data (T) and their",
+  "combination (GT) were used."
 )
 xtable_lst <- xtableList(pred_lst,
                          caption = inbred_caption)

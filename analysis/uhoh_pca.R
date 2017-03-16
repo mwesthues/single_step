@@ -52,6 +52,7 @@ quality_snps %>%
 # Determine the structure of the data using genotypic data.
 pca_lst <- lfmm_path %>%
   list.files(pattern = "lfmm") %>%
+  discard(. == "snp_Hybrid.lfmm") %>%
   map(., ~paste0(lfmm_path, .)) %>%
   map(., ~LEA::pca(input.file = ., scale = TRUE)) %>%
   map(function(x) x$projections) %>%
@@ -94,6 +95,7 @@ g1 <- pca_df %>%
   spread(key = PC, value = Score) %>%
   ggplot(aes(x = PC1, y = PC2, color = Reduced, shape = Reduced)) +
   geom_point() +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
   scale_color_tableau() +
   facet_grid(. ~ Group) +
   theme_bw(base_size = 10) +

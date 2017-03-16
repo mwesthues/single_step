@@ -153,6 +153,7 @@ g3 <- pc_df %>%
   rename(`Core Group` = Core_Group) %>%
   ggplot(aes(x = PC1, y = PC2, color = `Core Group`, shape = `Core Group`)) +
   geom_point(size = 0.5) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
   ggthemes::scale_color_tableau() +
   facet_wrap(~Fraction, nrow = 3, ncol = 3) +
   theme_bw(base_size = 10) +

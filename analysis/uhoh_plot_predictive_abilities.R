@@ -63,10 +63,10 @@ raw_pred_df <- raw_pred_df %>%
     Predictor = fct_relevel(Predictor, pred_order)
   )
  
-  
+ 
 pred_lst <- raw_pred_df %>%
   mutate(
-    Reduced = ifelse(Predictor == "mrna-none", yes = TRUE, no = FALSE),
+    Reduced = ifelse(Predictor == "T", yes = TRUE, no = FALSE),
     Reduced = ifelse(Core_Fraction == "1.0", yes = TRUE, no = Reduced) 
   ) %>%
   select(-Core_Fraction) %>%
@@ -78,7 +78,7 @@ pred_lst <- raw_pred_df %>%
   ungroup() %>%
   mutate(
     r = round(r, digits = 2),
-    CV = round(CV, digits = 4),
+    CV = round(CV, digits = 3),
     Value = paste0(
       r, " (", CV, ")"
     )
@@ -95,7 +95,8 @@ coverage_subheading <- "Only incomplete predictor:"
 attr(pred_lst, "subheadings") <- paste(coverage_subheading, names(pred_lst))
 hybrid_caption <- paste(
   "Predictive abilities and corresponding coefficients of variation for the",
-  "set of maize hybrids"
+  "set of maize hybrids. As predictors, pedigree (P), genomic (G),",
+  "transcriptomic (T) data and combinations thereof we used."
 )
 xtable_lst <- xtableList(pred_lst,
                          caption = hybrid_caption)
@@ -108,3 +109,4 @@ print.xtableList(xtable_lst,
                  booktabs = TRUE,
                  sanitize.subheadings.function = bold,
                  caption.placement = "top")
+
