@@ -50,7 +50,7 @@
 #
 # Specify the core set set size, as a fraction of genotypes covered by mrna
 # data
-#MOAB -v CORE_FRACTION=
+#MOAB -v CORE_SET=
 #
 #MOAB -v RUNS=
 #
@@ -77,14 +77,14 @@ echo "Data_Type=${DATA_TYPE}\
       PriorPiCount=${PRIOR_PI_COUNT}\
       Pred1=${PRED1}\
       Pred2=${PRED2}\
-      Core_Fraction=${CORE_FRACTION}\
+      Core_Set=${CORE_SET}\
       Runs=${RUNS}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/prediction.R\
            ${DATA_TYPE} ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
-           ${PRIOR_PI_COUNT} ${PRED1} ${PRED2} ${CORE_FRACTION}\
+           ${PRIOR_PI_COUNT} ${PRED1} ${PRED2} ${CORE_SET}\
            ${RUNS}"
 
 # Start program

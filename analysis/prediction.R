@@ -32,10 +32,10 @@ if (isTRUE(interactive())) {
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
   # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Hybrid")
+  Sys.setenv("DATA_TYPE" = "Inbred")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "GTM")
+  Sys.setenv("TRAIT" = "100grainweight")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "3000") 
   # Prediction model in BGLR()
@@ -46,11 +46,11 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "ped")
+  Sys.setenv("PRED1" = "snp")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "")
+  Sys.setenv("PRED2" = "mrna")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_FRACTION" = "1.0")
+  Sys.setenv("CORE_SET" = "A1")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -75,7 +75,7 @@ Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
-core_fraction <- as.character(Sys.getenv("CORE_FRACTION"))
+core_set <- as.character(Sys.getenv("CORE_SET"))
 runs <- as.character(Sys.getenv("RUNS"))
 temp <- paste0(as.character(Sys.getenv("TMP")), "/")
 
@@ -94,20 +94,12 @@ pred_sets <- pred_combi %>%
 
 
 ## -- INPUT CHECKS AND UPDATES ------------------------------------------
-if (isTRUE(nchar(core_fraction) != 0)) {
-  possible_fractions <- seq(from = 0.1, to = 1, by = 0.1)
-  if (!core_fraction %in% possible_fractions &&
-      !as.numeric(core_fraction) %in% possible_fractions) {
-    stop("CORE_FRACTION must be a decimal number between 0 and 1")
-  }
-}
-
-if (isTRUE(core_fraction == "1.0" && length(pred_sets) > 1)) {
+if (isTRUE(core_set == "1.0" && length(pred_sets) > 1)) {
   stop("Imputation not possible if all predictors cover the same genotypes")
 }
 
-if (isTRUE(nchar(core_fraction) != 0 &&
-           core_fraction != "1.0" &&
+if (isTRUE(nchar(core_set) != 0 &&
+           core_set != "1.0" &&
            data_type == "Hybrid")) {
   stop("Core sampling for hybrids is not yet supported")
 }
@@ -178,7 +170,7 @@ names(pred_lst) <- pred_lst_names
 # for all comparisons.
 if (isTRUE(data_type == "Hybrid" &&
            all(c("ped", "snp") %in% pred_sets) ||
-           core_fraction == "1.0")) {
+           core_set == "1.0")) {
   mrna_genotypes <- readRDS(mrna_path) %>%
     rownames()
   pred_lst <- pred_lst %>%
@@ -201,24 +193,33 @@ pred_lst <- pred_lst[match(names(pred_lst), pred_sets)]
 
 
 ## -- CORE SET SUBSAMPLING OF SNPS -----------------------------------------
-if (isTRUE(nchar(core_fraction) != 0) && data_type == "Inbred") {
-  core_lst <- readRDS("./data/derived/maizego/scenario2_snp_core_list.RDS")
+if (isTRUE(nchar(core_set) != 0) && data_type == "Inbred") {
+  core_lst <- readRDS("./data/derived/maizego/augmented_core_list.RDS")
   names(core_lst) <- gsub(names(core_lst), pattern = "selected_fraction_",
                           replacement = "")
-
-  # Get the core set of genotypes that uniformly cover the genetic target space
-  # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
-  core_genotypes <- core_lst %>%
-    keep(names(.) == core_fraction) %>%
-    map("sel") %>%
-    flatten_chr()
-
+  
   # Extract the intersect between genotypes that have data for genomic as well
   # as transcriptomic features.
   common_genotypes <- core_lst %>%
     keep(names(.) == "1.0") %>%
-    map("sel") %>%
     flatten_chr()
+    
+  if (!isTRUE(grepl("A", x = core_set))) {
+    # Get the core set of genotypes that uniformly cover the genetic target space
+    # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
+    core_genotypes <- core_lst %>%
+      keep(names(.) == core_set) %>%
+      flatten_chr()
+  
+    # If we use core sets based on an admixture analysis, invert the set of
+    # 'core_genotypes' and 'common_genotypes' so that the majority of genotypes
+    # is covered by genomic as well as transcriptomic data.
+  } else  if (isTRUE(grepl("A", x = core_set))) {
+    a_genotypes <- core_lst %>% 
+      keep(names(.) == core_set) %>%
+      flatten_chr()
+    core_genotypes <- setdiff(common_genotypes, a_genotypes)
+  }
 
   # Reduce the predictor data to match the size of the pre-specified core sets.
   # Ensure that SNP quality checks are applied to the genomic data in order to 
@@ -440,17 +441,6 @@ if (isTRUE(data_type == "Hybrid")) {
 
 
 ## -- PREDICTION -----------------------------------------------------------
-# Determine how much time (hh:mm:ss format) has elapsed since script initiation.
-get_elapsed_time <- function(start_time, tz = "CEST") {
-  start_time <- as.POSIXct(start_time)
-  sec <- Sys.time() %>%
-    difftime(time1 = ., time2 = start_time, units = "secs") %>%
-    lubridate::seconds_to_period()
-  paste0(sprintf("%02d", c(day(sec), hour(sec), minute(sec), second(sec))),
-         collapse = ":")
-}
-
-
 # Define which runs shall be used, i.e., which genotypes shall be included as 
 # test sets.
 if (nchar(runs) != 0) {
@@ -512,7 +502,7 @@ res <- res %>%
          Data_Type = data_type,
          Pred1 = pred_nms[1],
          Pred2 = pred_nms[2],
-         Core_Fraction = core_fraction,
+         Core_Set = core_set,
          Job_ID = job_id,
          Runs = runs,
          Elapsed_Time = get_elapsed_time(start_time),
@@ -521,7 +511,7 @@ res <- res %>%
   as.data.table()
 
 log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Data_Type, 
-                           Core_Fraction, Elapsed_Time, Iter, CV, Start_Time, 
+                           Core_Set, Elapsed_Time, Iter, CV, Start_Time, 
                            Runs, Cores), ])
 
 # Reduce the size of the prediction object to the minimum possible size.
@@ -529,7 +519,7 @@ res[, `:=` (Iter = NULL,
             Pred1 = NULL,
             Pred2 = NULL,
             Data_Type = NULL,
-            Core_Fraction = NULL,
+            Core_Set = NULL,
             CV = NULL,
             Dent = NULL,
             Flint = NULL,
