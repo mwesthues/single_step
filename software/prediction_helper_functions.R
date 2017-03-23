@@ -1,3 +1,15 @@
+# Determine how much time (hh:mm:ss format) has elapsed since script initiation.
+get_elapsed_time <- function(start_time, tz = "CEST") {
+  start_time <- as.POSIXct(start_time)
+  sec <- Sys.time() %>%
+    difftime(time1 = ., time2 = start_time, units = "secs") %>%
+    lubridate::seconds_to_period()
+  paste0(sprintf("%02d", c(day(sec), hour(sec), minute(sec), second(sec))),
+         collapse = ":")
+}
+
+
+
 # In the case of hybrid data, we still need to split all predictor matrices
 # into Flint and Dent components first.
 # In the case of pedigree data, we need to split the data by genotypes in the
