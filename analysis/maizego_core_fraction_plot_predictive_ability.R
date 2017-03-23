@@ -54,7 +54,9 @@ pred_df <- abbrev_pred_df %>%
     r = cor(y, yhat),
     CV = coefficient_of_variation(var_yhat, yhat)
   ) %>%
-  ungroup() %>%
+  ungroup()
+
+xtable_pred_df <- pred_df %>%
   mutate(
     r = round(r, digits = 2),
     CV = round(CV, digits = 4),
@@ -69,7 +71,7 @@ pred_df <- abbrev_pred_df %>%
     Predictor = paste0(Predictor, "_", Core_Fraction)
   )
   
-pred_lst <- pred_df %>%
+pred_lst <- xtable_pred_df %>%
   split(.$Reduced) %>%
   map(., ~select(., -Reduced)) %>%
   map(., ~select(., -Core_Fraction)) %>%
@@ -103,14 +105,17 @@ print.xtableList(xtable_lst,
 
 # PLOT THE TREND IN R OVER CORE SETS --------------------------------------
 g1 <- pred_df %>%
-  filter(!Core_Fraction %in% c("Full", "1.0")) %>%
+  filter(Reduced == TRUE,
+         Predictor == "GT") %>%
   group_by(Trait, Core_Fraction) %>%
-  summarize(r = cor(y, yhat)) %>%
   rename(`Core Fraction` = Core_Fraction) %>%
-  ggplot(aes(x = `Core Fraction`, y = r, color = Trait, group = Trait)) +
+  ggplot(aes(x = `Core Fraction`, y = r, group = Trait, 
+             color = forcats::fct_reorder2(Trait, `Core Fraction`, r))) +
   geom_line() +
+  labs(color = "Trait") +
   scale_color_viridis(discrete = TRUE) +
-  theme_bw(base_size = 10)
+  theme_bw(base_size = 10) +
+  guides(color = guide_legend(override.aes = list(size = 3)))
 plot_name <- "./paper/tables_figures/core_fraction_predictive_ability_trend.pdf"
 ggsave(plot = g1, 
        filename = plot_name,
