@@ -256,3 +256,6 @@ MANY MORE NOTES
 -   Correlations between estimates of breeding values from the hybrid model and
   the regular model were 1.0 for non-genotyped animals and over 0.99 for
   genotyped animals.
+
+
+%test change to github
