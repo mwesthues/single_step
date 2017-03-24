@@ -64,18 +64,25 @@ raw_pred_df <- raw_pred_df %>%
   )
  
  
-pred_lst <- raw_pred_df %>%
+pred_df <- raw_pred_df %>%
   mutate(
-    Reduced = ifelse(Predictor == "T", yes = TRUE, no = FALSE),
-    Reduced = ifelse(Core_Fraction == "1.0", yes = TRUE, no = Reduced) 
+    Group = ifelse(Predictor == "T", yes = "Core", no = "Full"),
+    Group = ifelse(Core_Fraction == "1.0", yes = "Core", no = Group) 
   ) %>%
   select(-Core_Fraction) %>%
-  group_by(Trait, Predictor, Reduced) %>%
+  group_by(Trait, Predictor, Group) %>%
   summarize(
     r = cor(y, yhat),
     CV = coefficient_of_variation(var_yhat, yhat)
   ) %>%
-  ungroup() %>%
+  ungroup()
+
+ext_pred_order <- c(
+  "P_Full", "G_Full", "PG_Full", "PT_Full", "GT_Full",
+  "P_Core", "G_Core", "T_Core"
+)
+
+xtable_pred_df <- pred_df %>%
   mutate(
     r = round(r, digits = 2),
     CV = round(CV, digits = 3),
@@ -85,28 +92,34 @@ pred_lst <- raw_pred_df %>%
   ) %>%
   select(-r, -CV) %>%
   spread(key = Trait, value = Value) %>%
-  split(.$Reduced) %>%
-  map(., ~select(., -Reduced)) %>%
-  map(., ~column_to_rownames(., var = "Predictor"))
+  mutate(
+    Predictor = paste0(Predictor, "_", Group),
+    Pred_Order = match(Predictor, ext_pred_order)
+  ) %>% 
+  arrange(Pred_Order) %>% 
+  mutate(Predictor = gsub("_", replacement = " ", x = Predictor)) %>% 
+  select(-Group, -Pred_Order)
+ 
 
-# Prepare the split data for being displayed inside a LaTeX table.
-names(pred_lst)
-coverage_subheading <- "Only incomplete predictor:"
-attr(pred_lst, "subheadings") <- paste(coverage_subheading, names(pred_lst))
 hybrid_caption <- paste(
   "Predictive abilities and corresponding coefficients of variation for the",
   "set of maize hybrids. As predictors, pedigree (P), genomic (G),",
   "transcriptomic (T) data and combinations thereof we used."
 )
-xtable_lst <- xtableList(pred_lst,
-                         caption = hybrid_caption)
+xtable_pred_df <- xtable(
+  xtable_pred_df,
+  caption = hybrid_caption
+)
 # Function for printing labels in bold font.
 bold <- function(x) {
   paste0('{\\bfseries ', x, '}')
 }
-print.xtableList(xtable_lst, 
-                 label = "tbl:hybrid_list",
-                 booktabs = TRUE,
-                 sanitize.subheadings.function = bold,
-                 caption.placement = "top")
+print.xtable(
+  xtable_pred_df, 
+  include.rownames = FALSE,
+  label = "tbl:hybrid_list",
+  booktabs = TRUE,
+  sanitize.subheadings.function = bold,
+  caption.placement = "top"
+)
 

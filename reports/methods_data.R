@@ -21,9 +21,28 @@ common_genotypes %>%
 
 # *** ./analysis/uhoh_data_preparation.R ***
 # Number of transcripts."
-"./data/derived/uhoh/mrna.RDS" %>%
-  readRDS() %>%
+uhoh_mrna <- "./data/derived/uhoh/mrna.RDS" %>%
+  readRDS() 
+
+uhoh_mrna %>%
   ncol()
+
+# Names of parental inbred lines in the UHOH maize hybrid data set that are 
+# covered by transcriptomic data.
+uhoh_mrna_nms <- rownames(uhoh_mrna)
+
+# Number of hybrids whose parents are covered by transcriptomic data.
+"./data/derived/uhoh/agro_tibble.RDS" %>%
+  readRDS() %>%
+  split(.$Trait) %>% 
+  map(., ~select(., Genotype)) %>% 
+  map(flatten_chr) %>% 
+  reduce(intersect) %>% 
+  as_data_frame() %>% 
+  separate(value, into = c("DF", "Dent", "Flint")) %>% 
+  filter(Dent %in% uhoh_mrna_nms,
+         Flint %in% uhoh_mrna_nms) %>% 
+  dim()
 
 # Number of pedigree records.
 "./data/derived/uhoh/pedigree_matrix.RDS" %>%

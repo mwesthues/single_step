@@ -75,10 +75,13 @@ xtable_pred_df <- pred_df %>%
   spread(key = Trait, value = Value) %>%
   mutate(
     Predictor = paste0(Predictor, "_", Core_Fraction)
-  )
-
-xtable_pred_df %>%
-  mutate(Predictor = factor(Predictor, levels = pred_order))
+  ) %>% 
+  mutate(
+    Pred_Order = match(Predictor, pred_order)
+  ) %>% 
+  arrange(Pred_Order) %>% 
+  mutate(Predictor = gsub("_", replacement = " ", x = Predictor)) %>% 
+  select(-Pred_Order)
   
 pred_lst <- xtable_pred_df %>%
   split(.$Reduced) %>%

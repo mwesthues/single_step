@@ -504,33 +504,49 @@ G 1.0 & 0.36 (0.077) & 0.21 (0.168) & 0.3 (0.053) & 0.34 (0.047) & 0.41 (0.078) 
 
 
 
-
 \Genetics2level{Hybrids}
+The maize hybrid data set contains information on six agronomic traits and
+three predictors, namely pedigree data (P), genomic information (G), 
+transcriptomic information (T), and combinations thereof.
+Pedigree records and genomic information were available for the 245 parent 
+lines of all 1,521 hybrids and we denote these data as the 'Full' set whereas
+transcriptomic data were available for 103 parent lines of 685 hybrids, which
+we denote as 'Core'.
+For dry matter yield (DMY), T was the best predictor in the core set of 685 
+hybrids with a predictive ability that was 0.08 points higher than for genomic 
+data, as the second best predictor for this trait.
+In the core set, P had the highest predictive ability for starch ('STA').
+For the other four traits, G had the best predictive abilities.
+In the full set of 1,521 hybrids, predictive abilities obtained with G rose 
+markedly for all traits with the exception of 'FAT'.
+The combination of genomic and transriptomic information (GT) in a single-step
+model yielded a small improvement of G alone for the trait 'DMY'.
+All traits, where T was not superior to G in the core set, did not benefit from 
+the single-step approach when compared to genomic information alone.
+Predictive abilities resulting from combinations of pedigree with genomic (PG)
+information were better than P alone for all traits and PT improved upon P in
+the core set for four traits.
 
 % latex table generated in R 3.3.3 by xtable 1.8-2 package
-% Thu Mar 16 08:16:30 2017
+% Fri Mar 24 12:24:30 2017
 % Script: ./analysis/uhoh_plot_predictive_abilities.R
 \begin{table}[ht]
 \label{table:HybridTable}
 \centering
 \caption{Predictive abilities and corresponding coefficients of variation for the set of maize hybrids. As predictors, pedigree (P), genomic (G), transcriptomic (T) data and combinations thereof we used.} 
-\begin{tabular}{rllllll}
+\begin{tabular}{lllllll}
   \toprule
- & DMY & DMC & FAT & PRO & STA & SUG \\ 
+Predictor & DMY & DMC & FAT & PRO & STA & SUG \\ 
   \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: FALSE}}\\
-P & 0.54 (0.049) & 0.48 (0.052) & 0.21 (0.037) & 0.6 (0.019) & 0.35 (0.043) & 0.42 (0.117) \\ 
-  G & 0.74 (0.052) & 0.63 (0.052) & 0.43 (0.036) & 0.65 (0.022) & 0.46 (0.046) & 0.47 (0.126) \\ 
-  PG & 0.71 (0.054) & 0.57 (0.055) & 0.35 (0.038) & 0.62 (0.023) & 0.39 (0.048) & 0.42 (0.13) \\ 
-  PT & 0.73 (0.056) & 0.53 (0.059) & 0.35 (0.04) & 0.61 (0.025) & 0.31 (0.05) & 0.37 (0.14) \\ 
-  GT & 0.75 (0.053) & 0.61 (0.055) & 0.43 (0.037) & 0.65 (0.024) & 0.44 (0.048) & 0.44 (0.134) \\ 
-   \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: TRUE}}\\
-T & 0.75 (0.055) & 0.34 (0.062) & 0.4 (0.041) & 0.47 (0.029) & 0.16 (0.05) & 0.27 (0.145) \\ 
-  P & 0.46 (0.047) & 0.53 (0.05) & 0.23 (0.037) & 0.46 (0.023) & 0.38 (0.039) & 0.34 (0.132) \\ 
-  G & 0.67 (0.053) & 0.47 (0.055) & 0.43 (0.038) & 0.48 (0.027) & 0.36 (0.046) & 0.35 (0.132) \\ 
+P Full & 0.54 (0.049) & 0.48 (0.052) & 0.21 (0.037) & 0.6 (0.019) & 0.35 (0.043) & 0.42 (0.117) \\ 
+  G Full & 0.74 (0.052) & 0.63 (0.052) & 0.43 (0.036) & 0.65 (0.022) & 0.46 (0.046) & 0.47 (0.126) \\ 
+  PG Full & 0.71 (0.054) & 0.57 (0.055) & 0.35 (0.038) & 0.62 (0.023) & 0.39 (0.048) & 0.42 (0.13) \\ 
+  PT Full & 0.73 (0.056) & 0.53 (0.059) & 0.35 (0.04) & 0.61 (0.025) & 0.31 (0.05) & 0.37 (0.14) \\ 
+  GT Full & 0.75 (0.053) & 0.61 (0.055) & 0.43 (0.037) & 0.65 (0.024) & 0.44 (0.048) & 0.44 (0.134) \\ 
+  P Core & 0.46 (0.047) & 0.53 (0.05) & 0.23 (0.037) & 0.46 (0.023) & 0.38 (0.039) & 0.34 (0.132) \\ 
+  G Core & 0.67 (0.053) & 0.47 (0.055) & 0.43 (0.038) & 0.48 (0.027) & 0.36 (0.046) & 0.35 (0.132) \\ 
+  T Core & 0.75 (0.055) & 0.34 (0.062) & 0.4 (0.041) & 0.47 (0.029) & 0.16 (0.05) & 0.27 (0.145) \\ 
    \bottomrule
-\multicolumn{6}{l}{}\\
 \end{tabular}
 \end{table}
 
