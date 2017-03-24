@@ -445,88 +445,14 @@ where $n$ denotes the number of genotypes (*i.e.*, inbred lines or hybrids).
 
 
 \section*{Results}
-
-\begin{figure}[H]
-\centering
-\includegraphics{./tables_figures/core_fraction_predictive_ability_trend.pdf}
-\caption{
-Influence of core set composition on predictive abilities.
-Predictive abilities are based on single step predition with genomic data as the 
-complete predictor and transcriptomic data as the incomplete predictor.
-Results are shown for six agronomic traits and nine core sets of the maize 
-diversity panel.
-}
-\label{fig:CoreSetInfluence}
-\end{figure}
-
-
-\begin{figure}[H]
-\centering
-\includegraphics{./tables_figures/uhoh_dent_flint_pca.pdf}
-\caption{
-  Principal component (PC) analysis of the two heterotic groups of the maize 
-  hybrids.
-  All inbred lines, which are covered by genomic and transcriptomic features
-  are depicted as orange triangles whereas genotypes for which only genomic
-  information are available are depicted as blue dots.
-}
-\label{fig:UHOH-PCA}
-\end{figure}
-
-
-\begin{figure}[H]
-\centering
-\includegraphics{./tables_figures/maizego_admixture_pca.pdf}
-\caption{
-  (\textbf{A}) Ancestry coefficients for 211 tropical/subtropical inbred lines
-  from the maize diversity panel considering $K=2 \dots 5$ ancestral
-  populations.
-  (\textbf{B}) Principal component analysis for nine different core sets of the
-  set of tropical/subtropical maize inbred lines.
-  For each size of the core set, its members are plotted as orange dots whereas 
-  all genotypes that are not elements of the cores sets (\textit{i.e.},
-  'Complement') are depicted as blue dots.
-}
-\label{fig:PopStructure}
-\end{figure}
-
-
-
-% latex table generated in R 3.3.3 by xtable 1.8-2 package
-% Thu Mar 16 08:16:30 2017
-% Script: ./analysis/uhoh_plot_predictive_abilities.R
-\begin{table}[ht]
-\centering
-\caption{Predictive abilities and corresponding coefficients of variation for the set of maize hybrids. As predictors, pedigree (P), genomic (G), transcriptomic (T) data and combinations thereof we used.} 
-\begin{tabular}{rllllll}
-  \toprule
- & DMY & DMC & FAT & PRO & STA & SUG \\ 
-  \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: FALSE}}\\
-P & 0.54 (0.049) & 0.48 (0.052) & 0.21 (0.037) & 0.6 (0.019) & 0.35 (0.043) & 0.42 (0.117) \\ 
-  G & 0.74 (0.052) & 0.63 (0.052) & 0.43 (0.036) & 0.65 (0.022) & 0.46 (0.046) & 0.47 (0.126) \\ 
-  PG & 0.71 (0.054) & 0.57 (0.055) & 0.35 (0.038) & 0.62 (0.023) & 0.39 (0.048) & 0.42 (0.13) \\ 
-  PT & 0.73 (0.056) & 0.53 (0.059) & 0.35 (0.04) & 0.61 (0.025) & 0.31 (0.05) & 0.37 (0.14) \\ 
-  GT & 0.75 (0.053) & 0.61 (0.055) & 0.43 (0.037) & 0.65 (0.024) & 0.44 (0.048) & 0.44 (0.134) \\ 
-   \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: TRUE}}\\
-T & 0.75 (0.055) & 0.34 (0.062) & 0.4 (0.041) & 0.47 (0.029) & 0.16 (0.05) & 0.27 (0.145) \\ 
-  P & 0.46 (0.047) & 0.53 (0.05) & 0.23 (0.037) & 0.46 (0.023) & 0.38 (0.039) & 0.34 (0.132) \\ 
-  G & 0.67 (0.053) & 0.47 (0.055) & 0.43 (0.038) & 0.48 (0.027) & 0.36 (0.046) & 0.35 (0.132) \\ 
-   \bottomrule
-\multicolumn{6}{l}{}\\
-\end{tabular}
-\end{table}
-
-
-
-
+\Genetics2level{Inbred lines}
 
 
 % latex table generated in R 3.3.3 by xtable 1.8-2 package
 % Wed Mar 22 08:40:11 2017
 % Script: ./analysis/maizego_core_fraction_plot_predictive_abilities.R
 \begin{table}[ht]
+\label{tbl:InbredTable}
 \centering
 \caption{Predictive abilities and corresponding coefficients of variation for different core sets from the tropical/subtropical material of the maize diversity panel. As predictors, genomic (G) data, transcriptomic (T) data and their combination (GT) were used. The decimal after the predictor name indicates the size of the genetic material that was covered by inbred lines in the core set.} 
 \begin{tabular}{rllllll}
@@ -557,15 +483,120 @@ G\_1.0 & 0.36 (0.0773) & 0.21 (0.1678) & 0.3 (0.0527) & 0.34 (0.0472) & 0.41 (0.
 
 
 
+\Genetics2level{Hybrids}
+
+% latex table generated in R 3.3.3 by xtable 1.8-2 package
+% Thu Mar 16 08:16:30 2017
+% Script: ./analysis/uhoh_plot_predictive_abilities.R
+\begin{table}[ht]
+\label{tbl:HybridTable}
+\centering
+\caption{Predictive abilities and corresponding coefficients of variation for the set of maize hybrids. As predictors, pedigree (P), genomic (G), transcriptomic (T) data and combinations thereof we used.} 
+\begin{tabular}{rllllll}
+  \toprule
+ & DMY & DMC & FAT & PRO & STA & SUG \\ 
+  \midrule
+\multicolumn{6}{l}{{\bfseries Only incomplete predictor: FALSE}}\\
+P & 0.54 (0.049) & 0.48 (0.052) & 0.21 (0.037) & 0.6 (0.019) & 0.35 (0.043) & 0.42 (0.117) \\ 
+  G & 0.74 (0.052) & 0.63 (0.052) & 0.43 (0.036) & 0.65 (0.022) & 0.46 (0.046) & 0.47 (0.126) \\ 
+  PG & 0.71 (0.054) & 0.57 (0.055) & 0.35 (0.038) & 0.62 (0.023) & 0.39 (0.048) & 0.42 (0.13) \\ 
+  PT & 0.73 (0.056) & 0.53 (0.059) & 0.35 (0.04) & 0.61 (0.025) & 0.31 (0.05) & 0.37 (0.14) \\ 
+  GT & 0.75 (0.053) & 0.61 (0.055) & 0.43 (0.037) & 0.65 (0.024) & 0.44 (0.048) & 0.44 (0.134) \\ 
+   \midrule
+\multicolumn{6}{l}{{\bfseries Only incomplete predictor: TRUE}}\\
+T & 0.75 (0.055) & 0.34 (0.062) & 0.4 (0.041) & 0.47 (0.029) & 0.16 (0.05) & 0.27 (0.145) \\ 
+  P & 0.46 (0.047) & 0.53 (0.05) & 0.23 (0.037) & 0.46 (0.023) & 0.38 (0.039) & 0.34 (0.132) \\ 
+  G & 0.67 (0.053) & 0.47 (0.055) & 0.43 (0.038) & 0.48 (0.027) & 0.36 (0.046) & 0.35 (0.132) \\ 
+   \bottomrule
+\multicolumn{6}{l}{}\\
+\end{tabular}
+\end{table}
 
 
-\Genetics2level{Some results section}
 
-$\dots$
 
-\Genetics2level{Another results section}
 
-$\dots$
+
+
+
+
+\Genetics2level{Coverage of the genetic space}
+
+\begin{figure}[H]
+\centering
+\includegraphics{./tables_figures/core_fraction_predictive_ability_trend.pdf}
+\caption{
+Influence of core set composition on predictive abilities.
+Predictive abilities are based on single step predition with genomic data as the 
+complete predictor and transcriptomic data as the incomplete predictor.
+Results are shown for six agronomic traits and nine core sets of the maize 
+diversity panel.
+}
+\label{fig:CoreSetInfluence}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics{./tables_figures/maizego_core_sampling_pca.pdf}
+\caption{
+  Coverage of the genetic space by nine different core sets. 
+  Genotypes are distributed according to their scores based on the first two
+  principal components (PC).
+  The total genetic space was spanned by 149 genotypes from the maize diversity 
+  panel for which both, genomic and transcriptomic data, were available.
+  Genotypes that were members of the core set (orange triangles) were declared 
+  as being covered by both predictors whereas members of the complement (blue,
+  filled circles) were declared as only being covered by genomic information.
+  Assignments of genotypes to the core set was done by selecting a subset of
+  genotypes that maximized the average genetic distance in the core set based 
+  on the Modified Rogers distance between all genotypes.
+  Core set sizes ranged from 10\% to 90\% of the 149 available genotypes and
+  are given as decimals above each facet of the plot.
+}
+\label{fig:CoreSetPCA}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics{./tables_figures/maizego_admixture_k3_pca.pdf}
+\caption{
+  Population structure of 149 maize inbred lines from the maize diversity panel
+  covered by genomic and transcriptomic data.
+  (\textbf{A}) Ancestry coefficients from an admixture analysis when 
+  considering $K=3$ ancestral populations.
+  (\textbf{B}) Principal component analysis with genotypes colored according to 
+  the most likely ancestral population (\textit{i.e.}, share $\geq 0.5$) as 
+  indicated by the admixture analysis.
+  Genotypes for which none of the three ancestry coefficients reached a value
+  of 0.5 were classified as "mixed".
+}
+\label{fig:PopStructure}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics{./tables_figures/uhoh_dent_flint_pca.pdf}
+\caption{
+  Principal component (PC) analysis of the two heterotic groups of the maize 
+  hybrids.
+  All inbred lines, which are covered by genomic and transcriptomic features
+  are depicted as orange triangles whereas genotypes for which only genomic
+  information are available are depicted as blue dots.
+}
+\label{fig:UHOH-PCA}
+\end{figure}
+
+
+
+
+
+
+
+
+
 
 
 

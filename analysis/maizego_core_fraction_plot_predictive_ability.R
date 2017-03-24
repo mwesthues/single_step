@@ -56,20 +56,29 @@ pred_df <- abbrev_pred_df %>%
   ) %>%
   ungroup()
 
+# Custom order for predictors.
+pred_order <- c(
+  "G_Full", "GT_Full", "G_1.0", "T_1.0", 
+  paste0("GT_", seq(from = 0.1, to = 0.9, by = 0.1)),
+  paste0("GT_A", seq_len(3))
+)
+
 xtable_pred_df <- pred_df %>%
   mutate(
     r = round(r, digits = 2),
-    CV = round(CV, digits = 4),
+    CV = round(CV, digits = 3),
     Value = paste0(
       r, " (", CV, ")"
     )
   ) %>%
   select(-r, -CV) %>%
   spread(key = Trait, value = Value) %>%
-  arrange(Reduced, desc(Core_Fraction), Predictor) %>%
   mutate(
     Predictor = paste0(Predictor, "_", Core_Fraction)
   )
+
+xtable_pred_df %>%
+  mutate(Predictor = factor(Predictor, levels = pred_order))
   
 pred_lst <- xtable_pred_df %>%
   split(.$Reduced) %>%

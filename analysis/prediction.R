@@ -50,7 +50,7 @@ if (isTRUE(interactive())) {
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "mrna")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_SET" = "A1")
+  Sys.setenv("CORE_SET" = "A3")
   # Number of genotypes to predict (only for testing!)
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
