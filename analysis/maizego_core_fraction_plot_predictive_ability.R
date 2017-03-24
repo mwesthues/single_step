@@ -131,7 +131,7 @@ g1 <- pred_df %>%
 plot_name <- "./paper/tables_figures/core_fraction_predictive_ability_trend.pdf"
 ggsave(plot = g1, 
        filename = plot_name,
-       width = 4,
+       width = 7,
        height = 4,
        units = "in")
   
