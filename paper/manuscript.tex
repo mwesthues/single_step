@@ -90,19 +90,45 @@ $\dots$
 
 % Introduction
 \section{Introduction} 
-% Necessity for predictions.
+% Rationale for predictions.
 Genomic prediction, pioneered by \citeNP{Meuwissen2001}, has revolutionized
-multiple areas of genetic analyses such as animal and plant breeding
-\cite{DeLosCampos2013} as well as disease diagnostics in humans 
-\cite{DeLosCampos2010,Vazquez2016}.
-The primary application of genomic prediction in breeding programs is for the 
-accelerated selection of promising candidates without phenotypes.
+animal and plant breeding by accelerating the selection of promising candidates 
+without phenotypes \cite{DeLosCampos2013,Garcia-Ruiz2016} and recently emerged
+as an important tool in human diagnostics \cite{DeLosCampos2010,Vazquez2016}.
+Its use is largely motivated by the high costs and oftentimes long duration of 
+phenotyping, which can be reduced when covering all genotypes with a predictor 
+while limiting phenotyping to a few genotypes with high precision.
+The performance of all other genotypes is then forecast using model parameters
+obtained from thorough (repeated) $k$-fold cross-validation routines applied to 
+the subset of individuals with full information.
+In animal breeding, genomic selection has increased the annual selection gain 
+by $\approx$ 50-100\% for yield traits and by 300-400\% for traits with low 
+heritability \cite{Garcia-Ruiz2016}.
+In plant breeding, the relative excellence of a breeding strategy largely 
+depends on the prediction accuracy, which may vary widely among traits and 
+crops \cite{Longin2015}.
 
-% -   Describe the two step procedure and its shortcomings.
-% Incomplete coverage of individuals with genomic data.
-In animal breeding, only a small fraction of all animals that are recorded in
-the pedigree also have genotypes.
-To utilize all available phenotpyic information for model training methods were 
+% Search for better predictors
+Compared to pedigree information, which represent the expected relationship
+among individuals, genomic information capture Mendelian sampling and thereby 
+provide an improved proxy of the realized relationship among individuals.
+Nevertheless, genomic data do not exhaustively capture physiological epistasis 
+\cite{Jiang2015,Guo2016,Vazquez2016}, describing the interactions 
+within and between different biological strata \cite{Sackton2016}.
+Such interactions were found to be pervasive throughout the genomes of yeast 
+\cite{Brem2005} and humans \cite{Brown2014} and have motivated studies on the 
+utility of downstream 'omics' predictors for integrating such interactions.
+So far, encouraging results have been found for humans \cite{Vazquez2016}, maize 
+inbred lines \cite{Guo2016} and maize hybrids \cite{Westhues2017}.
+
+% Incomplete predictors.
+Breeding programs --- particularly in animal breeding --- are characterized by
+the availability of one predictor type, which is available for all recorded
+genotypes while other predictors are incomplete in that they cover only a 
+subset of all genotypes.
+Usually, the complete predictor is pedigree information while genomic data are
+the most prevalent incomplete predictor.
+To utilize all available phenotypic information for model training, methods were 
 needed that would allow for a combined use of genomic and pedigree information 
 \cite{Hayes2009a,VanRaden2009}.
 
@@ -110,79 +136,47 @@ needed that would allow for a combined use of genomic and pedigree information
 In the early years of genomic prediction, a two-step procedure was the most
 intuitive choice for establishing a new selection scheme.
 The first step constists of conventionally estimating breeding values based on
-pedigree relationships and therefore the phenotypes of relatives.
+pedigree relationships and the phenotypes of relatives.
 Individuals with accurate breeding values out of the first step (\textit{i.e.}
 high number of offspring), enter the second step in which conventional breeding
-values are regressed onto SNP genotypes. 
-Those markers can then be used to predict genomic breeding values for solely
-genotyped and potentially very young individuals.
-
-% Shortcomings of the two-step procedure.
-\begin{itemize}
-  \item Bias introduced by genomic information giving an advantage to young,
-    genotyped individuals over old animals with only pedigree records
-    \cite{Aguilar2009}.
-  \item Pedigree depth varies among individuals; some animals have more
-    ancestors and therefore more precise estimates \cite{Aguilar2009}.
-\end{itemize}
-
-% Problems with SS-BLUP
-\begin{itemize}
-  \item Weight $w$ for $\mathbf{A}$ and $\mathbf{G}$.
-  \item The optimal weight differs between traits \cite{Ashraf2016}.
-  \item compatibility between $\mathbf{A}$ and $\mathbf{G}$
-    \cite{Christensen2012}
-\end{itemize}
+values are regressed onto SNP genotypes.
+The resulting model coefficients can then be used to predict genomic breeding 
+values for solely genotyped and potentially very young individuals.
+However, as the breeding values from step one enter the genomic prediction
+model as phenotypes, one has to be careful about the residual error
+distribution of such a model.
+For instance, if the range of the prediction errors will not be identically
+distributed anymore, \textit{i.e.} they should be weighted differently or
+estimated individually \cite{Aguilar2010}.
+One popular approach to account for this problem is deregressing the breeding
+values and weighting the residuals according to the prediction error variances
+\cite{Garrick2009}.
 
 % Workings and advantages of the single step procedure.
 Independently from each other, \citeNP{Legarra2009} and
-\citeNP{Christensen2010} developed a BLUP method that blends the numerator
-relationship matrix $\mathbf{A}$ with the genomic relationship matrix
-$\mathbf{G}$ in a mutual matrix $\mathbf{H}$.
-
-% Physiological epistasis (added benefits of downstream 'omics' predictors)
-Compared to pedigree-based prediction, genomic prediction captures Mendelian
-sampling, which is the difference between the expected and the realized
-relationship between individuals.
-Despite its great success and benefits, genomic prediction does not seem to
-capture all physiological epistasis \cite{Sackton2016,Reif2015}, which rather 
-manifests itself in the form of main and interaction effects of and between 
-downstream 'omics' strata, such as the transcriptome, the proteome and the 
-metabolome.
-This has lead to the exploration of 
-
-Besides genomic data, other predictors have proven their value in the
-prediction of complex traits in plant populations \cite{Guo2016,Westhues2017}
-and in humans \cite{Vazquez2016}.
-
-% Special situation in hybrid breeding.
-Hybrid breeding --- with noteworthy commercial applications in pig, chicken and 
-maize breeding --- is a particularly challenging application field for
-prediction tools.
-Here, $2n$ parent individuals from two genetically distinct heterotic groups are
-crossed to each other, yielding $n^{2}$ potential hybrid progeny that would
-require intensive field testing.
-In medium-sized plant breeding programs, the advent of the doubled haploid (DH) 
-technology \cite{Wedzony2009} now allows for an annual production of 1,000 
-parent lines in each heterotic group, amounting to $10^{6}$ putative hybrid
-progeny.
+\citeNP{Christensen2010} developed a single step BLUP method that blends the 
+numerator relationship matrix $\mathbf{A}$ with the genomic relationship matrix
+$\mathbf{G}$ in a mutual matrix $\mathbf{H}$ to use all predictor information
+simultaneously.
+Issues with this H-BLUP approach were the compatability of $\mathbf{A}$ with
+$\mathbf{G}$ \cite{Christensen2012} and their weighting, which is not
+trait-independent \cite{Ashraf2016}.
+\citeNP{Fernando2014} derived the equivalent single step marker-effect-model to 
+the single step breeding value model of \citeNP{Legarra2009} and 
+\citeNP{Christensen2010}, which has the advantage of not requiring weights for
+$\mathbf{A}$ and $\mathbf{G}$ as well as the ability to model the structure of 
+the imputation error.
 
 
 % -   Mention scarcity of data on single step prediction in plant populations.
-Single step prediction has been a hot topic in animal breeding for a few years,
-but so far, to the best of our knowledge, has only been considered in plants
-only in one study on wheat lines from CIMMYT \cite{Ashraf2016}. 
-So far, its applications in hybrid populations are limited to pig breeding
-\cite{Xiang2015,Xiang2016,Tusell2016}.
-% Are there applications in chicken breeding? (Hints in Christensen et al.
-% 2014, GSE).
+Single step prediction has already become a routine procedure in animal
+breeding but, to the best of our knowledge, has only been considered in plants
+in a study on wheat lines \cite{Ashraf2016}. 
 Our objectives were threefold: (1) Examine whether the single step prediction
-framework can be transfered to hybrids, (2) explore the utility of single step 
-predition with a quantitative predictor and (3) evaluate the impact of the
-particular genetic space covered by the incomplete predictor on predictive
-ability.
+framework can be transfered to plant hybrids, (2) explore the utility of single 
+step predition with a quantitative predictor and (3) evaluate the impact of the
+genetic space covered by the incomplete predictor on predictive ability.
 
-% -   How extensive are pedigree records in commercial breeding companies?
 
 
 
@@ -806,6 +800,26 @@ objectives were i) to explore the benefits of a single step procedure for the
 same material and ii) to examine the influence on the composition of the set of
 genotypes that is covered by more than one predictor on the success of single
 step prediction.
+
+
+% Special situation in hybrid breeding.
+Hybrid breeding --- with noteworthy commercial applications in pig, chicken and 
+maize breeding --- is a particularly challenging application field for
+prediction tools.
+Here, $2n$ parent individuals from two genetically distinct heterotic groups are
+crossed to each other, yielding $n^{2}$ potential hybrid progeny that would
+require intensive field testing.
+In medium-sized plant breeding programs, the advent of the doubled haploid (DH) 
+technology \cite{Wedzony2009} now allows for an annual production of 1,000 
+parent lines in each heterotic group, amounting to $10^{6}$ putative hybrid
+progeny.
+
+
+So far, its applications in hybrid populations are limited to pig breeding
+\cite{Xiang2015,Xiang2016,Tusell2016}.
+% Are there applications in chicken breeding? (Hints in Christensen et al.
+% 2014, GSE).
+
 
 
 
