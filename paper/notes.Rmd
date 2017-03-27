@@ -57,7 +57,8 @@
   Christensen et al. (2012)."
 
 -   Optimized the weight of genomic and pedigree information in blending the
-  two matrices by fitting them simultaneous as random effects in a mixed model.
+  two matrices by fitting them simultaneously as random effects in a mixed 
+  model.
 
 -   "The polygenic effect weight, $w$, optimized in the HBLUP-weight model,
   outperformed the fixed weight used in HBLUP for all traits.
@@ -163,7 +164,7 @@
 
 -   "A single-step method extends the usual pedigree-based method by replacing
   the additive relationship matrix constructed from pedigree by an additive
-  relatoinship matrix that combines the marker-based relationship matrix for
+  relationship matrix that combines the marker-based relationship matrix for
   genotyped animals with the pedigree-based relationship matrix."
 
 -   "An issue with a single-step method is compatability between the
@@ -214,7 +215,7 @@
 -   "Thus, their method is called single-step BLUP (SS-BLUP), and is expected
   to yield unbiased predictions under multivariate normality, even in
   populations that are undergoing selection and non-random mating. This is
-  improtant, because genotypes are usually collected only on superior animals
+  important, because genotypes are usually collected only on superior animals
   and this can lead to biased evaluations. A properly calculated BLUP
   evaluation has been shown to be free of this selection bias [15-21]."
 
@@ -258,4 +259,3 @@ MANY MORE NOTES
   genotyped animals.
 
 
-%test change to github

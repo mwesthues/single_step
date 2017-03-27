@@ -90,14 +90,104 @@ $\dots$
 
 % Introduction
 \section{Introduction} 
+% Necessity for predictions.
+Genomic prediction, pioneered by \citeNP{Meuwissen2001}, has revolutionized
+multiple areas of genetic analyses such as animal and plant breeding
+\cite{DeLosCampos2013} as well as disease diagnostics in humans 
+\cite{DeLosCampos2010,Vazquez2016}.
+The primary application of genomic prediction in breeding programs is for the 
+accelerated selection of promising candidates without phenotypes.
 
-$\dots$
+% -   Describe the two step procedure and its shortcomings.
+% Incomplete coverage of individuals with genomic data.
+In animal breeding, only a small fraction of all animals that are recorded in
+the pedigree also have genotypes.
+To utilize all available phenotpyic information for model training methods were 
+needed that would allow for a combined use of genomic and pedigree information 
+\cite{Hayes2009a,VanRaden2009}.
 
+% Two-step prediction.
+In the early years of genomic prediction, a two-step procedure was the most
+intuitive choice for establishing a new selection scheme.
+The first step constists of conventionally estimating breeding values based on
+pedigree relationships and therefore the phenotypes of relatives.
+Individuals with accurate breeding values out of the first step (\textit{i.e.}
+high number of offspring), enter the second step in which conventional breeding
+values are regressed onto SNP genotypes. 
+Those markers can then be used to predict genomic breeding values for solely
+genotyped and potentially very young individuals.
+
+% Shortcomings of the two-step procedure.
+\begin{itemize}
+  \item Bias introduced by genomic information giving an advantage to young,
+    genotyped individuals over old animals with only pedigree records
+    \cite{Aguilar2009}.
+  \item Pedigree depth varies among individuals; some animals have more
+    ancestors and therefore more precise estimates \cite{Aguilar2009}.
+\end{itemize}
+
+% Problems with SS-BLUP
+\begin{itemize}
+  \item Weight $w$ for $\mathbf{A}$ and $\mathbf{G}$.
+  \item The optimal weight differs between traits \cite{Ashraf2016}.
+  \item compatibility between $\mathbf{A}$ and $\mathbf{G}$
+    \cite{Christensen2012}
+\end{itemize}
+
+% Workings and advantages of the single step procedure.
+Independently from each other, \citeNP{Legarra2009} and
+\citeNP{Christensen2010} developed a BLUP method that blends the numerator
+relationship matrix $\mathbf{A}$ with the genomic relationship matrix
+$\mathbf{G}$ in a mutual matrix $\mathbf{H}$.
+
+% Physiological epistasis (added benefits of downstream 'omics' predictors)
+Compared to pedigree-based prediction, genomic prediction captures Mendelian
+sampling, which is the difference between the expected and the realized
+relationship between individuals.
+Despite its great success and benefits, genomic prediction does not seem to
+capture all physiological epistasis \cite{Sackton2016,Reif2015}, which rather 
+manifests itself in the form of main and interaction effects of and between 
+downstream 'omics' strata, such as the transcriptome, the proteome and the 
+metabolome.
+This has lead to the exploration of 
+
+Besides genomic data, other predictors have proven their value in the
+prediction of complex traits in plant populations \cite{Guo2016,Westhues2017}
+and in humans \cite{Vazquez2016}.
+
+% Special situation in hybrid breeding.
+Hybrid breeding --- with noteworthy commercial applications in pig, chicken and 
+maize breeding --- is a particularly challenging application field for
+prediction tools.
+Here, $2n$ parent individuals from two genetically distinct heterotic groups are
+crossed to each other, yielding $n^{2}$ potential hybrid progeny that would
+require intensive field testing.
+In medium-sized plant breeding programs, the advent of the doubled haploid (DH) 
+technology \cite{Wedzony2009} now allows for an annual production of 1,000 
+parent lines in each heterotic group, amounting to $10^{6}$ putative hybrid
+progeny.
+
+
+% -   Mention scarcity of data on single step prediction in plant populations.
+Single step prediction has been a hot topic in animal breeding for a few years,
+but so far, to the best of our knowledge, has only been considered in plants
+only in one study on wheat lines from CIMMYT \cite{Ashraf2016}. 
+So far, its applications in hybrid populations are limited to pig breeding
+\cite{Xiang2015,Xiang2016,Tusell2016}.
+% Are there applications in chicken breeding? (Hints in Christensen et al.
+% 2014, GSE).
 Our objectives were threefold: (1) Examine whether the single step prediction
 framework can be transfered to hybrids, (2) explore the utility of single step 
 predition with a quantitative predictor and (3) evaluate the impact of the
 particular genetic space covered by the incomplete predictor on predictive
 ability.
+
+% -   How extensive are pedigree records in commercial breeding companies?
+
+
+
+
+
 
 
 
@@ -690,21 +780,38 @@ genomic data (Fig. \ref{fig:UHOH-PCA}).
 
 
 \section*{Discussion}
-\Genetics2level{Some discussion section}
+\Genetics2level{Advantages of marker effect models}
+% Describe the many hacks that have been developed to tackle problems with BLUP
+% models.
 
 $\dots$
 
-\subsection{More detailed discussion}
+\Genetics2level{Superiority of single step models}
 
-$\dots$
 
-\Genetics2level{Another discussion section}
+\Genetics2level{Coverage of the genetic space}
+Animal populations are so large that it does not truly matter, which animals are 
+being genotyped, but in plant breeding the situation is different and we would 
+be interested in determining which individuals should be complemented with 
+information on another predictor.
 
-$\dots$
+
+Prediction of phenotypic performance is particularly crucial in hybrid breeding
+programs because the number of potential selection candidates is $n^{2}$ where
+$n$ corresponds to the number of parent lines.
+
+Given recent results on the utility of downstream 'omics' predictors in a study
+on hybrid prediction in a European hybrid maize panel \cite{Westhues2017}, our 
+objectives were i) to explore the benefits of a single step procedure for the 
+same material and ii) to examine the influence on the composition of the set of
+genotypes that is covered by more than one predictor on the success of single
+step prediction.
+
 
 
 
 \section*{Conclusions}
+
 
 $\dots$
 
