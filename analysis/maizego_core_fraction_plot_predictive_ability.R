@@ -44,17 +44,66 @@ abbrev_pred_df <- raw_pred_df %>%
       x = Predictor
     )
   )
-  
-pred_df <- abbrev_pred_df %>%
+
+
+abbrev_pred_df %>% 
+  filter(Core_Fraction %in% seq(from = 0.1, to = 0.9, by = 0.1)) %>% 
+  split(.$Core_Fraction) %>% 
+  map(., ~select(., Geno)) %>% 
+  map(., ~unique(.)) %>% 
+  str()
+
+ # Determine which genotypes were imputed and which weren't.
+core_genotypes <- abbrev_pred_df %>% 
+  filter(Core_Fraction == "1.0") %>% 
+  select(Geno) %>% 
+  unique() %>% 
+  flatten_chr()
+
+core_lst <- "./data/derived/maizego/augmented_core_list.RDS" %>% 
+  readRDS()
+
+imputed_genotypes <- core_lst %>% 
+  set_names(gsub("selected_fraction_", replacement = "", x = names(.))) %>% 
+  keep(names(.) %in% seq(from = 0.1, to = 0.9, by = 0.1)) %>% 
+  map(function(x) {
+    setdiff(core_genotypes, x)
+  }) %>% 
+  map(as_data_frame) %>% 
+  bind_rows(.id = "Core_Fraction") %>% 
+  rename(Geno = value)
+ 
+pred_lst <- abbrev_pred_df %>%
   mutate(
-    Reduced = if_else(Core_Fraction == "Full", true = FALSE, false = TRUE)
+    Reduced = if_else(Core_Fraction == "Full", true = FALSE, false = TRUE),
+    Plot = NA_character_,
+    Plot = if_else(
+      Core_Fraction %in% c("Full", "1.0"), true = "Plot_A", false = Plot
+      ),
+    Plot = if_else(
+      Core_Fraction %in% seq(from = 0.1, to = 0.9, by = 0.1),
+      true = "Plot_B", false = Plot
+    ),
+    Plot = if_else(
+      Core_Fraction %in% paste0("A", seq_len(3)),
+      true = "Plot_C", false = Plot
+    )
   ) %>%
-  group_by(Trait, Predictor, Core_Fraction, Reduced) %>%
+  split(.$Plot)
+
+abbrev_pred_df %>% 
+  filter(Core_Fraction %in% seq(from = 0.1, to = 0.9, by = 0.1)) %>% 
+  right_join(
+    ., , y = imputed_genotypes, by = c("Core_Fraction", "Geno"), copy = TRUE
+  ) %>% 
+  group_by(Core_Fraction, Trait, Predictor) %>% 
   summarize(
     r = cor(y, yhat),
     CV = coefficient_of_variation(var_yhat, yhat)
   ) %>%
-  ungroup()
+  ungroup() %>% 
+  arrange(Trait) %>% 
+  as.data.frame()
 
 # Custom order for predictors.
 pred_order <- c(
