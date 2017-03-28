@@ -774,6 +774,8 @@ genomic data (Fig. \ref{fig:UHOH-PCA}).
 
 
 \section*{Discussion}
+
+
 \Genetics2level{Advantages of marker effect models}
 % Describe the many hacks that have been developed to tackle problems with BLUP
 % models.
@@ -781,28 +783,23 @@ genomic data (Fig. \ref{fig:UHOH-PCA}).
 $\dots$
 
 \Genetics2level{Superiority of single step models}
+\subsection{Inbred lines}
+Predictive abilities for the maize diversity panel are not in complete
+agreement with those reported by \citeNP{Guo2016}.
+Reasons for this may be threefold: 
+1) In our study, we reduced the dataset to the 211 tropical/subtropical lines 
+and excluded all other genotypes whereas \citeNP{Guo2016} used genotypes from 
+four subpopulations and only a subset of 157 genotypes from the set of 
+tropical/subtropical lines while correcting for population structure by
+including a fixed effect in the model for predicting agronomic performance.
+2) We applied quality checks for the predictor data after generating the subset
+of 211 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
+genotypes.
+3) While \citeNP{Guo2016} used five-fold cross-validation with 500 repetitions,
+we employed a leave-one-out cross-validation scheme (LOOCV).
 
 
-\Genetics2level{Coverage of the genetic space}
-Animal populations are so large that it does not truly matter, which animals are 
-being genotyped, but in plant breeding the situation is different and we would 
-be interested in determining which individuals should be complemented with 
-information on another predictor.
-
-
-Prediction of phenotypic performance is particularly crucial in hybrid breeding
-programs because the number of potential selection candidates is $n^{2}$ where
-$n$ corresponds to the number of parent lines.
-
-Given recent results on the utility of downstream 'omics' predictors in a study
-on hybrid prediction in a European hybrid maize panel \cite{Westhues2017}, our 
-objectives were i) to explore the benefits of a single step procedure for the 
-same material and ii) to examine the influence on the composition of the set of
-genotypes that is covered by more than one predictor on the success of single
-step prediction.
-
-
-% Special situation in hybrid breeding.
+\subsection{Maize hybrids}
 Hybrid breeding --- with noteworthy commercial applications in pig, chicken and 
 maize breeding --- is a particularly challenging application field for
 prediction tools.
@@ -813,12 +810,36 @@ In medium-sized plant breeding programs, the advent of the doubled haploid (DH)
 technology \cite{Wedzony2009} now allows for an annual production of 1,000 
 parent lines in each heterotic group, amounting to $10^{6}$ putative hybrid
 progeny.
-
-
 So far, its applications in hybrid populations are limited to pig breeding
 \cite{Xiang2015,Xiang2016,Tusell2016}.
 % Are there applications in chicken breeding? (Hints in Christensen et al.
 % 2014, GSE).
+
+\begin{itemize}
+  \item Generally, it is important that, on the same set of genotypes, the 
+    incomplete predictor yields larger predictive abilities than the complete 
+    predictor.
+  \item In hybrid breeding, the probability of successfully selecting the best
+    observed genotypes based on the best predicted candidates is a strongly 
+    convex function of the predictive ability.
+    Hence, even the minor gains when using transcriptomic and genomic data in a
+    single step might justify additional investments in RNA-seq at least of a
+    subste of genotypes that represents the genetic space of the breeding 
+    material well.
+  \item For the hybrid data, the predictive abilities of genomic information
+    for the whole set of available parent lines rose considerably for several
+    agronomic traits.
+    Hence, the inclusion of trancsriptomic data could not further improve upon
+    this result.
+\end{itemize}
+
+
+\Genetics2level{Coverage of the genetic space}
+Animal populations are so large that it does not truly matter, which animals are 
+being genotyped, but in plant breeding the situation is different and we would 
+be interested in determining which individuals should be complemented with 
+information on another predictor.
+If one can cover the genetic space sufficently with the incomplete predictor, 
 
 
 
