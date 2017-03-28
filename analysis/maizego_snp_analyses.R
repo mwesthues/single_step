@@ -213,7 +213,7 @@ g4 <- structure_df %>%
   ggplot(aes(x = G, y = Value, fill = Component)) +
   geom_bar(stat = "identity", width = 1) +
   facet_wrap(~K, ncol = 1) +
-  scale_fill_viridis(discrete = TRUE) +
+  scale_fill_manual(values = c("#258039", "#F5BE41", "#31A9B8")) +
   ggthemes::theme_pander(base_size = 10) +
   theme(
     axis.text.x = element_blank(),
@@ -233,7 +233,7 @@ g5 <- pc_df %>%
   )) %>% 
   ggplot(aes(x = PC1, y = PC2, color = Ancestor, shape = Ancestor)) +
   geom_point(size = 2) +
-  scale_color_manual(values = c(viridis(n = 3), "red")) +
+  scale_color_manual(values = c("#258039", "#F5BE41", "#31A9B8", "red")) +
   scale_shape_manual(values = c(15, 17, 19, 3)) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   ggthemes::theme_pander(base_size = 10)

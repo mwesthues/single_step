@@ -97,7 +97,11 @@ plot_data <- pred_df %>%
   set_names(c("Core", "Imputed")) %>% 
   bind_rows(.id = "Group") %>% 
   unite(col = Exact_Predictor, Predictor, Group, sep = "_", remove = FALSE) %>% 
-  mutate(Pred_Order = match(Exact_Predictor, ext_pred_order)) %>% 
+  mutate(
+    Pred_Order = match(Exact_Predictor, ext_pred_order),
+    Predictor = factor(Predictor, levels = c(
+      "P", "G", "T", "PG", "PT", "GT"
+    ))) %>% 
   arrange(Pred_Order)
 
 # Define the top and bottom of the errorbars
@@ -105,16 +109,24 @@ limits <- aes(ymax = r + CV, ymin = r - CV)
 # Because the bars and errorbars have different widths
 # we need to specify how wide the objects we are dodging are
 dodge <- position_dodge(width = 0.9)
+# Predefine the color scheme.
+mycols <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6)
+names(mycols) <- c("P", "G", "T", "PG", "PT", "GT")
 
-plot_data %>% 
+
+g1 <- plot_data %>% 
   ggplot(aes(x = Trait, y = r, fill = Predictor)) +
-  geom_bar(stat = "identity", position = dodge) +
+  geom_bar(stat = "identity", position = dodge, color = "black") +
   geom_errorbar(limits, position = dodge, width = 0.25) +
   facet_grid(. ~ Group) +
-  scale_fill_viridis(discrete = TRUE) +
+  scale_fill_manual(values = mycols) +
   theme_base()
   
-
+ggsave(plot = g1, 
+       filename = "./paper/tables_figures/hybrid_predictive_ability.pdf",
+       width = 7,
+       height = 4,
+       units = "in")
 
 
 

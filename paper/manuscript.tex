@@ -531,7 +531,7 @@ where $n$ denotes the number of genotypes (*i.e.*, inbred lines or hybrids).
 At the level of the 149 genotypes for which both, genomic (G) and 
 transcriptomic (T) information, were available, the use of T yielded higher
 predictive abilities than the use of G for four out of six traits
-(Table \ref{table:InbredTable}).
+(Table \ref{table:InbredResults}).
 In terms of predictive ability, the absolute advantage of T over G was as large 
 as 0.04 as observed for the traits '100grainweight', 'Eardiameter' and 
 'Silkingtime'.
@@ -547,42 +547,26 @@ Where T was a worse predictor for the reduced set of 149 lines than G,
 predictive abilities of GT for the full set of 211 lines were also worse than 
 those based on G alone.
 
-% latex table generated in R 3.3.3 by xtable 1.8-2 package
-% Fri Mar 24 11:34:47 2017
 % Script: ./analysis/maizego_core_fraction_plot_predictive_abilities.R
-\begin{table}[ht]
-\centering
-\caption{Predictive abilities and corresponding coefficients of variation for different core sets from the tropical/subtropical material of the maize diversity panel. As predictors, genomic (G) data, transcriptomic (T) data and their combination (GT) were used. The decimal after the predictor name indicates the size of the genetic material that was covered by inbred lines in the core set.} 
-\label{table:InbredTable}
-\begin{tabular}{rllllll}
-  \toprule
- & 100grainweight & cobweight & Eardiameter & Kernelwidth & Plantheight & Silkingtime \\ 
-  \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: FALSE}}\\
-G Full & 0.43 (0.073) & 0.37 (0.173) & 0.39 (0.053) & 0.34 (0.045) & 0.45 (0.076) & 0.53 (0.03) \\ 
-  GT Full & 0.44 (0.075) & 0.33 (0.173) & 0.4 (0.054) & 0.34 (0.043) & 0.4 (0.071) & 0.53 (0.028) \\ 
-   \midrule
-\multicolumn{6}{l}{{\bfseries Only incomplete predictor: TRUE}}\\
-G 1.0 & 0.36 (0.077) & 0.21 (0.168) & 0.3 (0.053) & 0.34 (0.047) & 0.41 (0.078) & 0.45 (0.03) \\ 
-  T 1.0 & 0.4 (0.075) & 0.15 (0.157) & 0.37 (0.051) & 0.36 (0.042) & 0.32 (0.069) & 0.49 (0.028) \\ 
-  GT 0.1 & 0.29 (0.076) & 0.21 (0.166) & 0.23 (0.052) & 0.32 (0.047) & 0.4 (0.074) & 0.39 (0.03) \\ 
-  GT 0.2 & 0.35 (0.072) & 0.23 (0.164) & 0.26 (0.052) & 0.36 (0.047) & 0.38 (0.072) & 0.44 (0.027) \\ 
-  GT 0.3 & 0.36 (0.071) & 0.2 (0.157) & 0.28 (0.05) & 0.37 (0.044) & 0.42 (0.074) & 0.5 (0.028) \\ 
-  GT 0.4 & 0.39 (0.07) & 0.2 (0.156) & 0.33 (0.049) & 0.35 (0.043) & 0.38 (0.073) & 0.52 (0.028) \\ 
-  GT 0.5 & 0.41 (0.067) & 0.16 (0.155) & 0.31 (0.049) & 0.4 (0.041) & 0.44 (0.075) & 0.49 (0.028) \\ 
-  GT 0.6 & 0.4 (0.074) & 0.13 (0.156) & 0.27 (0.05) & 0.37 (0.042) & 0.42 (0.075) & 0.55 (0.027) \\ 
-  GT 0.7 & 0.37 (0.073) & 0.1 (0.156) & 0.31 (0.051) & 0.37 (0.042) & 0.33 (0.075) & 0.52 (0.028) \\ 
-  GT 0.8 & 0.4 (0.077) & 0.21 (0.158) & 0.36 (0.051) & 0.41 (0.046) & 0.29 (0.074) & 0.49 (0.029) \\ 
-  GT 0.9 & 0.39 (0.079) & 0.21 (0.169) & 0.38 (0.056) & 0.41 (0.046) & 0.29 (0.075) & 0.49 (0.031) \\ 
-  GT A1 & 0.32 (0.079) & 0.03 (0.155) & 0.28 (0.053) & 0.32 (0.045) & 0.31 (0.073) & 0.46 (0.03) \\ 
-  GT A2 & 0.4 (0.081) & 0.18 (0.164) & 0.32 (0.055) & 0.33 (0.046) & 0.36 (0.073) & 0.47 (0.03) \\ 
-  GT A3 & 0.3 (0.071) & 0.1 (0.164) & 0.34 (0.054) & 0.41 (0.041) & 0.33 (0.072) & 0.41 (0.029) \\ 
-   \bottomrule
-\multicolumn{6}{l}{}\\
-\end{tabular}
-\end{table}
-
-
+\begin{figure}[H]
+  \centering
+  \includegraphics{./tables_figures/inbred_line_combi_plot.pdf}
+  \caption{
+  Predictive abilities and corresponding coefficients of variation for 
+  different core sets from the tropical/subtropical material of the maize 
+  diversity panel.
+  As predictors, genomic (G) data, transcriptomic (T) data and their 
+  combination (GT) were used.
+  The decimal after the predictor name indicates the size of the genetic 
+  material that was covered by inbred lines in the core set.
+  Influence of core set composition on predictive abilities.
+  Predictive abilities are based on single step predition with genomic data as the 
+  complete predictor and transcriptomic data as the incomplete predictor.
+  Results are shown for six agronomic traits and nine core sets of the maize 
+  diversity panel.
+  } 
+  \label{fig:InbredResults}
+\end{figure}
 
 
 
@@ -597,7 +581,7 @@ we denote as 'Core'.
 For dry matter yield (DMY), T was the best predictor in the core set of 685 
 hybrids with a predictive ability that was 0.08 points higher than for genomic 
 data, as the second best predictor for this trait 
-(Table \ref{table:HybridTable}).
+(Table \ref{fig:HybridResults}).
 In the core set, P had the highest predictive ability for starch ('STA').
 For the other four traits, G had the best predictive abilities.
 In the full set of 1,521 hybrids, predictive abilities obtained with G rose 
@@ -613,26 +597,17 @@ the core set for four traits.
 % latex table generated in R 3.3.3 by xtable 1.8-2 package
 % Fri Mar 24 12:24:30 2017
 % Script: ./analysis/uhoh_plot_predictive_abilities.R
-\begin{table}[ht]
+\begin{figure}[H]
 \centering
-\caption{Predictive abilities and corresponding coefficients of variation for the set of maize hybrids. As predictors, pedigree (P), genomic (G), transcriptomic (T) data and combinations thereof we used.} 
-\label{table:HybridTable}
-\begin{tabular}{lllllll}
-  \toprule
-Predictor & DMY & DMC & FAT & PRO & STA & SUG \\ 
-  \midrule
-P Full & 0.54 (0.049) & 0.48 (0.052) & 0.21 (0.037) & 0.6 (0.019) & 0.35 (0.043) & 0.42 (0.117) \\ 
-  G Full & 0.74 (0.052) & 0.63 (0.052) & 0.43 (0.036) & 0.65 (0.022) & 0.46 (0.046) & 0.47 (0.126) \\ 
-  PG Full & 0.71 (0.054) & 0.57 (0.055) & 0.35 (0.038) & 0.62 (0.023) & 0.39 (0.048) & 0.42 (0.13) \\ 
-  PT Full & 0.73 (0.056) & 0.53 (0.059) & 0.35 (0.04) & 0.61 (0.025) & 0.31 (0.05) & 0.37 (0.14) \\ 
-  GT Full & 0.75 (0.053) & 0.61 (0.055) & 0.43 (0.037) & 0.65 (0.024) & 0.44 (0.048) & 0.44 (0.134) \\ 
-  P Core & 0.46 (0.047) & 0.53 (0.05) & 0.23 (0.037) & 0.46 (0.023) & 0.38 (0.039) & 0.34 (0.132) \\ 
-  G Core & 0.67 (0.053) & 0.47 (0.055) & 0.43 (0.038) & 0.48 (0.027) & 0.36 (0.046) & 0.35 (0.132) \\ 
-  T Core & 0.75 (0.055) & 0.34 (0.062) & 0.4 (0.041) & 0.47 (0.029) & 0.16 (0.05) & 0.27 (0.145) \\ 
-   \bottomrule
-\end{tabular}
-\end{table}
-
+  \includegraphics{./tables_figures/hybrid_predictive_ability.pdf}
+  \caption{
+    Predictive abilities and corresponding coefficients of variation for the 
+    set of maize hybrids.
+    As predictors, pedigree (P), genomic (G), transcriptomic (T) data and 
+    combinations thereof we used.
+  } 
+  \label{fig:HybridResults}
+\end{figure}
 
 
 
@@ -677,29 +652,13 @@ predictor (Fig. \ref{fig:CoreSetPCA}).
 
 
 Predictive abilities obtained with the different core sets varied widely within
-traits (Fig. \ref{fig:CoreSetInfluence}, Table \ref{table:InbredTable}).
+traits (Fig. \ref{fig:InbredResults}C).
 For the traits 'cobweight' and 'Plantheight', which were better predicted via G
 than via T in the reduced set of lines, predictive abilities were higher when
 only a small number of genotypes was included in the core set
 For most other traits, an initial increase in predictive abilities when moving
 from a core set size of 0.1 to 0.5/0.6 was observed, followed by a drop around
 0.6/0.7 and a subsequent hike up to a core set size of 0.9.
-
-
-
-\begin{figure}[H]
-\centering
-\includegraphics{./tables_figures/core_fraction_predictive_ability_trend.pdf}
-\caption{
-Influence of core set composition on predictive abilities.
-Predictive abilities are based on single step predition with genomic data as the 
-complete predictor and transcriptomic data as the incomplete predictor.
-Results are shown for six agronomic traits and nine core sets of the maize 
-diversity panel.
-}
-\label{fig:CoreSetInfluence}
-\end{figure}
-
 
 As an alternative to exploring the impact of genotypes sampled based on the
 maximization of genetic distance within the core set, we wanted to explore a
@@ -740,7 +699,7 @@ covered by transcriptomic data only.
 Genotypes from A1 and A3, which were at the far ends in the PCA plot (Fig.
 \ref{fig:PopStructure}B), were estimated with less precision than genotypes
 from the central cluster of genotypes belonging largely to the A2 population
-(Fig. \ref{fig:PopStructure}A, Table \ref{table:InbredTable}).
+(Fig. \ref{fig:PopStructure}A, Table \ref{fig:InbredTable}).
 
 
 A principal component analysis, carried out separately on the two parental
