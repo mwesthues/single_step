@@ -58,13 +58,13 @@ pred_df <- raw_pred_df %>%
   )
 
 # Get the names of genotypes that were imputed based on core genotypes.
-imputed_genotypes <- pred_df %>% 
-  filter(Core_Fraction %in% c("Full", "1.0")) %>% 
-  split(.$Core_Fraction) %>% 
-  map(., ~select(., Geno)) %>% 
-  map(flatten_chr) %>% 
-  .[c("Full", "1.0")] %>% 
-  reduce(setdiff)
+#imputed_genotypes <- pred_df %>% 
+#  filter(Core_Fraction %in% c("Full", "1.0")) %>% 
+#  split(.$Core_Fraction) %>% 
+#  map(., ~select(., Geno)) %>% 
+#  map(flatten_chr) %>% 
+#  .[c("Full", "1.0")] %>% 
+#  reduce(setdiff)
  
 
 
@@ -78,8 +78,8 @@ dodge <- position_dodge(width = 0.9)
 plot_a_data <- pred_df %>% 
   filter(Core_Fraction %in% c("Full", "1.0")) %>% 
   split(.$Core_Fraction) %>% 
-  set_names(c("Core", "Imputed")) %>% 
-  map_at("Imputed", .f = ~filter(., Geno %in% imputed_genotypes)) %>% 
+  set_names(c("Core", "Full")) %>% 
+#  map_at("Imputed", .f = ~filter(., Geno %in% imputed_genotypes)) %>% 
   bind_rows(.id = "Group") %>% 
   group_by(Trait, Predictor, Group) %>% 
   summarize(
@@ -143,7 +143,6 @@ plot_c <- plot_c_data %>%
   ggplot(aes(x = `Core Fraction`, y = r, color = Trait, group = Trait)) +
   geom_line(stat = "identity", position = dodge_c) +
   geom_errorbar(limits, position = dodge_c, width = 0.25) +
-  #facet_wrap(~ Trait) +
   scale_color_tableau() +
   theme_pander(base_size = 10) +
   theme(legend.position = "top") +

@@ -86,15 +86,15 @@ compute_r_and_cv <- function(x) {
 }
 
 ext_pred_order <- c(
-  "P_Imputed", "G_Imputed", "PG_Imputed", "PT_Imputed", "GT_Imputed",
+  "P_Full", "G_Full", "PG_Full", "PT_Full", "GT_Full",
   "P_Core", "G_Core", "T_Core"
 )
 
 plot_data <- pred_df %>% 
   split(.$Group) %>% 
-  map_at("Full", .f = ~filter(., Geno %in% imputed_genotypes)) %>% 
+  #map_at("Full", .f = ~filter(., Geno %in% imputed_genotypes)) %>% 
   map(compute_r_and_cv) %>% 
-  set_names(c("Core", "Imputed")) %>% 
+  set_names(c("Core", "Full")) %>% 
   bind_rows(.id = "Group") %>% 
   unite(col = Exact_Predictor, Predictor, Group, sep = "_", remove = FALSE) %>% 
   mutate(
@@ -120,7 +120,7 @@ g1 <- plot_data %>%
   geom_errorbar(limits, position = dodge, width = 0.25) +
   facet_grid(. ~ Group) +
   scale_fill_manual(values = mycols) +
-  theme_base()
+  theme_pander(base_size = 10)
   
 ggsave(plot = g1, 
        filename = "./paper/tables_figures/hybrid_predictive_ability.pdf",

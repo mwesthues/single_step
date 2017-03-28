@@ -91,7 +91,7 @@ g1 <- all_geno_pc %>%
   ggplot(aes(x = PC1, y = PC2, color = Group, shape = Group)) +
   geom_point() +
   scale_color_tableau() +
-  theme_bw(base_size = 10) +
+  theme_pander(base_size = 10) +
   theme(legend.position = "top")
 ggsave(plot = g1,
        filename = "./paper/tables_figures/maizego_pca.pdf",
@@ -142,9 +142,9 @@ g2 <- structure_df %>%
   geom_bar(stat = "identity", width = 1) +
   facet_wrap(~K, ncol = 1, strip.position = "right") +
   scale_fill_viridis(discrete = TRUE) +
-  ggthemes::theme_pander(base_size = 10) +
+  theme_pander(base_size = 10) +
   theme(axis.text.x = element_blank(),
-        #legend.position = "top") +
+        axis.ticks = element_blank(),
         legend.position = "none") +
   xlab("Genotype") +
   ylab("Ancestry Coefficient")
@@ -159,9 +159,9 @@ g3 <- pc_df %>%
   ggplot(aes(x = PC1, y = PC2, color = `Core Group`, shape = `Core Group`)) +
   geom_point(size = 1) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
-  ggthemes::scale_color_tableau() +
+  scale_color_tableau() +
   facet_wrap(~Fraction, nrow = 3, ncol = 3) +
-  theme_bw(base_size = 10) +
+  theme_pander(base_size = 10) +
   theme(
     legend.position = "top",
     strip.background = element_blank(),
@@ -214,9 +214,10 @@ g4 <- structure_df %>%
   geom_bar(stat = "identity", width = 1) +
   facet_wrap(~K, ncol = 1) +
   scale_fill_manual(values = c("#258039", "#F5BE41", "#31A9B8")) +
-  ggthemes::theme_pander(base_size = 10) +
+  theme_pander(base_size = 10) +
   theme(
     axis.text.x = element_blank(),
+    axis.ticks = element_blank(),
     legend.position = "none",
     strip.background = element_blank(),
     strip.text.x = element_blank()
@@ -236,7 +237,7 @@ g5 <- pc_df %>%
   scale_color_manual(values = c("#258039", "#F5BE41", "#31A9B8", "red")) +
   scale_shape_manual(values = c(15, 17, 19, 3)) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
-  ggthemes::theme_pander(base_size = 10)
+  theme_pander(base_size = 10)
 
 
 g45_wo_legend <- plot_grid(
