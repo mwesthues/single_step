@@ -1,13 +1,10 @@
+# Goal: Plot results of hybrid-based predictive abilities.
 # LOOCV-Prediction
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "data.table", "dtplyr", "xtable", "stringr",
-               "forcats", "gsubfn")
-# xtable options
-options(width = 60)
+pacman::p_load("tidyverse", "data.table", "dtplyr", "stringr", "forcats",
+               "gsubfn", "viridis", "ggthemes")
 
 source("./software/prediction_helper_functions.R")
-
-
 
 
 log_path <- "./data/derived/uhoh_maizego_prediction_log.txt"
@@ -68,58 +65,58 @@ pred_df <- raw_pred_df %>%
   mutate(
     Group = ifelse(Predictor == "T", yes = "Core", no = "Full"),
     Group = ifelse(Core_Fraction == "1.0", yes = "Core", no = Group) 
-  ) %>%
-  select(-Core_Fraction) %>%
-  group_by(Trait, Predictor, Group) %>%
-  summarize(
-    r = cor(y, yhat),
-    CV = coefficient_of_variation(var_yhat, yhat)
-  ) %>%
-  ungroup()
+  )
+  
+# Get the names of genotypes that were imputed based on core genotypes.
+imputed_genotypes <- pred_df %>% 
+  split(.$Group) %>% 
+  map(., ~select(., Geno)) %>% 
+  map(flatten_chr) %>% 
+  .[c("Full", "Core")] %>% 
+  reduce(setdiff)
+  
+compute_r_and_cv <- function(x) {
+  x %>% 
+    group_by(Trait, Predictor) %>% 
+    summarize(
+      r = cor(y, yhat),
+      CV = coefficient_of_variation(var_yhat, yhat)
+    ) %>%
+    ungroup()
+}
 
 ext_pred_order <- c(
-  "P_Full", "G_Full", "PG_Full", "PT_Full", "GT_Full",
+  "P_Imputed", "G_Imputed", "PG_Imputed", "PT_Imputed", "GT_Imputed",
   "P_Core", "G_Core", "T_Core"
 )
 
-xtable_pred_df <- pred_df %>%
-  mutate(
-    r = round(r, digits = 2),
-    CV = round(CV, digits = 3),
-    Value = paste0(
-      r, " (", CV, ")"
-    )
-  ) %>%
-  select(-r, -CV) %>%
-  spread(key = Trait, value = Value) %>%
-  mutate(
-    Predictor = paste0(Predictor, "_", Group),
-    Pred_Order = match(Predictor, ext_pred_order)
-  ) %>% 
-  arrange(Pred_Order) %>% 
-  mutate(Predictor = gsub("_", replacement = " ", x = Predictor)) %>% 
-  select(-Group, -Pred_Order)
- 
+plot_data <- pred_df %>% 
+  split(.$Group) %>% 
+  map_at("Full", .f = ~filter(., Geno %in% imputed_genotypes)) %>% 
+  map(compute_r_and_cv) %>% 
+  set_names(c("Core", "Imputed")) %>% 
+  bind_rows(.id = "Group") %>% 
+  unite(col = Exact_Predictor, Predictor, Group, sep = "_", remove = FALSE) %>% 
+  mutate(Pred_Order = match(Exact_Predictor, ext_pred_order)) %>% 
+  arrange(Pred_Order)
 
-hybrid_caption <- paste(
-  "Predictive abilities and corresponding coefficients of variation for the",
-  "set of maize hybrids. As predictors, pedigree (P), genomic (G),",
-  "transcriptomic (T) data and combinations thereof we used."
-)
-xtable_pred_df <- xtable(
-  xtable_pred_df,
-  caption = hybrid_caption
-)
-# Function for printing labels in bold font.
-bold <- function(x) {
-  paste0('{\\bfseries ', x, '}')
-}
-print.xtable(
-  xtable_pred_df, 
-  include.rownames = FALSE,
-  label = "tbl:hybrid_list",
-  booktabs = TRUE,
-  sanitize.subheadings.function = bold,
-  caption.placement = "top"
-)
+# Define the top and bottom of the errorbars
+limits <- aes(ymax = r + CV, ymin = r - CV)
+# Because the bars and errorbars have different widths
+# we need to specify how wide the objects we are dodging are
+dodge <- position_dodge(width = 0.9)
+
+plot_data %>% 
+  ggplot(aes(x = Trait, y = r, fill = Predictor)) +
+  geom_bar(stat = "identity", position = dodge) +
+  geom_errorbar(limits, position = dodge, width = 0.25) +
+  facet_grid(. ~ Group) +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_base()
+  
+
+
+
+
+
 
