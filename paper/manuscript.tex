@@ -13,6 +13,7 @@
 \usepackage{lineno} % line numbers
 \usepackage{booktabs} % book-quality tables
 \usepackage{multicol} % list corresponding authors in two separate columns
+\usepackage{hyperref} % web links
 
 %% Probably unnecessary packages.
 \usepackage[T1]{fontenc}
@@ -97,10 +98,11 @@ without phenotypes \cite{DeLosCampos2013,Garcia-Ruiz2016} and recently emerged
 as an important tool in human diagnostics \cite{DeLosCampos2010,Vazquez2016}.
 Its use is largely motivated by the high costs and oftentimes long duration of 
 phenotyping, which can be reduced when covering all genotypes with a predictor 
-while limiting phenotyping to a few genotypes with high precision.
+while limiting phenotyping to a few genotypes with high precision
+\cite{Kadam2016}.
 The performance of all other genotypes is then forecast using model parameters
 obtained from thorough (repeated) $k$-fold cross-validation routines applied to 
-the subset of individuals with full information.
+the subset of individuals with full information \cite{Technow2014}.
 In animal breeding, genomic selection has increased the annual selection gain 
 by $\approx$ 50-100\% for yield traits and by 300-400\% for traits with low 
 heritability \cite{Garcia-Ruiz2016}.
@@ -108,24 +110,11 @@ In plant breeding, the relative excellence of a breeding strategy largely
 depends on the prediction accuracy, which may vary widely among traits and 
 crops \cite{Longin2015}.
 
-% Search for better predictors
-Compared to pedigree information, which represent the expected relationship
-among individuals, genomic information capture Mendelian sampling and thereby 
-provide an improved proxy of the realized relationship among individuals.
-Nevertheless, genomic data do not exhaustively capture physiological epistasis 
-\cite{Jiang2015,Guo2016,Vazquez2016}, describing the interactions 
-within and between different biological strata \cite{Sackton2016}.
-Such interactions were found to be pervasive throughout the genomes of yeast 
-\cite{Brem2005} and humans \cite{Brown2014} and have motivated studies on the 
-utility of downstream 'omics' predictors for integrating such interactions.
-So far, encouraging results have been found for humans \cite{Vazquez2016}, maize 
-inbred lines \cite{Guo2016} and maize hybrids \cite{Westhues2017}.
-
 % Incomplete predictors.
 Breeding programs --- particularly in animal breeding --- are characterized by
 the availability of one predictor type, which is available for all recorded
 genotypes while other predictors are incomplete in that they cover only a 
-subset of all genotypes.
+subset of all genotypes \cite{Fragomeni2015}.
 Usually, the complete predictor is pedigree information while genomic data are
 the most prevalent incomplete predictor.
 To utilize all available phenotypic information for model training, methods were 
@@ -134,8 +123,8 @@ needed that would allow for a combined use of genomic and pedigree information
 
 % Two-step prediction.
 In the early years of genomic prediction, a two-step procedure was the most
-intuitive choice for establishing a new selection scheme.
-The first step constists of conventionally estimating breeding values based on
+intuitive choice for establishing a new selection scheme \cite{VanRaden2009}.
+The first step consists of conventionally estimating breeding values based on
 pedigree relationships and the phenotypes of relatives.
 Individuals with accurate breeding values out of the first step (\textit{i.e.}
 high number of offspring), enter the second step in which conventional breeding
@@ -169,9 +158,9 @@ the imputation error.
 
 
 % -   Mention scarcity of data on single step prediction in plant populations.
-Single step prediction has already become a routine procedure in animal
-breeding but, to the best of our knowledge, has only been considered in plants
-in a study on wheat lines \cite{Ashraf2016}. 
+In animal breeding, single step prediction has already become a routine 
+procedure \cite{Legarra2014} but, to the best of our knowledge, has only been 
+considered in plants in a study on wheat lines \cite{Ashraf2016}. 
 Our objectives were threefold: (1) Examine whether the single step prediction
 framework can be transfered to plant hybrids, (2) explore the utility of single 
 step predition with a quantitative predictor and (3) evaluate the impact of the
@@ -202,8 +191,9 @@ using the Beagle software \cite{Browning2009}.
 The final number of polymorphic marker loci was 7,013 for parental Dent and
 6,212 for parental Flint lines, respectively.
 Gene expression data for seedlings seven days after sowing were obtained for a 
-subset of 60 parental Dent and 43 parental Flint lines through two-color
-hybridizations using a custom 2K microarray (GPL22267) \cite{Westhues2017}.
+subset of 60 parental Dent and 43 parental Flint lines, that are parents of 685
+hybrid progeny, through two-color hybridizations using a custom 2K microarray 
+(GPL22267) \cite{Westhues2017}.
 After applying established normalization procedures 
 \cite{Smyth2003,Ritchie2007}, gene expression BLUEs were computed for 1,323 
 transcripts in reference to established protocols 
@@ -257,15 +247,33 @@ further analyses.
 
 \Genetics2level{Core sampling}
 In order to evaluate the influence of the genetic constitution of the set of
-genotypes that has only data on one out of two predictors, we generated core 
-samples using the R-package \textit{corehunter} \cite{Thachuk2009}.
-These core samples were based on the 149 maize inbred lines from the diversity
+genotypes that has only data on one out of two predictors, we generated core
+samples based on two different approaches.
+All core sets were assembled from the 149 maize inbred lines from the diversity
 panel which had gene expression as well as genomic information.
+We defined core samples as a subset of genotypes that is covered by two
+predictors whereas all other genotypes (\textit{i.e.}, the complement) are only
+covered by a single predictor.
+The first application involved assembling core sets of varying sizes by 
+maximizing the average genetic distance among core set members using the 
+Modified Rogers (MR) distance as the criterion \cite{Thachuk2009}.
 The size of the core set was varied in increments of ten percentage points and 
 ranged from 10\% to 90\% of all 149 inbred lines.
-For assembling the various core sets, we first computed the Modifed Rogers (MR)
-distance between each pair of genotypes and then selected a predefined subset
-of genotypes that display maximum average distance between each other.
+For the second application, we first ran an admixture analysis in combination
+with a PCA and kept $K=3$ as the number of putative ancestral population, which 
+seemed to describe the population structure best.
+Genotypes were then assigned to one of the three ancestral populations based on
+whether any of the three relationship coefficients (A1-A3) was equal to or
+greater than 0.5.
+For example, a genotype with an admixture coefficient for A2 $\geq 0.5$ was
+assigned to the second ancestral population.
+Thereby, we obtained $n_{A1} = 17$, $n_{A2} = 109$, $n_{A3} = 19$ and four 
+genotypes that could not be unambiguously assigned to any putative ancestral 
+population based on this criterion.
+To ensure commensurability of the three subpopulations within the set of 149
+genotypes, the subset of 109 genotypes (\textit{i.e.}, members of A2) was
+reduced to $n_{A2} = 19$ genotypes, again using the method of maximizing the
+average genetic distance among selected genotypes described above.
 
 
 \Genetics2level{Prediction}
@@ -300,8 +308,8 @@ for $\mathbf{K}_{lo}$.
 
 
 
-\subsection{Universal breeding value model}
-The universal model for breeding values was:
+\subsection{Breeding value model}
+The general model for breeding values was:
 
 \begin{equation} \label{eq:KBLUPModel}
   \mathbf{y} = \mu + 
@@ -312,18 +320,19 @@ The universal model for breeding values was:
 
 where $\mathbf{y}$ is the vector of observed inbred line or hybrid performance,
 respectively, $\mu$ is the fixed model intercept, $\mathbf{Z}_{lo}$ is the 
-corresponding design matrix associating the random genotype effects 
-(\textit{i.e.}, breeding values) of the lines in the $l$-th inbred line group 
-and the $o$-th predictor type with $\mathbf{y}$.
-Note that, in the case of hybrid data, $\mathbf{Z}_{lo}$ associates the random
+corresponding design matrix associating the random genotype effects
+$\mathbf{g}_{lo}$ (\textit{i.e.}, breeding values) of the lines in the $l$-th 
+inbred line group and the $o$-th predictor type with $\mathbf{y}$.
+Note that, in the case of hybrid data, $\mathbf{g}_{lo}$ pertains to the
 general combining ability effects in the parental inbred lines (either Dent or
-Flint, as expressed by $l$) with the vector of observed hybrid performance
-$\mathbf{y}$.
+Flint, as expressed by $l$) which are associated with the vector of
+observed hybrid performance $\mathbf{y}$ through $\mathbf{Z}_{lo}$.
 The random effects ($\mathbf{g}_{lo}$) have expectation zero and variance equal 
 to $\mathbf{K}_{lo} \sigma^{2}_{{g}^{lo}}$ and $\mathbf{I} \sigma^2_{\epsilon}$ 
 for the residual error.
-All prediction models were implemented using the R-package \textit{BGLR}
-\cite{Perez2014}. 
+All prediction models were implemented using the R-packages \textit{BGLR}
+\cite{Perez2014} and \textit{sspredr}
+\url{https://github.com/mwesthues/sspredr}. 
 
 
 
@@ -332,7 +341,7 @@ All prediction models were implemented using the R-package \textit{BGLR}
 \subsection{Single step prediction}
 The breeding values in a prediction model are in general given by:
 \begin{equation} \label{eq:mrnaebv}
-	\mathbf{\tilde{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
+	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
 \end{equation}
 
 where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model,
@@ -367,7 +376,7 @@ observations, which are related to the Best Linear Predictor.
 The general model for the single step procedure can then be written as 
 
 \begin{equation} \label{eq:single-step-model}
-\mathbf{y} = \mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U}^{Complete} \boldsymbol{\epsilon}^{Complete} + \mathbf{e},
+\mathbf{y} = \mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U} \boldsymbol{\epsilon} + \mathbf{e},
 \end{equation}
 
 with
@@ -383,7 +392,7 @@ with
   Z_1\hat{\mathbf{W}_1} \\
   \mathbf{W}_2 
  \end{bmatrix},
- \mathbf{U}^{Complete} = 
+ \mathbf{U} = 
 \begin{bmatrix}
   Z_1 \\
   0 
@@ -424,7 +433,7 @@ like this:
   0 & Z_2 
  \end{bmatrix}
 \begin{bmatrix}
-  \mathbf{K}_{12}\mathbf{K}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}^{Complete}  \\
+  \mathbf{K}_{12}\mathbf{K}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}  \\
   \mathbf{W}_2\boldsymbol{\alpha} \\
  \end{bmatrix}
   + \mathbf{e} \\
@@ -439,16 +448,27 @@ like this:
   0 & Z_2 
  \end{bmatrix}
 \begin{bmatrix}
-  \hat{\mathbf{W}_1}\boldsymbol{\alpha} + \boldsymbol{\epsilon}^{Complete} \\
+  \hat{\mathbf{W}_1}\boldsymbol{\alpha} + \boldsymbol{\epsilon} \\
   \mathbf{W}_2\boldsymbol{\alpha} \\
  \end{bmatrix}
   + \mathbf{e} \\
 \end{align}
 
-The breeding values from that model are:
+
+Our final model looks like this:
+
+\begin{align} \label{eq:final-model}
+\mathbf{y} &= \mathbf{Xb} +
+\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{W}_{l} \boldsymbol{\alpha}_{l} + 
+\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{U}_{l} \boldsymbol{\epsilon}_{l} +
+\mathbf{e}.
+\end{align}
+
+
+Breeding values can be estimated as:
 
 \begin{equation} \label{eq:breeding-values}
-\tilde{\mathbf{g}} = 
+\hat{\mathbf{g}} = 
  \begin{bmatrix}
   \hat{\mathbf{W}_1} \\
   \mathbf{W}_2 
@@ -459,26 +479,15 @@ The breeding values from that model are:
   \mathbf{Z}_1 \\
   0
  \end{bmatrix}
- \hat{\boldsymbol{\epsilon}}^{Complete} 
+ \hat{\boldsymbol{\epsilon}} 
 \end{equation}
-
-
-
-Our final model looks like this:
-
-\begin{align} \label{eq:final-model}
-\mathbf{y} &= \mathbf{Xb} +
-\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{W}_{l} \boldsymbol{\alpha}_{l} + 
-\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{U}_{l}^{Complete} \boldsymbol{\epsilon}_{l}^{Complete} +
-\mathbf{e}.
-\end{align}
 
 For the hybrid data, the obtained GCA effects for the inbred lines represent 
 half their breeding values.
 The predicted agronomic performance is:
 
 \begin{equation} \label{eq:predicted-performance}
-\hat{\mathbf{y}} = \sum_{l=1}^{L} \mathbf{Z}_{l}\tilde{\mathbf{g}}_{l} 
+\hat{\mathbf{y}} = \sum_{l=1}^{L} \mathbf{Z}_{l}\hat{\mathbf{g}}_{l} 
 \end{equation}
 
 
@@ -513,7 +522,8 @@ coefficient of variation for the predicted values:
 CV = \sqrt{\frac{\sum_{i = 1}^{n} \sigma^{2}_{\hat{y}(i)} / n}{\sum_{i=1}^{n}\hat{y}_{i} / n}},
 \end{equation}
 
-where $n$ denotes the number of genotypes (*i.e.*, inbred lines or hybrids).
+where $n$ denotes the number of genotypes (\textit{i.e.}, inbred lines or 
+hybrids).
 
 
 
@@ -531,18 +541,17 @@ where $n$ denotes the number of genotypes (*i.e.*, inbred lines or hybrids).
 At the level of the 149 genotypes for which both, genomic (G) and 
 transcriptomic (T) information, were available, the use of T yielded higher
 predictive abilities than the use of G for four out of six traits
-(Table \ref{table:InbredResults}).
+(Fig. \ref{fig:InbredResults}A).
 In terms of predictive ability, the absolute advantage of T over G was as large 
-as 0.04 as observed for the traits '100grainweight', 'Eardiameter' and 
-'Silkingtime'.
-Except for 'Kernelwidth', the predictive ability for predictions based on
-G and the full set of inbred lines ($n = 211$) was always higher than for the 
-reduced set of inbred lines ($n = 149$).
+as 0.04 as observed for the traits DS, ED, GW and KW.
+Except for KW, the predictive ability for predictions based on G were always
+higher for the full set of inbred lines ($n = 211$) than for the reduced set of 
+inbred lines ($n = 149$).
 The combination of G and T (\textit{i.e.}, GT) in a single-step approach for the 
 prediction of all 211 lines performed at least as well as G alone when T was 
 superior over G for the reduced set of 149 lines.
-In the case of '100grainweight' and 'Eardiameter', the use of GT yielded a 
-slight improvement in predictive ability over G.
+In the case of GW and ED, the use of GT yielded a slight improvement in predictive 
+ability over G.
 Where T was a worse predictor for the reduced set of 149 lines than G,
 predictive abilities of GT for the full set of 211 lines were also worse than 
 those based on G alone.
@@ -552,18 +561,25 @@ those based on G alone.
   \centering
   \includegraphics{./tables_figures/inbred_line_combi_plot.pdf}
   \caption{
-  Predictive abilities and corresponding coefficients of variation for 
-  different core sets from the tropical/subtropical material of the maize 
-  diversity panel.
+  Predictive abilities and average coefficient of variation for
+  tropical/subtropical inbred lines from the maize diversity panel and six 
+  agronomic traits.
   As predictors, genomic (G) data, transcriptomic (T) data and their 
   combination (GT) were used.
-  The decimal after the predictor name indicates the size of the genetic 
-  material that was covered by inbred lines in the core set.
-  Influence of core set composition on predictive abilities.
-  Predictive abilities are based on single step predition with genomic data as the 
-  complete predictor and transcriptomic data as the incomplete predictor.
-  Results are shown for six agronomic traits and nine core sets of the maize 
-  diversity panel.
+  (\textbf{A}) The 'Core' panel includes a subset of 149 lines covered by
+  genomic and transcriptomic information whereas the 'Full' panel comprises all
+  211 genotypes. In the 'Full' set of genotypes, transcriptomic records were
+  imputed for 62 lines.
+  (\textbf{B}) Influence of structural missingness in the coverage of genotypes 
+  with transcriptomic information on single step-based predictive abilities 
+  using a 'Core' set of 149 inbred lines.
+  Transcriptomic records were deleted for 17 to 19 genotypes that were
+  primarily associated with a particular subgroup in the material, as defined
+  by an admixture analysis and a PCA (Fig. \ref{fig:PopStructure}).
+  (\textbf{C}) Influence of core set sampling on predictive abilities using
+  nine different sub set sizes where 'Core Fraction' indicates the fraction
+  of 149 inbred lines that is covered by both, genomic and transcriptomic
+  data.
   } 
   \label{fig:InbredResults}
 \end{figure}
@@ -581,9 +597,10 @@ we denote as 'Core'.
 For dry matter yield (DMY), T was the best predictor in the core set of 685 
 hybrids with a predictive ability that was 0.08 points higher than for genomic 
 data, as the second best predictor for this trait 
-(Table \ref{fig:HybridResults}).
-In the core set, P had the highest predictive ability for starch ('STA').
-For the other four traits, G had the best predictive abilities.
+(Fig. \ref{fig:HybridResults}).
+In the core set, P had the highest predictive ability for starch ('STA') and 
+dry matter content ('DMC').
+For the other three traits, inside the core set G was the superior predictor.
 In the full set of 1,521 hybrids, predictive abilities obtained with G rose 
 markedly for all traits with the exception of 'FAT'.
 The combination of genomic and transriptomic information (GT) in a single-step
@@ -594,17 +611,18 @@ Predictive abilities resulting from combinations of pedigree with genomic (PG)
 information were better than P alone for all traits and PT improved upon P in
 the core set for four traits.
 
-% latex table generated in R 3.3.3 by xtable 1.8-2 package
-% Fri Mar 24 12:24:30 2017
 % Script: ./analysis/uhoh_plot_predictive_abilities.R
 \begin{figure}[H]
 \centering
   \includegraphics{./tables_figures/hybrid_predictive_ability.pdf}
   \caption{
-    Predictive abilities and corresponding coefficients of variation for the 
-    set of maize hybrids.
+    Predictive abilities and average coefficients of variation for the set of 
+    maize hybrids and six agronomic traits.
     As predictors, pedigree (P), genomic (G), transcriptomic (T) data and 
     combinations thereof we used.
+    The 'Full' set of genotypes comprises 1,521 hybrid progeny based on 245
+    parental inbred lines, whereas the 'Core' set comprises 685 hybrid progeny
+    based on 103 parental inbred lines.
   } 
   \label{fig:HybridResults}
 \end{figure}
@@ -625,8 +643,9 @@ First, we assmbled nine different core sets, which we defined as subsets
 of genotypes that maximize the average genetic distance between genotypes of
 the full set.
 The nine core sets differ in that each covers a different number of genotypes,
-raning from only 10\% to to 90\% of all genotypes covered by the incomplete
+ranging from only 10\% to to 90\% of all genotypes covered by the incomplete
 predictor (Fig. \ref{fig:CoreSetPCA}).
+
 
 
 \begin{figure}[H]
@@ -653,12 +672,21 @@ predictor (Fig. \ref{fig:CoreSetPCA}).
 
 Predictive abilities obtained with the different core sets varied widely within
 traits (Fig. \ref{fig:InbredResults}C).
-For the traits 'cobweight' and 'Plantheight', which were better predicted via G
-than via T in the reduced set of lines, predictive abilities were higher when
-only a small number of genotypes was included in the core set
+For the traits CW and PH, which were better predicted via G than via T in the 
+reduced set of lines, predictive abilities were higher when only a small number 
+of genotypes was included in the core set.
+The latter corresponds to a situation where a large number of genotypes is
+being imputed and the majority of the information is derived from genomic
+information. 
 For most other traits, an initial increase in predictive abilities when moving
 from a core set size of 0.1 to 0.5/0.6 was observed, followed by a drop around
 0.6/0.7 and a subsequent hike up to a core set size of 0.9.
+A principal component analysis depicts the coverage of the genetic space by
+genotypes (Fig. \ref{fig:PopStructure}).
+With a core set size of 50-60\% of the 149 genotypes, the congruence between
+core set and complement was high whereas genotypes in the south-west direction
+of the PCA plot were overrepresented compared to genotypes in the east 
+direction at a core set size of 0.7.
 
 As an alternative to exploring the impact of genotypes sampled based on the
 maximization of genetic distance within the core set, we wanted to explore a
@@ -699,7 +727,7 @@ covered by transcriptomic data only.
 Genotypes from A1 and A3, which were at the far ends in the PCA plot (Fig.
 \ref{fig:PopStructure}B), were estimated with less precision than genotypes
 from the central cluster of genotypes belonging largely to the A2 population
-(Fig. \ref{fig:PopStructure}A, Table \ref{fig:InbredTable}).
+(Fig. \ref{fig:PopStructure}A, Fig. \ref{fig:InbredResults}B).
 
 
 A principal component analysis, carried out separately on the two parental
@@ -733,13 +761,29 @@ genomic data (Fig. \ref{fig:UHOH-PCA}).
 
 
 \section*{Discussion}
+\Genetics2level{Addition of new predictors}
+Pedigree records are the most ubiquitous predictor in animal and plant breeding
+programs, because they are easy and inexpensive to collect.
+Compared to pedigree information, which represent the expected relationship
+among individuals, genomic information capture Mendelian sampling and thereby 
+provide an improved proxy of the realized relationship among individuals.
+Nevertheless, genomic data do not exhaustively capture physiological epistasis 
+\cite{Jiang2015,Guo2016,Vazquez2016}, describing the interactions 
+within and between different biological strata \cite{Sackton2016}.
+Such interactions were found to be pervasive throughout the genomes of yeast 
+\cite{Brem2005} and humans \cite{Brown2014} and have motivated studies on the 
+utility of downstream 'omics' predictors for integrating such interactions.
+Recently, encouraging results have been found for humans \cite{Vazquez2016}, 
+maize inbred lines \cite{Guo2016} and maize hybrids \cite{Westhues2017}.
+While single step prediction has become an established method when complete
+pedigree but only incomplete genomic records are available, its application has
+not yet been considered for the imputation of a complete predictor based on 
+incomplete downstream 'omics' predictors such as transcriptomic, proteomic or 
+metabolomic data.
+Here, we considered single step approaches for a maize inbred line diversity
+panel as well as for a collection of maize hybrids using pedigree, genomic and
+transcriptomic data as predictors. 
 
-
-\Genetics2level{Advantages of marker effect models}
-% Describe the many hacks that have been developed to tackle problems with BLUP
-% models.
-
-$\dots$
 
 \Genetics2level{Superiority of single step models}
 \subsection{Inbred lines}
@@ -756,6 +800,19 @@ of 211 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
 genotypes.
 3) While \citeNP{Guo2016} used five-fold cross-validation with 500 repetitions,
 we employed a leave-one-out cross-validation scheme (LOOCV).
+When using a single step approach based on complete genomic and incomplete
+transcriptomic information, gains in predictive ability for the inbred lines
+were at best just slightly higher than when using complete genomic information
+alone.
+One of the reasons might be that the subset of genotypes that was covered by
+transcriptomic data was not a good representation of the full genetic space of
+all available genotypes.
+A second possibility is that the number of additional phenotypes in the full
+set compared to the core set ($\Delta(n) = 62$) was not large enough to provide
+considerably more useful information.
+The latter was the case for \citeNP{Ashraf2016}, who imputed genotypes for about 
+10,000 wheat lines using pedigree information and observed greater accuracy of
+the single step method over genomic BLUP for all four evaluated traits.
 
 
 \subsection{Maize hybrids}
@@ -773,24 +830,27 @@ So far, its applications in hybrid populations are limited to pig breeding
 \cite{Xiang2015,Xiang2016,Tusell2016}.
 % Are there applications in chicken breeding? (Hints in Christensen et al.
 % 2014, GSE).
-
-\begin{itemize}
-  \item Generally, it is important that, on the same set of genotypes, the 
-    incomplete predictor yields larger predictive abilities than the complete 
-    predictor.
-  \item In hybrid breeding, the probability of successfully selecting the best
-    observed genotypes based on the best predicted candidates is a strongly 
-    convex function of the predictive ability.
-    Hence, even the minor gains when using transcriptomic and genomic data in a
-    single step might justify additional investments in RNA-seq at least of a
-    subste of genotypes that represents the genetic space of the breeding 
-    material well.
-  \item For the hybrid data, the predictive abilities of genomic information
-    for the whole set of available parent lines rose considerably for several
-    agronomic traits.
-    Hence, the inclusion of trancsriptomic data could not further improve upon
-    this result.
-\end{itemize}
+For the hybrid data, the predictive abilities of genomic information
+for the whole set of available parent lines rose considerably for several
+agronomic traits.
+Hence, the inclusion of trancsriptomic data could not further improve upon
+this result.
+Predictive abilities obtained when using pedigree data could be 
+improved considerably when, depending on the agronomic trait, combined with 
+either transcriptomic or genomic information.
+Evaluations of core sets for the parental inbred lines of the maize hybrids
+used throughout this study were outside the scope of this paper, but
+results on the inbred lines have shown that homogeneous coverage of the
+genetic space by the incomplete predictor can considerably leverage the
+predictive ability in single step prediction compared to using only the
+complete predictor.
+In hybrid breeding, the probability of successfully selecting the best
+observed genotypes based on the best predicted candidates is a strongly 
+convex function of the predictive ability.
+Hence, even the minor gains when using transcriptomic and genomic data in a
+single step might justify additional investments in RNA-seq at least of a
+subset of genotypes that represents the genetic space of the breeding 
+material well.
 
 
 \Genetics2level{Coverage of the genetic space}
@@ -801,13 +861,46 @@ information on another predictor.
 If one can cover the genetic space sufficently with the incomplete predictor, 
 
 
+When using core sets of varying sizes, which were established with the
+constraint of maximizing the average genetic distance among their members, we
+noticed strong fluctuations in predictive abilities when moving from small core
+sets to large core sets.
+For traits that were better predicted by transcriptomic than by genomic
+information in the core set, predictive abilities typically peaked around
+core set size of 0.5/0.6, then dropped sharply at 0.7 and started to increase
+again with a size of 0.9.
+A principal component analysis showed that, at a core set size of 0.7, 
+genotypes assigned to the A3 ancestral population (Fig. \ref{fig:PopStructure})
+were largely elements of the core set whereas genotypes with a large share at 
+the A1 ancestral population were predominantly excluded from the core set.
+At a core set size of 90\% of the original size, the majority of the A1
+genotypes were finally covered by the core set as well.
+This result suggests a negative bias in the imputation of genotypes from the A1
+population and could explain the drop in predictive ability at a core set size
+of 0.7, which is in agreement with the reduced predictive abilities observed
+when stripping A1 genotypes from their transcriptomic information (Fig.
+\ref{fig:InbredResults}B).
+
+
+\Genetics2level{Advantages of marker effect models}
+% Describe the many hacks that have been developed to tackle problems with BLUP
+% models.
+
+$\dots$
 
 
 
 \section*{Conclusions}
+We have successfully applied single step prediction to a hybrid plant data set 
+while imputing with a quantitative downstream 'omics' predictor.
+By declaring different subsets of individuals as covered by one or two 
+predictors, respectively, we could show the importance of homogeneous coverage
+of the genetic space by genotypes covered by both predictors on predictive
+ability.
+Extensions to more than two predictors were outside the scope of this study
+but, with mounting interest in systems genetics, should be considered in the
+future.
 
-
-$\dots$
 
 
 

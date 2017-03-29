@@ -6,7 +6,7 @@
 
 # Data and packages -------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "devtools")
+pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "devtools", "ggthemes")
 devtools::install_github("mwesthues/sspredr")
 pacman::p_load_gh("mwesthues/sspredr")
 
@@ -77,29 +77,34 @@ pca_df <- pca_lst %>%
   map(., ~rownames_to_column(., var = "G")) %>%
   map(., ~gather(., key = PC, value = Score, -G)) %>%
   set_names(names(quality_snps)) %>%
-  bind_rows(.id = "Group") %>%
+  bind_rows(.id = "Heterotic_Group") %>%
   as_data_frame() %>%
   mutate(PC = str_replace_all(PC, pattern = "V", replacement = "PC")) %>%
   filter(PC %in% paste0("PC", seq_len(2))) %>%
   mutate(
-    Reduced = if_else(
+    Group = if_else(
       G %in% predictor_coverage$mrna,
-      true = TRUE,
-      false = FALSE
+      true = "Core",
+      false = "Full"
     )
-  )
+  ) %>% 
+  rename(`Heterotic Group` = Heterotic_Group)
 
 
 # PCA plot
 g1 <- pca_df %>%
   spread(key = PC, value = Score) %>%
-  ggplot(aes(x = PC1, y = PC2, color = Reduced, shape = Reduced)) +
+  ggplot(aes(x = PC1, y = PC2, color = Group, shape = Group)) +
   geom_point() +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   scale_color_tableau() +
-  facet_grid(. ~ Group) +
-  theme_bw(base_size = 10) +
-  theme(legend.position = "top")
+  facet_grid(. ~ `Heterotic Group`) +
+  theme_pander(base_size = 10) +
+  theme(
+    legend.position = "top",
+    panel.border = element_blank(),
+    axis.line = element_line()
+    )
 ggsave(plot = g1, 
        filename = "./paper/tables_figures/uhoh_dent_flint_pca.pdf",
        height = 4, 
