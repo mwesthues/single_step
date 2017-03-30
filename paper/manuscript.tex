@@ -101,8 +101,8 @@ phenotyping, which can be reduced when covering all genotypes with a predictor
 while limiting phenotyping to a few genotypes with high precision
 \cite{Kadam2016}.
 The performance of all other genotypes is then forecast using model parameters
-obtained from thorough (repeated) $k$-fold cross-validation routines applied to 
-the subset of individuals with full information \cite{Technow2014}.
+obtained from thorough resampling routines applied to the subset of individuals 
+with full information \cite{Hastie2009}.
 In animal breeding, genomic selection has increased the annual selection gain 
 by $\approx$ 50-100\% for yield traits and by 300-400\% for traits with low 
 heritability \cite{Garcia-Ruiz2016}.
@@ -149,7 +149,7 @@ $\mathbf{G}$ in a mutual matrix $\mathbf{H}$ to use all predictor information
 simultaneously.
 Issues with this H-BLUP approach were the compatability of $\mathbf{A}$ with
 $\mathbf{G}$ \cite{Christensen2012} and their weighting, which is not
-trait-independent \cite{Ashraf2016}.
+trait-independent \cite{Vitezica2011,Ashraf2016}.
 \citeNP{Fernando2014} derived the equivalent single step marker-effect-model to 
 the single step breeding value model of \citeNP{Legarra2009} and 
 \citeNP{Christensen2010}, which has the advantage of not requiring weights for
@@ -181,7 +181,7 @@ The maize hybrid data set comprises 1,521 hybrids produced in 16 factorial
 mating designs between 142 Dent and 103 Flint parent lines \cite{Westhues2017}. 
 Best linear unbiased estimates (BLUEs) were computed across all factorials and 
 three or more agro-ecologically diverse locations across Germany for six 
-agronomically important traits.
+agronomically important traits (Table \ref{table:TraitKey}).
 All 245 parent lines have pedigree records back to the generation of their 
 grandparents or deeper \cite{Westhues2017} and were genotyped using the Illumina 
 BeadChip MaizeSNP50 \cite{Ganal2011}.
@@ -210,7 +210,7 @@ pre-classified subgroups \cite{Yang2014}.
 All inbred lines were evaluated in five Chinese environments ranging from
 $18$ to $30^{\circ}$N and from $102$ to $110^{\circ}$E \cite{Yang2014}.
 Best linear unbiased predictors (BLUPs) were calculated for 17 traits of which 
-six were used for this study.
+six were used for this study (Table \ref{table:TraitKey}).
 MaizeSNP50 BeadChip-data were available for the entire set of lines from the
 diversity panel.
 Additionally, RNA sequencing was performed for 368 lines on young seedlings 15 
@@ -229,7 +229,29 @@ satisfy modelling assumptions \cite{Fu2013}.
 A subset of 28,850 annotated genes was available for 149 out of the 211
 genotypes and was kept for further analyses \cite{Li2013}.
 
-
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+\begin{table}[]
+\centering
+\caption{Acronyms for the trait names}
+\label{table:TraitKey}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Trait              & Acronym & Data Set  \\ \midrule
+Cob weight         & CW      & Diversity \\
+Days to silking    & DS      & Diversity \\
+Ear diameter       & ED      & Diversity \\
+100-grain weight   & GW      & Diversity \\
+Kernel width       & KW      & Diversity \\
+Plant height       & PH      & Diversity \\
+Dry matter yield   & DMY     & Hybrid    \\
+Dry matter content & DMC     & Hybrid    \\
+Fat                & FAT     & Hybrid    \\
+Protein            & PRO     & Hybrid    \\
+Starch             & STA     & Hybrid    \\
+Sugar              & SUG     & Hybrid    \\ \bottomrule
+\end{tabular}
+\end{table}
 
 \Genetics2level{Population structure}
 Principal component analyses (PCA) were run on scaled and centered predictor 
@@ -548,7 +570,7 @@ Except for KW, the predictive ability for predictions based on G were always
 higher for the full set of inbred lines ($n = 211$) than for the reduced set of 
 inbred lines ($n = 149$).
 The combination of G and T (\textit{i.e.}, GT) in a single-step approach for the 
-prediction of all 211 lines performed at least as well as G alone when T was 
+prediction of all 211 lines, performed at least as well as G alone when T was 
 superior over G for the reduced set of 149 lines.
 In the case of GW and ED, the use of GT yielded a slight improvement in predictive 
 ability over G.
@@ -594,19 +616,17 @@ Pedigree records and genomic information were available for the 245 parent
 lines of all 1,521 hybrids and we denote these data as the 'Full' set whereas
 transcriptomic data were available for 103 parent lines of 685 hybrids, which
 we denote as 'Core'.
-For dry matter yield (DMY), T was the best predictor in the core set of 685 
-hybrids with a predictive ability that was 0.08 points higher than for genomic 
-data, as the second best predictor for this trait 
-(Fig. \ref{fig:HybridResults}).
-In the core set, P had the highest predictive ability for starch ('STA') and 
-dry matter content ('DMC').
-For the other three traits, inside the core set G was the superior predictor.
+For DMY, T was the best predictor in the core set of 685 hybrids with a 
+predictive ability that was 0.08 points higher than for genomic data, as the 
+second best predictor for this trait (Fig. \ref{fig:HybridResults}).
+In the core set, P had the highest predictive ability for STA and DMC.
+For the other three traits, G was the superior predictor inside the core set.
 In the full set of 1,521 hybrids, predictive abilities obtained with G rose 
-markedly for all traits with the exception of 'FAT'.
+markedly for all traits with the exception of FAT.
 The combination of genomic and transriptomic information (GT) in a single-step
-model yielded a small improvement of G alone for the trait 'DMY'.
-All traits, where T was not superior to G in the core set, did not benefit from 
-the single-step approach when compared to genomic information alone.
+model yielded a small improvement over G alone for the traits DMY and PRO.
+Except for PRO, compared to using only G, trait prediction did not benefit from 
+the single step approach when T was not superior to G in the core set.
 Predictive abilities resulting from combinations of pedigree with genomic (PG)
 information were better than P alone for all traits and PT improved upon P in
 the core set for four traits.
@@ -639,11 +659,11 @@ Here, we explore the impact of which data are covered by the incomplete
 predictor on the predictive abilities obtained via single-step approaches by
 focusing exclusively on the 149 inbred lines from the maize diversity panel
 that are covered by both, genomic and transcriptomic information.
-First, we assmbled nine different core sets, which we defined as subsets
+First, we assembled nine different core sets, which we defined as subsets
 of genotypes that maximize the average genetic distance between genotypes of
 the full set.
 The nine core sets differ in that each covers a different number of genotypes,
-ranging from only 10\% to to 90\% of all genotypes covered by the incomplete
+ranging from only 10\% to 90\% of all genotypes covered by the incomplete
 predictor (Fig. \ref{fig:CoreSetPCA}).
 
 
@@ -671,13 +691,12 @@ predictor (Fig. \ref{fig:CoreSetPCA}).
 
 
 Predictive abilities obtained with the different core sets varied widely within
-traits (Fig. \ref{fig:InbredResults}C).
+traits (Fig. \ref{fig:InbredResults}B).
 For the traits CW and PH, which were better predicted via G than via T in the 
 reduced set of lines, predictive abilities were higher when only a small number 
 of genotypes was included in the core set.
-The latter corresponds to a situation where a large number of genotypes is
-being imputed and the majority of the information is derived from genomic
-information. 
+This corresponds to a situation where a large number of genotypes is being 
+imputed and the majority of the information is derived from genomic information. 
 For most other traits, an initial increase in predictive abilities when moving
 from a core set size of 0.1 to 0.5/0.6 was observed, followed by a drop around
 0.6/0.7 and a subsequent hike up to a core set size of 0.9.
@@ -691,9 +710,8 @@ direction at a core set size of 0.7.
 As an alternative to exploring the impact of genotypes sampled based on the
 maximization of genetic distance within the core set, we wanted to explore a
 more extreme scenario where we select core sets based on population structure.
-Hereto, we ran an admixture analysis on the same set of 149 inbred lines and
-display the estimated ancestry coefficients for the genotypes assuming $K=3$
-ancestral populations (Fig. \ref{fig:PopStructure}).
+Hereto, we ran an admixture analysis on the same set of 149 inbred lines 
+assuming $K=3$ ancestral populations (Fig. \ref{fig:PopStructure}).
 
 \begin{figure}[H]
 \centering
@@ -718,22 +736,20 @@ population (A1), 109 belonged to more than 50\% to the second ancestral
 population (A2) and 19 belonged to more than 50\% to the third ancestral
 population while four genotypes could not be unequivocally assigned to either
 ancestral population (mixed).
-To adjust the size of the set of genotypes largely belonging to A2 to the other
-two sets, we selected 19 genotypes from A2 using previously described core
-sampling.
+To reconcile the large size of the A2 set compared to A1 and A3, we selected 19 
+genotypes from A2 using previously described core sampling.
 For single-step prediction, each of the three genotype sets were then declared
 as having genomic and transcriptomic information whereas their complements were
 covered by transcriptomic data only.
 Genotypes from A1 and A3, which were at the far ends in the PCA plot (Fig.
 \ref{fig:PopStructure}B), were estimated with less precision than genotypes
 from the central cluster of genotypes belonging largely to the A2 population
-(Fig. \ref{fig:PopStructure}A, Fig. \ref{fig:InbredResults}B).
+(Fig. \ref{fig:PopStructure}A, Fig. \ref{fig:InbredResults}C).
 
-
-A principal component analysis, carried out separately on the two parental
-heterotic groups of the maize hybrids, showed that the entire genetic space in
-each group was well covered by genotypes that had both, transcriptomic and
-genomic data (Fig. \ref{fig:UHOH-PCA}).
+Regarding the hybrid material, a PCA carried out separately for the two groups
+of parental inbred lines showed that the entire genetic space in each group 
+was covered well by genotypes that had both, transcriptomic and genomic data 
+(Fig. \ref{fig:UHOH-PCA}).
 
 \begin{figure}[H]
 \centering
@@ -761,6 +777,39 @@ genomic data (Fig. \ref{fig:UHOH-PCA}).
 
 
 \section*{Discussion}
+\Genetics2level{Advantages of marker effect models}
+Single step approaches in hybrid populations have so far been limited to pig
+breeding \cite{Xiang2015,Xiang2016,Tusell2016}.
+All of these studies used breeding value-based single step BLUP methods
+(SS-BLUP) conceived by \citeNP{Legarra2009} and \citeNP{Christensen2010} with
+extensions to hybrid populations \cite{Christensen2014,Christensen2015}.
+An attactive property of SS-BLUP models is their computational advantage over 
+marker-effect single step Bayesian regression models (SSBR) when the number of 
+genotypes is smaller than the number of features of the incomplete predictor.
+Nevertheless, SS-BLUP suffers from a variety of issues, which we will present
+briefly:
+First, the combination of the numerator with the genomic relationship matrix
+requires commensurability of the two matrices, which necessitates some form of
+scaling and weighting of $\mathbf{A}$ and $\mathbf{G}$
+\cite{Christensen2012,Christensen2012a}.
+Second, the fact that mostly recent individuals have genotypes whereas the 
+majority of old individuals has only pedigree records introduces a bias that 
+has to be accounted for \cite{Vitezica2011,Legarra2015,Garcia-Baccino2017}.
+Third, the addition of new genotypes requires updates of $\mathbf{G}$ that
+demand additional measures such as computing the inverse of $\mathbf{G}$ via
+recursion
+\cite{Misztal2014,Misztal2016,Misztal2016a,Fragomeni2015,Masuda2016,Pocrnic2016}.
+Advantages of the SSBR algorithm, conceived by \citeNP{Fernando2014}, include
+that i) it does not require commensurability of $\mathbf{A}$ and $\mathbf{G}$, 
+ii) it models the bias incurred by the incomplete predictor explicitly as 
+$\mathbf{\epsilon}$ and iii) its speed depends largely on the number of 
+features.
+To our best knowledge, this study presents the first implementation of the SSBR 
+algorithm in a hybrid data set.
+
+
+
+
 \Genetics2level{Addition of new predictors}
 Pedigree records are the most ubiquitous predictor in animal and plant breeding
 programs, because they are easy and inexpensive to collect.
@@ -826,8 +875,6 @@ In medium-sized plant breeding programs, the advent of the doubled haploid (DH)
 technology \cite{Wedzony2009} now allows for an annual production of 1,000 
 parent lines in each heterotic group, amounting to $10^{6}$ putative hybrid
 progeny.
-So far, its applications in hybrid populations are limited to pig breeding
-\cite{Xiang2015,Xiang2016,Tusell2016}.
 % Are there applications in chicken breeding? (Hints in Christensen et al.
 % 2014, GSE).
 For the hybrid data, the predictive abilities of genomic information
@@ -855,12 +902,14 @@ material well.
 
 \Genetics2level{Coverage of the genetic space}
 Animal populations are so large that it does not truly matter, which animals are 
-being genotyped, but in plant breeding the situation is different and we would 
-be interested in determining which individuals should be complemented with 
-information on another predictor.
-If one can cover the genetic space sufficently with the incomplete predictor, 
-
-
+being genotyped once more than 10,000 animals have pedigree records 
+\cite{Fragomeni2015,Lourenco2015,Masuda2016}, but in plant breeding programs,
+pedigrees are typically considerably smaller.
+Single step prediction offers the promise of leveraging the predictive ability
+for all genotypes by borrowing the superior performance of an auxiliary
+predictor on only a subset of genotypes, thereby reducing predictor costs.
+Hence, we were interested in determining which individuals should be 
+complemented with information on another predictor.
 When using core sets of varying sizes, which were established with the
 constraint of maximizing the average genetic distance among their members, we
 noticed strong fluctuations in predictive abilities when moving from small core
@@ -880,13 +929,6 @@ population and could explain the drop in predictive ability at a core set size
 of 0.7, which is in agreement with the reduced predictive abilities observed
 when stripping A1 genotypes from their transcriptomic information (Fig.
 \ref{fig:InbredResults}B).
-
-
-\Genetics2level{Advantages of marker effect models}
-% Describe the many hacks that have been developed to tackle problems with BLUP
-% models.
-
-$\dots$
 
 
 
