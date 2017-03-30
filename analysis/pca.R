@@ -72,41 +72,77 @@ predictor_coverage <- common_genotypes %>%
 
 # Convert the PCA list for Dent and Flint material to a data frame and add 
 # information on predictor coverage of the genotypes.
-pca_df <- pca_lst %>%
+hybrids <- pca_lst %>%
   map(as.data.frame) %>%
   map(., ~rownames_to_column(., var = "G")) %>%
   map(., ~gather(., key = PC, value = Score, -G)) %>%
   set_names(names(quality_snps)) %>%
-  bind_rows(.id = "Heterotic_Group") %>%
+  bind_rows(.id = "Group") %>%
   as_data_frame() %>%
   mutate(PC = str_replace_all(PC, pattern = "V", replacement = "PC")) %>%
   filter(PC %in% paste0("PC", seq_len(2))) %>%
   mutate(
-    Group = if_else(
+    Cluster = if_else(
       G %in% predictor_coverage$mrna,
       true = "Core",
       false = "Full"
     )
-  ) %>% 
-  rename(`Heterotic Group` = Heterotic_Group)
+  )
 
 
 # PCA plot
 g1 <- pca_df %>%
   spread(key = PC, value = Score) %>%
-  ggplot(aes(x = PC1, y = PC2, color = Group, shape = Group)) +
+  ggplot(aes(x = PC1, y = PC2, color = Cluster, shape = Cluster)) +
   geom_point() +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   scale_color_tableau() +
-  facet_grid(. ~ `Heterotic Group`) +
+  facet_grid(. ~ Group) +
   theme_pander(base_size = 10) +
   theme(
     legend.position = "top",
     panel.border = element_blank(),
     axis.line = element_line()
     )
+
+
+# DIVERSITY INBRED LINE CORE SET ------------------------------------------
+all_geno_pc <- "./data/derived/maizego/maizego_pca.RDS" %>% 
+  readRDS()
+common_inbreds <- "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS" %>% 
+  readRDS() %>% 
+  reduce(intersect)
+inbreds <- all_geno_pc %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "G") %>%
+  gather(key = PC, value = Score, -G) %>%
+  as_data_frame() %>%
+  filter(PC %in% paste0("PC_", seq_len(2))) %>%
+  mutate(Cluster = if_else(
+    G %in% common_inbreds, true = "Core", false = "Full"),
+    PC = gsub("PC_", replacement = "PC", x = PC),
+    Group = "Diversity"
+  )
+
+g1 <- rbind(inbreds, hybrids) %>%
+  spread(key = PC, value = Score) %>%
+  mutate(
+    Group = factor(Group, levels = c("Diversity", "Dent", "Flint"))
+  ) %>% 
+  ggplot(aes(x = PC1, y = PC2, color = Cluster, shape = Cluster)) +
+  geom_point() +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  scale_color_tableau() +
+  facet_wrap(~ Group, scales = "free") +
+  theme_pander(base_size = 10) +
+  theme(
+    legend.position = "top",
+    panel.border = element_blank(),
+    axis.line = element_line()
+    )
+
 ggsave(plot = g1, 
-       filename = "./paper/tables_figures/uhoh_dent_flint_pca.pdf",
-       height = 4, 
+       filename = "./paper/tables_figures/diversity_dent_flint_pca.pdf",
+       height = 3, 
        width = 6,
        units = "in")

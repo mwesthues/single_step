@@ -106,26 +106,6 @@ plot_a <- plot_a_data %>%
   
 
 plot_b_data <- pred_df %>% 
-  filter(Core_Fraction %in% paste0("A", seq_len(3))) %>% 
-  group_by(Trait, Core_Fraction, Predictor) %>% 
-  summarize(
-    r = cor(y, yhat),
-    CV = coefficient_of_variation(var_yhat, yhat)
-  ) %>%
-  ungroup() %>% 
-  rename(`Imputed Ancestral Population` = Core_Fraction)
-
-plot_b <- plot_b_data %>% 
-  ggplot(aes(x = Trait, y = r, fill = `Imputed Ancestral Population`)) +
-  geom_bar(stat = "identity", position = dodge) +
-  geom_errorbar(limits, position = dodge, width = 0.25) +
-  scale_fill_manual(values = c("#258039", "#F5BE41", "#31A9B8")) +
-  theme_pander(base_size = 10) +
-  theme(legend.position = "top")
-plot_b
-
-
-plot_c_data <- pred_df %>% 
   filter(Core_Fraction %in% seq(from = 0.1, to = 0.9, by = 0.1)) %>% 
   group_by(Trait, Core_Fraction, Predictor) %>% 
   summarize(
@@ -135,18 +115,35 @@ plot_c_data <- pred_df %>%
   ungroup() %>% 
   rename(`Core Fraction` = Core_Fraction)
   
-
 # Because the bars and errorbars have different widths
 # we need to specify how wide the objects we are dodging are
-dodge_c <- position_dodge(width = 0.3)
-plot_c <- plot_c_data %>% 
+dodge_b <- position_dodge(width = 0.3)
+plot_b <- plot_b_data %>% 
   ggplot(aes(x = `Core Fraction`, y = r, color = Trait, group = Trait)) +
-  geom_line(stat = "identity", position = dodge_c) +
-  geom_errorbar(limits, position = dodge_c, width = 0.25) +
+  geom_line(stat = "identity", position = dodge_b) +
+  geom_errorbar(limits, position = dodge_b, width = 0.25) +
   scale_color_tableau() +
   theme_pander(base_size = 10) +
   theme(legend.position = "top") +
   guides(color = guide_legend(override.aes = list(size = 3)))
+
+plot_c_data <- pred_df %>% 
+  filter(Core_Fraction %in% paste0("A", seq_len(3))) %>% 
+  group_by(Trait, Core_Fraction, Predictor) %>% 
+  summarize(
+    r = cor(y, yhat),
+    CV = coefficient_of_variation(var_yhat, yhat)
+  ) %>%
+  ungroup() %>% 
+  rename(`Imputed Ancestral Population` = Core_Fraction)
+
+plot_c <- plot_c_data %>% 
+  ggplot(aes(x = Trait, y = r, fill = `Imputed Ancestral Population`)) +
+  geom_bar(stat = "identity", position = dodge) +
+  geom_errorbar(limits, position = dodge, width = 0.25) +
+  scale_fill_manual(values = c("#258039", "#F5BE41", "#31A9B8")) +
+  theme_pander(base_size = 10) +
+  theme(legend.position = "top")
 
 
 bottom_row <- plot_grid(
@@ -159,7 +156,7 @@ combi_plot <- plot_grid(
 ggsave(plot = combi_plot, 
        filename = "./paper/tables_figures/inbred_line_combi_plot.pdf",
        width = 7,
-       height = 4,
+       height = 6,
        units = "in")
   
 

@@ -76,29 +76,8 @@ all_geno_pc <- LEA::pca("./data/derived/maizego/all_tst_snp.lfmm", scale = TRUE)
 all_geno_pc <- all_geno_pc$projections
 rownames(all_geno_pc) <- rownames(all_geno_snp)
 colnames(all_geno_pc) <- paste0("PC_", seq_len(ncol(all_geno_pc)))
-
-g1 <- all_geno_pc %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "G") %>%
-  gather(key = PC, value = Score, -G) %>%
-  as_data_frame() %>%
-  filter(PC %in% paste0("PC_", seq_len(3))) %>%
-  mutate(Group = if_else(
-    G %in% common_genotypes, true = "mRNA", false = "All"),
-    PC = gsub("PC_", replacement = "PC", x = PC)
-  ) %>%
-  spread(key = PC, value = Score) %>%
-  ggplot(aes(x = PC1, y = PC2, color = Group, shape = Group)) +
-  geom_point() +
-  scale_color_tableau() +
-  theme_pander(base_size = 10) +
-  theme(legend.position = "top")
-ggsave(plot = g1,
-       filename = "./paper/tables_figures/maizego_pca.pdf",
-       width = 6,
-       height = 4, 
-       units = "in")
-
+all_geno_pc %>% 
+  saveRDS(., file = "./data/derived/maizego/maizego_pca.RDS")
 
 
 
@@ -137,7 +116,7 @@ structure_df <- K_lst %>%
 
 # For each genotype and for each run with K ancestral populations, plot the 
 # admixture coefficients by genotype.
-g2 <- structure_df %>%
+g1 <- structure_df %>%
   ggplot(aes(x = G, y = Value, fill = Component)) +
   geom_bar(stat = "identity", width = 1) +
   facet_wrap(~K, ncol = 1, strip.position = "right") +
@@ -153,7 +132,7 @@ g2 <- structure_df %>%
 pc_df <- "./data/derived/maizego/core_sampling_pca.RDS" %>%
   readRDS()
 
-g3 <- pc_df %>%
+g2 <- pc_df %>%
   filter(Fraction != "1.0") %>%
   rename(`Core Group` = Core_Group) %>%
   ggplot(aes(x = PC1, y = PC2, color = `Core Group`, shape = `Core Group`)) +
@@ -168,7 +147,7 @@ g3 <- pc_df %>%
     strip.placement = "outside"
   )
 
-ggsave(plot = g3,
+ggsave(plot = g2,
        filename = "./paper/tables_figures/maizego_core_sampling_pca.pdf",
        width = 7,
        height = 7,
@@ -176,8 +155,8 @@ ggsave(plot = g3,
        )
 
 
-g23 <- plot_grid(g2, g3, labels = c("A", "B"), ncol = 2, nrow = 1)
-ggsave(plot = g23,
+g12 <- plot_grid(g1, g2, labels = c("A", "B"), ncol = 2, nrow = 1)
+ggsave(plot = g12,
        filename = "./paper/tables_figures/maizego_admixture_pca.pdf",
        width = 7,
        height = 4,
@@ -206,7 +185,7 @@ ancestry_df %>%
   saveRDS(file = "./data/derived/maizego/ancestry_k3.RDS")
  
 
-g4 <- structure_df %>%
+g3 <- structure_df %>%
   filter(K == "K=3") %>%
   mutate_at(vars(K, G, Component), .funs = funs(as.character)) %>%
   mutate(Component = gsub(pattern = "V", replacement = "A", x = Component)) %>% 
@@ -226,7 +205,7 @@ g4 <- structure_df %>%
   ylab("Ancestry Coefficient")
 
 
-g5 <- pc_df %>% 
+g4 <- pc_df %>% 
   filter(Fraction == "1.0") %>% 
   full_join(y = ancestry_df, by = "G") %>%
   mutate(Ancestor = if_else(
@@ -240,7 +219,7 @@ g5 <- pc_df %>%
   theme_pander(base_size = 10)
 
 
-g45_wo_legend <- plot_grid(
+g34_wo_legend <- plot_grid(
   g4, 
   g5 + theme(legend.position = "none"),
   labels = c("A", "B"),
@@ -248,11 +227,11 @@ g45_wo_legend <- plot_grid(
   nrow = 1
 )
 
-g45_legend <- get_legend(g5 + theme(legend.position = "top"))
-g45 <- plot_grid(g45_legend, g45_wo_legend, ncol = 1, rel_heights = c(0.15, 1))
-g45
+g34_legend <- get_legend(g4 + theme(legend.position = "top"))
+g34 <- plot_grid(g34_legend, g34_wo_legend, ncol = 1, rel_heights = c(0.15, 1))
+g34
 
-ggsave(plot = g45,
+ggsave(plot = g34,
        filename = "./paper/tables_figures/maizego_admixture_k3_pca.pdf",
        width = 7,
        height = 4,
