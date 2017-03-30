@@ -806,7 +806,7 @@ ii) it models the bias incurred by the incomplete predictor explicitly as
 $\mathbf{\epsilon}$ and iii) its speed depends largely on the number of 
 features.
 To our best knowledge, this study presents the first implementation of the SSBR 
-algorithm in a hybrid data set.
+algorithm on a hybrid data set.
 
 
 
@@ -837,19 +837,6 @@ transcriptomic data as predictors.
 
 \Genetics2level{Superiority of single step models}
 \subsection{Inbred lines}
-Predictive abilities for the maize diversity panel are not in complete
-agreement with those reported by \citeNP{Guo2016}.
-Reasons for this may be threefold: 
-1) In our study, we reduced the dataset to the 211 tropical/subtropical lines 
-and excluded all other genotypes whereas \citeNP{Guo2016} used genotypes from 
-four subpopulations and only a subset of 157 genotypes from the set of 
-tropical/subtropical lines while correcting for population structure by
-including a fixed effect in the model for predicting agronomic performance.
-2) We applied quality checks for the predictor data after generating the subset
-of 211 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
-genotypes.
-3) While \citeNP{Guo2016} used five-fold cross-validation with 500 repetitions,
-we employed a leave-one-out cross-validation scheme (LOOCV).
 When using a single step approach based on complete genomic and incomplete
 transcriptomic information, gains in predictive ability for the inbred lines
 were at best just slightly higher than when using complete genomic information
@@ -857,18 +844,33 @@ alone.
 One of the reasons might be that the subset of genotypes that was covered by
 transcriptomic data was not a good representation of the full genetic space of
 all available genotypes.
-A second possibility is that the number of additional phenotypes in the full
+Another possibility is that the number of additional phenotypes in the full
 set compared to the core set ($\Delta(n) = 62$) was not large enough to provide
 considerably more useful information.
 The latter was the case for \citeNP{Ashraf2016}, who imputed genotypes for about 
 10,000 wheat lines using pedigree information and observed greater accuracy of
 the single step method over genomic BLUP for all four evaluated traits.
+Predictive abilities reported for the maize diversity panel in this study were
+slightly different from those reported by \citeNP{Guo2016}, for three
+possible reasons:
+1) We reduced the dataset to the 211 tropical/subtropical lines and excluded 
+all other genotypes from our analyses whereas \citeNP{Guo2016} used genotypes 
+from four different subpopulations, modeled as a fixed effect, and used only a 
+subset of 157 genotypes from the set of tropical/subtropical lines.
+2) We applied quality checks for the predictor data after generating the subset
+of 211 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
+genotypes.
+3) While \citeNP{Guo2016} used five-fold cross-validation with 500 repetitions,
+we employed a leave-one-out cross-validation scheme (LOOCV).
+Notwithstanding, the relative differences between predictive abilities for G 
+and T, respectively, were similar in both studies.
 
 
 \subsection{Maize hybrids}
-Hybrid breeding --- with noteworthy commercial applications in pig, chicken and 
-maize breeding --- is a particularly challenging application field for
-prediction tools.
+Hybrid breeding --- with noteworthy commercial applications in pig
+\cite{Xiang2016,Tusell2016} and maize breeding \cite{TheRoyalSociety2009} --- 
+is a particularly challenging application field for prediction tools 
+\cite{Kadam2016}.
 Here, $2n$ parent individuals from two genetically distinct heterotic groups are
 crossed to each other, yielding $n^{2}$ potential hybrid progeny that would
 require intensive field testing.
@@ -876,8 +878,13 @@ In medium-sized plant breeding programs, the advent of the doubled haploid (DH)
 technology \cite{Wedzony2009} now allows for an annual production of 1,000 
 parent lines in each heterotic group, amounting to $10^{6}$ putative hybrid
 progeny.
-% Are there applications in chicken breeding? (Hints in Christensen et al.
-% 2014, GSE).
+\citeNP{Westhues2017} have shown that, in hybrid breeding, the probability 
+of successfully selecting the best observed genotypes based on the best 
+predicted candidates is a strongly convex function of the predictive ability.
+Thus, even the minor gains when using transcriptomic and genomic data in a
+single step might justify additional investments in RNA-seq at least of a
+subset of genotypes that represents the genetic space of the breeding 
+material well.
 For the hybrid data, the predictive abilities of genomic information
 for the whole set of available parent lines rose considerably for several
 agronomic traits.
@@ -892,18 +899,12 @@ results on the inbred lines have shown that homogeneous coverage of the
 genetic space by the incomplete predictor can considerably leverage the
 predictive ability in single step prediction compared to using only the
 complete predictor.
-In hybrid breeding, the probability of successfully selecting the best
-observed genotypes based on the best predicted candidates is a strongly 
-convex function of the predictive ability.
-Hence, even the minor gains when using transcriptomic and genomic data in a
-single step might justify additional investments in RNA-seq at least of a
-subset of genotypes that represents the genetic space of the breeding 
-material well.
 
 
 \Genetics2level{Coverage of the genetic space}
-Animal populations are so large that it does not truly matter, which animals are 
-being genotyped once more than 10,000 animals have pedigree records 
+Animal populations are so large that it the assembly of a core set of
+individuals with records on multiple predictors can effectively be done at 
+random once more than 10,000 animals have pedigree records 
 \cite{Fragomeni2015,Lourenco2015,Masuda2016}, but in plant breeding programs,
 pedigrees are typically considerably smaller.
 Single step prediction offers the promise of leveraging the predictive ability
