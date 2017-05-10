@@ -93,7 +93,7 @@ $\dots$
 \section{Introduction} 
 % Rationale for predictions.
 Genomic prediction, pioneered by \citeNP{Meuwissen2001}, has revolutionized
-animal and plant breeding by accelerating the selection of promising candidates 
+animal and plant breeding by a more efficient selection of promising candidates 
 without phenotypes \cite{DeLosCampos2013,Garcia-Ruiz2016} and recently emerged
 as an important tool in human diagnostics \cite{DeLosCampos2010,Vazquez2016}.
 Its use is largely motivated by the high costs and oftentimes long duration of 
@@ -106,37 +106,34 @@ with full information \cite{Hastie2009}.
 In animal breeding, genomic selection has increased the annual selection gain 
 by $\approx$ 50-100\% for yield traits and by 300-400\% for traits with low 
 heritability \cite{Garcia-Ruiz2016}.
-In plant breeding, the relative excellence of a breeding strategy largely 
-depends on the prediction accuracy, which may vary widely among traits and 
-crops \cite{Longin2015}.
 
 % Incomplete predictors.
 Breeding programs --- particularly in animal breeding --- are characterized by
-the availability of one predictor type, which is available for all recorded
+the presence of one predictor type, which is available for all recorded
 genotypes while other predictors are incomplete in that they cover only a 
 subset of all genotypes \cite{Fragomeni2015}.
 Usually, the complete predictor is pedigree information while genomic data are
 the most prevalent incomplete predictor.
 To utilize all available phenotypic information for model training, methods were 
-needed that would allow for a combined use of genomic and pedigree information 
+developed that allowed for a combined use of genomic and pedigree information 
 \cite{Hayes2009a,VanRaden2009}.
 
 % Two-step prediction.
-In the early years of genomic prediction, a two-step procedure was the most
-intuitive choice for establishing a new selection scheme \cite{VanRaden2009}.
+Initially, a two-step procedure was the most intuitive choice for accomplishing
+this goal \cite{VanRaden2009}.
 The first step consists of conventionally estimating breeding values based on
 pedigree relationships and the phenotypes of relatives.
 Individuals with accurate breeding values out of the first step (\textit{i.e.}
 high number of offspring), enter the second step in which conventional breeding
 values are regressed onto SNP genotypes.
-The resulting model coefficients can then be used to predict genomic breeding 
+The estimated model coefficients can then be used to predict genomic breeding 
 values for solely genotyped and potentially very young individuals.
 However, as the breeding values from step one enter the genomic prediction
 model as phenotypes, one has to be careful about the residual error
 distribution of such a model.
-For instance, if the range of the prediction errors will not be identically
-distributed anymore, \textit{i.e.} they should be weighted differently or
-estimated individually \cite{Aguilar2010}.
+For instance, the range of the prediction errors will no longer be identically
+distributed, \textit{i.e.}, they should be weighted differently or estimated 
+individually \cite{Aguilar2010}.
 One popular approach to account for this problem is deregressing the breeding
 values and weighting the residuals according to the prediction error variances
 \cite{Garrick2009}.
@@ -152,15 +149,17 @@ $\mathbf{G}$ \cite{Christensen2012} and their weighting, which is not
 trait-independent \cite{Vitezica2011,Ashraf2016}.
 \citeNP{Fernando2014} derived the equivalent single step marker-effect-model to 
 the single step breeding value model of \citeNP{Legarra2009} and 
-\citeNP{Christensen2010}, which has the advantage of not requiring weights for
-$\mathbf{A}$ and $\mathbf{G}$ as well as the ability to model the structure of 
-the imputation error.
+\citeNP{Christensen2010}, which does not require weights for $\mathbf{A}$ and 
+$\mathbf{G}$.
+An additional advantage of this alternative formulation is the ability to 
+implicitly model the structure of the imputation error.
 
 
 % -   Mention scarcity of data on single step prediction in plant populations.
-In animal breeding, single step prediction has already become a routine 
-procedure \cite{Legarra2014} but, to the best of our knowledge, has only been 
-considered in plants in a study on wheat lines \cite{Ashraf2016}. 
+In animal breeding, single step prediction, particularly H-BLUP, has already 
+become a routine procedure \cite{Legarra2014} but, to the best of our knowledge, 
+has only been considered in plants in a study on wheat \cite{Ashraf2016} and
+white spruce lines, respectively \cite{Ratcliffe2017}. 
 Our objectives were threefold: (1) Examine whether the single step prediction
 framework can be transfered to plant hybrids, (2) explore the utility of single 
 step predition with a quantitative predictor and (3) evaluate the impact of the
@@ -177,40 +176,51 @@ genetic space covered by the incomplete predictor on predictive ability.
 
 \section{Materials and Methods}
 \Genetics2level{Maize hybrids}
-The maize hybrid data set comprises 1,521 hybrids produced in 16 factorial
-mating designs between 142 Dent and 103 Flint parent lines \cite{Westhues2017}. 
+The maize hybrid data set, subsequently denoted as \textit{Exp1}, comprised 
+1,521 hybrids produced in 16 factorial mating designs between 142 Dent and 103 
+Flint parent lines \cite{Westhues2017}. 
 Best linear unbiased estimates (BLUEs) were computed across all factorials and 
 three or more agro-ecologically diverse locations across Germany for six 
-agronomically important traits (Table \ref{table:TraitKey}).
+agronomically important traits by accounting for year, location, field 
+replication, block and genotype effects as well as their interactions
+(Table~\ref{table:TraitKey}).
 All 245 parent lines have pedigree records back to the generation of their 
 grandparents or deeper \cite{Westhues2017} and were genotyped using the Illumina 
 BeadChip MaizeSNP50 \cite{Ganal2011}.
 After filtering for minor allele frequency ($\geq 5$\%), heterozygosity rate
 ($\leq 5$\%) and call frequency ($\geq 95$\%), missing genotypes were imputed 
 using the Beagle software \cite{Browning2009}.
-The final number of polymorphic marker loci was 7,013 for parental Dent and
-6,212 for parental Flint lines, respectively.
+The final number of polymorphic marker loci was 7,013 for the Dent and 6,212 for 
+the Flint lines, respectively.
 Gene expression data for seedlings seven days after sowing were obtained for a 
 subset of 60 parental Dent and 43 parental Flint lines, that are parents of 685
-hybrid progeny, through two-color hybridizations using a custom 2K microarray 
-(GPL22267) \cite{Westhues2017}.
-After applying established normalization procedures 
-\cite{Smyth2003,Ritchie2007}, gene expression BLUEs were computed for 1,323 
-transcripts in reference to established protocols 
-\cite{Smyth2003,Ritchie2007,Frisch2010} using the R-package \textit{limma}
-\cite{Ritchie2015a}.
+hybrid progeny.
+These data were obtained through two-color hybridizations using a custom 2K 
+microarray (GPL22267) \cite{Westhues2017}.
+After applying established normalization procedures \cite{Smyth2003,Ritchie2007},
+gene expression BLUEs were computed for 1,323 transcripts while adjusting for 
+putative effects arising from the presence of multiple factorials (\textit{cf.}
+\citeNP{Westhues2017}) using the R-package \textit{limma} \cite{Ritchie2015a}.
+
+This dataset was included to address objectives 1 and 2.
 
 
 
 \Genetics2level{Maize diversity panel}
-The maize inbred line data set originally comprised 513 maize lines representing 
-the global maize diversity and was reduced to the set of tropical and
-subtropical lines ($n = 211$) given that it is the largest of the four
-pre-classified subgroups \cite{Yang2014}.
+The maize inbred line data set, subsequently referred to as \textit{Exp2}, 
+originally comprised 513 maize lines representing the global maize diversity 
+and was reduced to the set of tropical and subtropical lines ($n = 211$) given 
+that it is the largest of the four pre-classified subgroups \cite{Yang2014}.
+We reduced the original dataset to this subset to avoid inflated predictive 
+abilities due to large differences in the average performance of the different
+subpopulations \cite{Windhausen2012}.
 All inbred lines were evaluated in five Chinese environments ranging from
 $18$ to $30^{\circ}$N and from $102$ to $110^{\circ}$E \cite{Yang2014}.
 Best linear unbiased predictors (BLUPs) were calculated for 17 traits of which 
-six were used for this study (Table \ref{table:TraitKey}).
+six are presented in this study (Table~\ref{table:TraitKey}).
+The selection of these traits was done so that four traits were better 
+predicted by transcriptomic data and two further traits were better predicted 
+by genomic data.
 MaizeSNP50 BeadChip-data were available for the entire set of lines from the
 diversity panel.
 Additionally, RNA sequencing was performed for 368 lines on young seedlings 15 
@@ -228,6 +238,8 @@ Gene expression data were normalized using a normal quantile transformation to
 satisfy modelling assumptions \cite{Fu2013}.
 A subset of 28,850 annotated genes was available for 149 out of the 211
 genotypes and was kept for further analyses \cite{Li2013}.
+
+This dataset was included to address objectives 2 and 3.
 
 % Please add the following required packages to your document preamble:
 % \usepackage{booktabs}
@@ -254,12 +266,12 @@ Sugar              & SUG     & Hybrid    \\ \bottomrule
 \end{table}
 
 \Genetics2level{Population structure}
-Principal component analyses (PCA) were run on scaled and centered predictor 
-matrices using the \emph{pca} function from the R-package \textit{LEA} 
-\cite{Frichot2015}.
-Estimates of ancestry coefficients were estimated based on sparse nonnegative
-matrix factorization algorithms \cite{Frichot2014} using the \emph{snmf} 
-function in \textit{LEA}.
+Separately for each data set, principal component analyses (PCA) were run on 
+scaled and centered predictor matrices using the \emph{pca} function from the 
+R-package \textit{LEA} \cite{Frichot2015}.
+Least-squares estimates of ancestry proportions were estimated based on sparse 
+nonnegative matrix factorization algorithms \cite{Frichot2014} using the 
+\emph{snmf} function in \textit{LEA}.
 Algorithms were run for $K=2, \dots 5$ putative ancestral gene pools with 25
 repetitions for each value of $K$. 
 For each $K$, only the repetition with the lowest cross-entropy was kept for 
@@ -308,12 +320,18 @@ Depending on the data set, up to three predictors were available for agronomic
 trait predictions, namely pedigree data (P), genomic data (G) and
 transcriptompic data (T).
 The corresponding feature matrix of the $l$-th group of inbred lines and the 
-$o$-th predictor ($\mathbf{W}_{lo}$) has dimensions $n \times p$ where $n$
-pertains to the number of genotypes in the $l$-th group and $p$ pertains to 
-the number of features.
-For the diversity panel maize lines, $n$ corresponds to the number of genotypes
-whereas, in the case of the hybrid data, $n$ corresponds to the number of
-parent lines in the corresponding heterotic group.
+$o$-th predictor ($\mathbf{W}_{lo}$) has dimensions $n_{l} \times p_{o}$ where 
+$n_{l}$ pertains to the number of genotypes in the $l$-th group and $p_{o}$
+pertains to the number of features.
+Note that $l$ is only defined for \textit{Exp1} where a distinction between 
+the two heterotic groups is necessary whereas $l$ can be ignored for all 
+models pertaining to the inbred lines of the maize diversity panel in 
+\textit{Exp2}.
+To avoid mentioning special cases, we will use the general notation with 
+the index $l$ throughout this section, though.
+For the diversity panel maize lines, $n_{l}$ corresponds to the number of 
+genotypes whereas, in the case of the hybrid data, $n_{l}$ corresponds to the 
+number of parent lines in the $l$-th heterotic group.
 In generating kernels for each predictor, all features in $\mathbf{W}_{lo}$ were
 centered and standardized to unit variance.
 Then, each kernel can be defined as
@@ -341,14 +359,18 @@ The general model for breeding values was:
 
 
 where $\mathbf{y}$ is the vector of observed inbred line or hybrid performance,
-respectively, $\mu$ is the fixed model intercept, $\mathbf{Z}_{lo}$ is the 
-corresponding design matrix associating the random genotype effects
-$\mathbf{g}_{lo}$ (\textit{i.e.}, breeding values) of the lines in the $l$-th 
-inbred line group and the $o$-th predictor type with $\mathbf{y}$.
-Note that, in the case of hybrid data, $\mathbf{g}_{lo}$ pertains to the
-general combining ability effects in the parental inbred lines (either Dent or
-Flint, as expressed by $l$) which are associated with the vector of
-observed hybrid performance $\mathbf{y}$ through $\mathbf{Z}_{lo}$.
+respectively, $\mu$ is the fixed model intercept, and $\epsilon$ is the residual
+error.
+For the hybrid data from \textit{Exp1}, we fit separate additive effects for 
+each of the $L$ heterotic groups and $\mathbf{g}_{lo}$ now pertains to the 
+general combining ability effects of the parental inbred lines (either Dent or 
+Flint, as expressed by $l$).
+For the maize diversity panel inbred lines from \textit{Exp2}, we fit random 
+genotype effects $\mathbf{g}_{lo}$ (\textit{i.e.}, breeding values) of the 
+lines for the $o$-th predictor.
+For both experiments, genetic effects $\mathbf_{g}_{lo}$ are associated with 
+the vector of phenotypic performance $\mathbf{y}$ through a corresponding 
+design matrix $\mathbf{Z}_{lo}$.
 The random effects ($\mathbf{g}_{lo}$) have expectation zero and variance equal 
 to $\mathbf{K}_{lo} \sigma^{2}_{{g}^{lo}}$ and $\mathbf{I} \sigma^2_{\epsilon}$ 
 for the residual error.
