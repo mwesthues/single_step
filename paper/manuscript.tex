@@ -319,10 +319,10 @@ when fixed effects have been accomodated by the dependent variable
 Depending on the data set, up to three predictors were available for agronomic
 trait predictions, namely pedigree data (P), genomic data (G) and
 transcriptompic data (T).
-The corresponding feature matrix of the $l$-th group of inbred lines and the 
-$o$-th predictor ($\mathbf{W}_{lo}$) has dimensions $n_{l} \times p_{o}$ where 
-$n_{l}$ pertains to the number of genotypes in the $l$-th group and $p_{o}$
-pertains to the number of features.
+The corresponding feature matrix of the $l$-th group of inbred lines 
+($\mathbf{W}_{l}$) has dimensions $n_{l} \times p$ where $n_{l}$ pertains to 
+the number of genotypes in the $l$-th group and $p$ pertains to the number of 
+features.
 Note that $l$ is only defined for \textit{Exp1} where a distinction between 
 the two heterotic groups is necessary whereas $l$ can be ignored for all 
 models pertaining to the inbred lines of the maize diversity panel in 
@@ -332,17 +332,17 @@ the index $l$ throughout this section, though.
 For the diversity panel maize lines, $n_{l}$ corresponds to the number of 
 genotypes whereas, in the case of the hybrid data, $n_{l}$ corresponds to the 
 number of parent lines in the $l$-th heterotic group.
-In generating kernels for each predictor, all features in $\mathbf{W}_{lo}$ were
+In generating kernels for each predictor, all features in $\mathbf{W}_{l}$ were
 centered and standardized to unit variance.
 Then, each kernel can be defined as
 
 \begin{equation} \label{eq:GenomicRelationship}
-  \mathbf{K}_{lo} = \frac{1}{W_{lo}} \mathbf{W}_{lo} \mathbf{W}_{lo}^{\top},
+  \mathbf{K}_{l} = \frac{1}{W_{l}} \mathbf{W}_{l} \mathbf{W}_{l}^{\top},
 \end{equation}
 
-where $W_{lo}$ denotes the number of features \cite{VanRaden2008}.
+where $W_{l}$ denotes the number of features \cite{VanRaden2008}.
 In the case of pedigree data (P), coancestry coefficients were used directly
-for $\mathbf{K}_{lo}$.
+for $\mathbf{K}_{l}$.
 
 
 
@@ -353,27 +353,30 @@ The general model for breeding values was:
 
 \begin{equation} \label{eq:KBLUPModel}
   \mathbf{y} = \mu + 
-  \sum_{l=1}^{L} \mathbf{Z}_{lo} \mathbf{g}_{lo} +
-  \mathbf{\epsilon},
+  \sum_{l=1}^{L} \mathbf{Z}_{l} \mathbf{g}_{l} + \mathbf{e},
 \end{equation}
 
 
 where $\mathbf{y}$ is the vector of observed inbred line or hybrid performance,
-respectively, $\mu$ is the fixed model intercept, and $\epsilon$ is the residual
-error.
+respectively, $\mu$ is the fixed model intercept, and $\mathbf{e}$ is the 
+residual error.
 For the hybrid data from \textit{Exp1}, we fit separate additive effects for 
-each of the $L$ heterotic groups and $\mathbf{g}_{lo}$ now pertains to the 
+each of the $L$ heterotic groups and $\mathbf{g}_{l}$ now pertains to the 
 general combining ability effects of the parental inbred lines (either Dent or 
 Flint, as expressed by $l$).
 For the maize diversity panel inbred lines from \textit{Exp2}, we fit random 
-genotype effects $\mathbf{g}_{lo}$ (\textit{i.e.}, breeding values) of the 
+genotype effects $\mathbf{g}_{l}$ (\textit{i.e.}, breeding values) of the 
 lines for the $o$-th predictor.
-For both experiments, genetic effects $\mathbf_{g}_{lo}$ are associated with 
+For both experiments, genetic effects $\mathbf{g}_{l}$ are associated with 
 the vector of phenotypic performance $\mathbf{y}$ through a corresponding 
-design matrix $\mathbf{Z}_{lo}$.
-The random effects ($\mathbf{g}_{lo}$) have expectation zero and variance equal 
-to $\mathbf{K}_{lo} \sigma^{2}_{{g}^{lo}}$ and $\mathbf{I} \sigma^2_{\epsilon}$ 
+design matrix $\mathbf{Z}_{l}$.
+The random effects ($\mathbf{g}_{l}$) have expectation zero and variance equal 
+to $\mathbf{K}_{l} \sigma^{2}_{{g}^{l}}$ and $\mathbf{I} \sigma^2_{e}$ 
 for the residual error.
+Here, we did not consider the inclusion of dominance effects for the hybrid
+material after a previous investigation into the predictive ability of various
+"omics" predictors in the same material concluded no considerably gains 
+\cite{Westhues2017}.
 All prediction models were implemented using the R-packages \textit{BGLR}
 \cite{Perez2014} and \textit{sspredr}
 \url{https://github.com/mwesthues/sspredr}. 
@@ -383,13 +386,24 @@ All prediction models were implemented using the R-packages \textit{BGLR}
 
 
 \subsection{Single step prediction}
-The breeding values in a prediction model are in general given by:
+For simplicity, let us assume throughout this section that we have $L=1$.
+If the breeding values are fully captured by the features in $\mathbf{W}$,
+Eq.~\ref{eq:KBLUPModel} can then be expressed as
+
+\begin{align} \label{eq:KBLUPModelSimplified}
+	\mathbf{y} &= \mu + \mathbf{Z} \mathbf{g} + \boldsymbol{e} \\
+	&= \mu + \mathbf{Z} \mathbf{W} \boldsymbol{\alpha} + \boldsymbol{e}
+\end{align}
+\cite{Fernando2014} since the ridge regression model is equivalent to the BLUP
+model \cite{Ruppert2003}.
+
+
+Hence, the breeding values in a prediction model are given by:
 \begin{equation} \label{eq:mrnaebv}
 	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
 \end{equation}
 
-where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model,
-which is equivalent to the BLUP model.
+where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model.
 
 Consider now the situation in which one predictor is complete in the sense that
 it contains information on the whole population whereas a second predictor is
@@ -400,13 +414,21 @@ Let the subscript $1$ denote individuals covered only by the complete
 predictor whereas individuals covered by both, the complete and the
 incomplete predictor, are indicated by the subscript $2$.
 Further, the covariates in $\mathbf{W}$ are centered.
+In this case we need to partition the vector of breeding values $\mathbf{g}$
+into a component $\mathbf{g}_{1}$ (\textit{i.e.,} breeding values of animals 
+covered only by the complete predictor) and a component 
+$\mathbf{g}_{2} = \mathbf{W}_{2}\boldsymbol{\alpha}$ (\textit{i.e.,} breeding 
+values of animals covered by both predictors).
 The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
 expectation given $\mathbf{g}_2$ and a residual error term:
 \begin{align} \label{eq:mrna1}
 	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
 	&= \mathbf{K_{12}}\mathbf{K_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{K_{12}}\mathbf{K_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
-	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon}
+	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon},
 \end{align}
+
+where $\mathbf{K}_{ij}$ are partitions of $\mathbf{K}$ that correspond to 
+$\mathbf{g}_{1}$ and $\mathbf{g}_{2}$, respectively \cite{Fernando2014}.
 
 The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{K}_{11} - \mathbf{K}_{12}\mathbf{K}_{22}^{-1}\mathbf{K}_{21} = (\mathbf{K}^{11})^{-1}$
 \cite{Legarra2009}.
@@ -440,8 +462,10 @@ with
 \begin{bmatrix}
   Z_1 \\
   0 
- \end{bmatrix}
+ \end{bmatrix},
 \end{equation}
+
+where $\hat{\mathbf{W}}_{1} = \mathbf{K}_{12} \mathbf{K}_{22}^{-1} \mathbf{W}_{2}$.
 
 Following the notation in \citeNP{Fernando2014} the phenotypes can be untangled 
 like this:
