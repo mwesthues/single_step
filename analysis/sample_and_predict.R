@@ -194,6 +194,7 @@ pred_lst <- pred_lst[match(names(pred_lst), pred_sets)]
 
 ## -- CORE SET SUBSAMPLING OF SNPS -----------------------------------------
 if (isTRUE(nchar(core_set) != 0) && data_type == "Inbred") {
+  #### BUG !!!!
   core_lst <- readRDS("./data/derived/maizego/augmented_core_list.RDS")
   names(core_lst) <- gsub(names(core_lst), pattern = "selected_fraction_",
                           replacement = "")

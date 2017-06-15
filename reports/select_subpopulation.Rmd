@@ -1,0 +1,296 @@
+---
+title: Selection of a subpopulation with little structure
+author: Matthias Westhues
+date: "`r Sys.Date()`"
+output: 
+  bookdown::html_document2:
+    fig_caption: yes
+bibliography: ["~/Dropbox/Paper/library.bib"]
+---
+
+
+
+```{r setup, message=FALSE, echo=FALSE, warning=FALSE}
+# Data and packages -------------------------------------------------------
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "cowplot", 
+               "ggthemes", "pophelper", "corehunter", "forcats")
+#devtools::install_github("mwesthues/sspredr")
+pacman::p_load_gh("mwesthues/sspredr")
+
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(
+  fig.width = 8, fig.height = 6, warning = FALSE, echo = FALSE, 
+  message = FALSE
+  )
+```
+
+
+# Rationale {-}
+Based on our discussion with G. Thaller, R.L. Fernando and C. Heuer, we 
+concluded that the pre-selection of a subset of individuals might be necessary
+to mitigate the impact of population structure on predictive ability.
+
+```{r pca-structure, cache=TRUE, results='hide'}
+# For the second scenario, keep only names of genotypes, which are covered by 
+# all data types (i.e. phenotypic, genotypic and transcriptomic).
+common_genotypes <- readRDS(
+  "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
+)
+common_genotypes <- common_genotypes %>%
+  reduce(intersect)
+
+snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
+  readRDS() %>%
+  #.[rownames(.) %in% common_genotypes, ] %>%
+  sspredr::ensure_snp_quality(
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05, 
+    any_missing = FALSE, remove_duplicated = TRUE
+  )
+
+
+# PCA ---------------------------------------------------------------------
+write.lfmm(snp, "./data/derived/maizego/snp.lfmm")
+
+# Determine the structure of the data using genotypic data.
+snp_pc <- LEA::pca(input.file = "./data/derived/maizego/snp.lfmm",
+                   scale = TRUE)
+
+pc_mat <- snp_pc$projections
+rownames(pc_mat) <- rownames(snp)
+colnames(pc_mat) <- paste0("PC_", seq_len(ncol(pc_mat)))
+
+pc_df <- pc_mat %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "G") %>%
+  gather(key = PC, value = Score, -G) %>%
+  as_data_frame() %>%
+  filter(PC %in% paste0("PC_", seq_len(2))) %>%
+  mutate(
+    PC = gsub("PC_", replacement = "PC", x = PC)
+  ) %>%
+  spread(key = PC, value = Score)
+
+
+# PCA ---------------------------------------------------------------------
+genos <- read_tsv(
+  "./data/processed/maizego/popstruc.names",
+  col_names = FALSE
+  ) %>% 
+  select(2) %>% 
+  flatten_chr()
+
+# Select K=4
+# For each individual, return the cluster with the largest coefficient.
+# Assign a color to each cluster.
+# Plot the PCA results with colors corresponding to the cluster with the largest
+# coefficient for that individual.
+
+get_max_cluster <- function(x) {
+  x %>%   
+    mutate(G = genos) %>% 
+    gather(key = "Cluster", value = "AncCoef", -G) %>% 
+    group_by(G) %>% 
+    summarize(main_cluster = which.max(AncCoef)) %>% 
+    mutate(main_cluster = main_cluster %>% as.character() %>% as.factor()) %>% 
+    ungroup()
+}
+
+
+# STRUCTURE FILES ---------------------------------------------------------
+slist <- list.files(
+  path = "./data/processed/maizego",
+  pattern = "popstruc[0-9]",
+  full.names = TRUE
+  ) %>% 
+  readQ(
+    files = .,
+    indlabfromfile = TRUE,
+    filetype = "structure"
+  )
+
+cluster_df <- slist %>% 
+  map(get_max_cluster) %>% 
+  map(.f = ~right_join(., y = pc_df, by = "G")) %>% 
+  bind_rows(.id = "K")
+
+change_to_k <- function(x) {
+  x %>% 
+    gsub(x = ., replacement = "", pattern = "_f") %>% 
+    gsub(x = ., replacement = "", pattern = "popstruc")
+}
+```
+
+
+# Analysis {-}
+First, I ran STRUCTURE [@Pritchard2000] to estimate the ancestry coefficients
+for each of the `r nrow(snp)` genotypes from the subset 'tropical/subtropical' 
+of the [maize diversity panel](http://www.maizego.org/Resources.html).
+In total, I have examined 8 putative ancestral populations (K=2 to K=9) and, 
+based on combinations of bar plots and PCA plots 
+(Fig. \@ref(fig:pca-structure-plot)), as well as the estimated probability of 
+the data for each K, I concluded that K=4 represents the population structure 
+best (Fig. \@ref(fig:pca-structure-plot)).
+
+
+
+
+
+
+
+```{r pca-structure-plot, fig.height=12, fig.cap="Population structure of a set of 211 inbred lines from the tropical/subtropical groups of the maize diversity panel. ($\\textbf{A}$) Structure coefficients assuming K=4 ancestral populations. ($\\textbf{B}$) Principal Component Analysis. Individual points are colored according to the cluster with which they have the highest overlap."}
+k <- 4
+g1 <- slist %>% 
+  set_names(., change_to_k(names(.))) %>% 
+  map(.f = ~mutate(., G = genos)) %>% 
+  keep(names(.) == k) %>% 
+  map(.f = ~mutate(., Central_Cluster = Cluster1 + Cluster4)) %>% 
+  map(.f = ~gather(
+    ., key = "Cluster", value = "AncCoef", -G, -Central_Cluster)
+    ) %>% 
+  bind_rows(.id = "K") %>% 
+  mutate(G = as.factor(G)) %>% 
+  ggplot(aes(
+    x = fct_reorder(G, x = Central_Cluster), y = AncCoef, fill = Cluster)
+    ) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_pander(base_size = 15) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks = element_blank(),
+    legend.title = element_blank(),
+    legend.position = "top"
+  ) +
+  guides(fill = guide_legend(ncol = 2)) +
+  xlab("Genotype") +
+  ylab("Ancestry Coefficient")
+
+g2 <- cluster_df %>%
+  mutate(K = change_to_k(K)) %>% 
+  filter(K == k) %>% 
+  ggplot(aes(x = PC1, y = PC2, color = main_cluster)) +
+  geom_point(size = 1) +
+  guides(color = guide_legend(
+    override.aes = list(size = 3),
+    title = "Cluster"
+    )) +
+  scale_color_brewer(palette = "Set1") +
+  theme_pander(base_size = 15) +
+  theme(
+    legend.position = "top",
+    strip.background = element_blank(),
+    strip.placement = "outside"
+  )
+
+plot_grid(
+  g1, g2, labels = c("A", "B"), nrow = 2
+)
+```
+
+
+
+
+The set of selected individuals (Fig. \@ref(fig:pca-plot)) roughly corresponds
+to clusters 1 and 4 in Fig. \@ref(fig:pca-structure-plot) and excludes 
+individuals in the tails of the PCA plot.
+
+
+
+
+```{r pca-plot, fig.cap="Selecting individuals based on PCA"}
+selected_df <- slist %>% 
+  set_names(., change_to_k(names(.))) %>% 
+  map(.f = ~mutate(., G = genos)) %>% 
+  keep(names(.) == k) %>% 
+  .[[1]] %>% 
+  left_join(y = pc_df, by = "G") %>% 
+  mutate(main_cluster = case_when(
+    PC1 >= -30 & PC1 <= 10 & PC2 >= -25 & PC2 <= 40 ~ "yes",
+    PC1 != 0 ~ "no"
+    ))
+
+selected_df %>%
+  mutate(main_cluster = as.factor(main_cluster))  %>% 
+  ggplot(aes(x = PC1, y = PC2, color = main_cluster)) +
+  geom_point(size = 1) +
+  guides(color = guide_legend(
+    override.aes = list(size = 3),
+    title = "Selected"
+    )) +
+  scale_color_brewer(palette = "Set1") +
+  theme_pander(base_size = 15) +
+  theme(
+    legend.position = "top",
+    strip.background = element_blank(),
+    strip.placement = "outside"
+  )
+```
+
+
+
+
+
+```{r sub-pca, cache=TRUE, results='hide', fig.cap="PCA with all 211 inbred lines from the tropical/subtropical subset of the maize diversity panel. Individuals with seemingly negligible structure are being selected (blue dots)."}
+selected_geno <- selected_df %>% 
+  filter(main_cluster == "yes") %>% 
+  select(G) %>% 
+  flatten_chr()
+
+sel_snps <- snp %>% 
+  .[rownames(snp) %in% selected_geno, ] %>% 
+  sspredr::ensure_snp_quality(
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05, 
+    any_missing = FALSE, remove_duplicated = TRUE
+  )
+write.lfmm(sel_snps, "./data/derived/maizego/sel_snps.lfmm")
+# Determine the structure of the data using genotypic data.
+sel_snp_pc <- LEA::pca(
+  input.file = "./data/derived/maizego/sel_snps.lfmm",
+  scale = TRUE
+  )
+
+sel_pc_mat <- sel_snp_pc$projections
+rownames(sel_pc_mat) <- rownames(sel_snps)
+colnames(sel_pc_mat) <- paste0("PC_", seq_len(ncol(sel_pc_mat)))
+```
+
+
+
+```{r sub-pca-plot, fig.cap="PCA of the selcted inviduals from Fig. 2."}
+sel_pc_df <- sel_pc_mat %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "G") %>%
+  gather(key = PC, value = Score, -G) %>%
+  as_data_frame() %>%
+  filter(PC %in% paste0("PC_", seq_len(2))) %>%
+  mutate(
+    PC = gsub("PC_", replacement = "PC", x = PC)
+  ) %>%
+  spread(key = PC, value = Score)
+
+sel_pc_df %>% 
+  ggplot(aes(PC1, PC2)) +
+  geom_point() +
+  theme_pander(base_size = 15)
+```
+
+Finally, I ran a PCA on the subset of `r nrow(sel_snps)` selected individuals 
+to check whether there is still structure in the population 
+(Fig. \@ref(fig:sub-pca-plot)).
+I'm not pleased with this result as this plot still suggests structure in the
+subpopulation.
+We might argue, as G. Thaller suggested, that a breeding population will always 
+be structured to an extent, however, I doubt that a reviewer would be convinced
+by our rationale of subsetting a population when the subset itself still 
+displays this structure.
+
+## Possible solution {-}
+Should we omit Fig. \@ref(fig:sub-pca-plot) and present only 
+Fig. \@ref(fig:pca-plot)?
+
+
+# References
