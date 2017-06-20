@@ -37,7 +37,7 @@ if (isTRUE(interactive())) {
   # analyze all traits.
   Sys.setenv("TRAIT" = "100grainweight")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "3000") 
+  Sys.setenv("ITER" = "1000") 
   # Prediction model in BGLR()
   Sys.setenv("MODEL" = "BRR")
   # Algorithm to generate variance-covariance matrices.
@@ -50,9 +50,11 @@ if (isTRUE(interactive())) {
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
   Sys.setenv("PRED2" = "mrna")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_SET" = "A3")
+  Sys.setenv("CORE_SET" = "0.9")
+  # Which random core sample should be used (integer)
+  Sys.setenv("RANDOM_SAMPLE" = "1")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "1-3")
+  Sys.setenv("RUNS" = "1-2")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }
@@ -76,6 +78,7 @@ PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
 pred1 <- as.character(Sys.getenv("PRED1"))
 pred2 <- as.character(Sys.getenv("PRED2"))
 core_set <- as.character(Sys.getenv("CORE_SET"))
+core_nmb <- as.character(Sys.getenv("RANDOM_SAMPLE"))
 runs <- as.character(Sys.getenv("RUNS"))
 temp <- paste0(as.character(Sys.getenv("TMP")), "/")
 
@@ -108,9 +111,7 @@ if (isTRUE(data_type == "Hybrid")) {
   hybrid <- TRUE
 } else hybrid <- FALSE
 
-# Combine all input checks in a function so that it would be easily possible to
-# simply push the checks to another script for the sake of readability of this
-# analysis script.
+
 stopifnot(data_type %in% c("Inbred", "Hybrid"))
 if (data_type == "Inbred") {
   if (any(grepl(pred_sets, pattern = "ped"))) {
@@ -121,6 +122,7 @@ if (data_type == "Inbred") {
 if (!all(pred_sets %in% c("ped", "snp", "mrna"))) {
   stop("Predictors are unknown")
 }
+
 
 
 ## -- LOAD PREDICTOR DATA ------------------------------------------------
@@ -194,34 +196,24 @@ pred_lst <- pred_lst[match(names(pred_lst), pred_sets)]
 
 ## -- CORE SET SUBSAMPLING OF SNPS -----------------------------------------
 if (isTRUE(nchar(core_set) != 0) && data_type == "Inbred") {
-  #### BUG !!!!
-  core_lst <- readRDS("./data/derived/maizego/augmented_core_list.RDS")
-  names(core_lst) <- gsub(names(core_lst), pattern = "selected_fraction_",
-                          replacement = "")
-  
+
+  # Get the random core set of genotypes covering the genetic target space
+  # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
+  core_genotypes <- "./data/derived/predictor_subsets/existing_mrnas.RDS" %>%
+    readRDS() %>%
+    mutate(ind = as.character(ind)) %>%
+    filter(ind == core_set, Rep == core_nmb) %>%
+    pull(values)
+
   # Extract the intersect between genotypes that have data for genomic as well
   # as transcriptomic features.
-  common_genotypes <- core_lst %>%
-    keep(names(.) == "1.0") %>%
-    flatten_chr()
-    
-  if (!isTRUE(grepl("A", x = core_set))) {
-    # Get the core set of genotypes that uniformly cover the genetic target space
-    # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
-    core_genotypes <- core_lst %>%
-      keep(names(.) == core_set) %>%
-      flatten_chr()
-  
-    # If we use core sets based on an admixture analysis, invert the set of
-    # 'core_genotypes' and 'common_genotypes' so that the majority of genotypes
-    # is covered by genomic as well as transcriptomic data.
-  } else  if (isTRUE(grepl("A", x = core_set))) {
-    a_genotypes <- core_lst %>% 
-      keep(names(.) == core_set) %>%
-      flatten_chr()
-    core_genotypes <- setdiff(common_genotypes, a_genotypes)
-  }
+  common_genotypes <- readRDS(
+    "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
+  )
+  common_genotypes <- common_genotypes %>%
+    reduce(intersect)
 
+    
   # Reduce the predictor data to match the size of the pre-specified core sets.
   # Ensure that SNP quality checks are applied to the genomic data in order to 
   # have only polymorphic markers and no markers in perfect LD.
@@ -442,6 +434,12 @@ if (isTRUE(data_type == "Hybrid")) {
 
 
 ## -- PREDICTION -----------------------------------------------------------
+### Load pre-defined runs
+pre_def_runs <- "./data/derived/predictor_subsets/loocv_samples.RDS" %>%
+  readRDS()
+
+
+
 # Define which runs shall be used, i.e., which genotypes shall be included as 
 # test sets.
 if (nchar(runs) != 0) {
@@ -453,9 +451,14 @@ if (nchar(runs) != 0) {
 } else {
   run_length <- seq_len(nrow(pheno_mat))
 }
-param_df <- expand.grid(Trait = traits,
-                        Iter = iter,
-                        Run = run_length)
+param_df <- expand.grid(
+  Tst_Geno = pre_def_runs %>% pull(TST_Geno) %>% unique() %>% .[run_length],
+  Trait = traits,
+  Iter = iter,
+  Loocv_Run = pre_def_runs %>% pull(Iter) %>% unique(),
+  Runs = length(run_length),
+  Core_Number = core_nmb
+)
 param_df$Trait <- as.character(param_df$Trait)
 
 if (isTRUE(data_type == "Hybrid")) {
@@ -468,27 +471,102 @@ if (isTRUE(data_type == "Hybrid")) {
   split_char <- NULL
 }
 
-start_time <- Sys.time()
+
 # Keep track of how long a job is running.
+start_time <- Sys.time()
 yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
-  run <- param_df[i, "Run"]
-  trait <- param_df[i, "Trait"]
-  iter <- as.integer(param_df[i, "Iter"])
-  pred <- run_loocv(Pheno = pheno_mat,
-                    ETA = eta,
-                    hybrid = hybrid,
-                    mother_idx = mother_idx,
-                    father_idx = father_idx, 
-                    split_char = split_char,
-                    trait = trait,
-                    iter = iter,
-                    speed_tst = FALSE,
-                    run = run,
-                    verbose = FALSE,
-                    out_loc = temp)
-  cbind(pred, Iter = iter)
+
+  # Test genotype
+  tst <- param_df %>%
+    slice(i) %>%
+    pull(Tst_Geno) %>%
+    as.character()
+
+  # Miscellaneous parameters
+  loocv_run <- param_df %>%
+    slice(i) %>%
+    pull(Loocv_Run) %>%
+    as.character()
+
+  # Training (sub)set
+  trn <- pre_def_runs %>%
+    filter(
+      Iter == loocv_run,
+      TST_Geno == tst
+    ) %>%
+  pull(TRN_Geno)
+
+  # Test and training genotypes
+  trn_tst <- c(tst, trn)
+
+  # Operations required for input checks.
+  eta <- lapply(eta, FUN = function(x) {
+    sub_eta <- x$X
+    x$X <- sub_eta[match(trn_tst, rownames(sub_eta)), , drop = FALSE]
+    x
+  })
+
+  nrow_eta <- unique(vapply(eta, FUN = function(x) {
+    nrow(x[["X"]])
+  }, FUN.VALUE = integer(1)))
+
+  pheno_mat <- pheno_mat[match(trn_tst, rownames(pheno_mat)), , drop = FALSE]
+
+  # Ensure that the elements of ETA and the phenotyipic values are in the same
+  # order.
+  eta_rownms <- eta %>%
+    map("X") %>%
+    map(rownames) %>%
+    reduce(intersect) 
+  stopifnot(identical(rownames(pheno_mat), eta_rownms))
+
+  # Trait
+  trait <- param_df %>%
+    slice(i) %>%
+    pull(Trait) %>% 
+    unique()
+
+  # Set values in the test set as missing.
+  y <- pheno_mat[, trait]
+  y[tst] <- NA_real_
+  stopifnot(sum(is.na(y)) == 1)
+
+  # BGLR implementation
+  res <- data.frame(
+    Phenotype = NA_character_,
+    Geno = NA_character_,
+    Mother = NA_character_,
+    Father = NA_character_,
+    y = NA_complex_,
+    yhat = NA_complex_,
+    Loocv_run = loocv_run,
+    Core_run = core_nmb
+  )
+
+  # run the model (GBLUP)
+  mod_BGLR <- BGLR::BGLR(
+    y = y,
+    ETA = eta,
+    nIter = iter,
+    burnIn = iter / 2,
+    saveAt = temp,
+    verbose = FALSE
+  )
+
+  idx <- which(names(mod_BGLR$yHat) == tst)
+  yhat <- mod_BGLR$yHat
+  sd_yhat <- mod_BGLR$SD.yHat
+
+  # store results
+  res$Phenotype <- trait
+  res$Geno <- tst
+  res$y <- pheno_mat[rownames(pheno_mat) == tst, trait]
+  res$yhat <- yhat[idx]
+  res$var_yhat <- sd_yhat[idx] ^ 2
+  res
 }, mc.cores = use_cores)
 res <- rbindlist(yhat_lst)
+
 
 # If not all three predictors were used, declare the missing ones as "none" and
 # add them, which will facilitate further data analyses.
@@ -496,20 +574,23 @@ max_pred_number <- 2L
 pred_nms <- c(pred_sets,
               rep("none", times = max_pred_number - length(pred_sets)))
 res <- res %>%
-  rename(Trait = Phenotype,
-         Dent = Mother,
-         Flint = Father) %>%
-  mutate(CV = "LOOCV",
-         Data_Type = data_type,
-         Pred1 = pred_nms[1],
-         Pred2 = pred_nms[2],
-         Core_Set = core_set,
-         Job_ID = job_id,
-         Runs = runs,
-         Elapsed_Time = get_elapsed_time(start_time),
-         Start_Time = as.character(start_time),
-         Cores = use_cores) %>%
+  dplyr::rename(
+    Trait = Phenotype,
+    Dent = Mother,
+    Flint = Father) %>%
+  mutate(
+    Data_Type = data_type,
+    Pred1 = pred_nms[1],
+    Pred2 = pred_nms[2],
+    Core_Set = core_set,
+    Job_ID = job_id,
+    Runs = runs,
+    Elapsed_Time = get_elapsed_time(start_time),
+    Start_Time = as.character(start_time),
+    Cores = use_cores
+  ) %>%
   as.data.table()
+
 
 log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Data_Type, 
                            Core_Set, Elapsed_Time, Iter, CV, Start_Time, 

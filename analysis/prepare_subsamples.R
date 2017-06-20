@@ -21,14 +21,14 @@ genos <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
   rownames()
 
 runs <- 10
-fractions = seq(from = 0.1, to = 1, by = 0.1)
+fractions = seq(from = 0.1, to = 0.9, by = 0.1)
 
 
 
 #### Functions
 compute_totals_from_fractions <- function(nm, frac) {
   # nm: vector of names
-  # frac: fractions
+  # frac: fractions of genotypes with both, mRNA and SNP information
   totals <- nm %>%
     length() %>%
     map(function(i) i * frac) %>%
@@ -56,6 +56,9 @@ sample_fraction <- function(nm, frac) {
 
 
 sample_loo <- function(geno, frac, iter) {
+  # fraction: fraction of genotypes used for the training set
+  # geno: names of genotypes
+  # iter: number of replicates per genotype
   train_geno <- map(geno, .f = ~ setdiff(geno, .))
   names(train_geno) <- geno
   train_lst <- rerun(.n = iter, {
@@ -76,10 +79,11 @@ sample_loo <- function(geno, frac, iter) {
 
 set.seed(9434)
 loocv_samples <- sample_loo(
-  geno = genos,
+  geno = common_genotypes,
   frac = 0.7,
   iter = runs
 )
+saveRDS(loocv_samples, "./data/derived/predictor_subsets/loocv_samples.RDS")
 
 set.seed(9434)
 existing_mrnas <- rerun(.n = runs, sample_fraction(
@@ -88,5 +92,9 @@ existing_mrnas <- rerun(.n = runs, sample_fraction(
   )) %>%
   bind_rows(.id = "Rep") %>%
   as_data_frame()
+saveRDS(
+  existing_mrnas,
+  file = "./data/derived/predictor_subsets/existing_mrnas.RDS"
+)
 
 
