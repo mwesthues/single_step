@@ -176,10 +176,10 @@ if (isTRUE(data_type == "Hybrid" &&
   mrna_genotypes <- readRDS(mrna_path) %>%
     rownames()
   pred_lst <- pred_lst %>%
-    map_at("snp", .f = function(x) {
+    modify_at("snp", .f = function(x) {
       x[match(mrna_genotypes, rownames(x)), ]
     }) %>%
-    map_at("ped", .f = function(x) {
+    modify_at("ped", .f = function(x) {
       x[match(mrna_genotypes, rownames(x)),
         match(mrna_genotypes, colnames(x))]
     })
@@ -218,13 +218,13 @@ if (isTRUE(nchar(core_set) != 0) && data_type == "Inbred") {
   # Ensure that SNP quality checks are applied to the genomic data in order to 
   # have only polymorphic markers and no markers in perfect LD.
   pred_lst <- pred_lst %>%
-    map_at("mrna", .f = function(x) {
+    modify_at("mrna", .f = function(x) {
       x[rownames(x) %in% core_genotypes, ]
     }) %>%
-    map_at("snp", .f = function(x) {
+    modify_at("snp", .f = function(x) {
       x[rownames(x) %in% common_genotypes, ]
     }) %>%
-    map_at("snp",
+    modify_at("snp",
            .f = ~sspredr::ensure_snp_quality(
              ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
              any_missing = FALSE, remove_duplicated = TRUE
@@ -290,20 +290,20 @@ if (isTRUE(data_type == "Hybrid")) {
     flatten_chr()
   # In the case of hybrid data, we still need to split all predictor matrices
   # into Flint and Dent components first.
-  # 1. map_if
+  # 1. modify_if
   # In the case of pedigree data, we need to split the data by genotypes in the
   # x- as well as the y-dimension because there are no features, which is
   # different for other predictor matrices.
-  # 2. map_at("snp")
+  # 2. modify_at("snp")
   # Ensure that SNP quality checks are applied separately to the genomic data 
   # for each heterotic group in order to have only polymorphic markers and no 
   # markers in perfect LD.
   pred_lst <- pred_lst %>%
-    map_if(.p = names(.) == "ped",
+    modify_if(.p = names(.) == "ped",
            .f = split_into_hetgroups, y = hybrid_parents, pedigree = TRUE) %>%
-    map_if(.p = names(.) != "ped",
+    modify_if(.p = names(.) != "ped",
            .f = split_into_hetgroups, y = hybrid_parents, pedigree = FALSE) %>%
-    map_at("snp", .f = ~map(., ~sspredr::ensure_snp_quality(
+    modify_at("snp", .f = ~map(., ~sspredr::ensure_snp_quality(
       ., callfreq_check = FALSE, maf_check = TRUE,
       maf_threshold = 0.05, any_missing = FALSE, remove_duplicated = TRUE
       )))
@@ -592,37 +592,55 @@ res <- res %>%
   as.data.table()
 
 
-log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Data_Type, 
-                           Core_Set, Elapsed_Time, Iter, CV, Start_Time, 
-                           Runs, Cores), ])
+log_file <- res %>%
+  select(
+    Job_ID,
+    Pred1,
+    Pred2,
+    Data_Type,
+    Core_Set,
+    Elapsed_Time,
+    Start_Time,
+    Runs,
+    Cores,
+    Core_Run
+  ) %>%
+  unique()
 
 # Reduce the size of the prediction object to the minimum possible size.
-res[, `:=` (Iter = NULL, 
-            Pred1 = NULL,
-            Pred2 = NULL,
-            Data_Type = NULL,
-            Core_Set = NULL,
-            CV = NULL,
-            Dent = NULL,
-            Flint = NULL,
-            Runs = NULL,
-            Elapsed_Time = NULL,
-            Start_Time = NULL,
-            Cores = NULL),
-  ]
+final <- res %>%
+  select(
+    Job_ID,
+    Trait,
+    Geno,
+    Dent,
+    Flint,
+    y,
+    yhat,
+    Loocv_run,
+    var_yhat
+  )
 
 
 # Prediction results file
-saveRDS(res, 
-        file = paste0("./data/derived/predictions/", job_id, ".RDS"),
-        compress = FALSE)
+saveRDS(
+  final, 
+  file = paste0("./data/derived/predictions/", job_id, ".RDS"),
+  compress = FALSE
+)
                      
 # Log file
 log_location <- "./data/derived/uhoh_maizego_prediction_log.txt"
-write.table(log_file,
-            file = log_location,
-            sep = "\t", row.names = FALSE,
-            col.names = ifelse(file.exists(log_location), yes = FALSE,
-                               no = TRUE),
-            append = ifelse(file.exists(log_location), yes = TRUE, no = FALSE))
+write.table(
+  log_file,
+  file = log_location,
+  sep = "\t",
+  row.names = FALSE,
+  col.names = ifelse(
+    file.exists(log_location),
+    yes = FALSE,
+    no = TRUE
+  ),
+  append = ifelse(file.exists(log_location), yes = TRUE, no = FALSE)
+)
 
