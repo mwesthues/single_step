@@ -13,13 +13,16 @@ source("./software/prediction_helper_functions.R")
 
 
 
+# load genotypes from the first and the fourth cluster of the pca
+cluster14 <- readRDS("./data/derived/maizego/cluster_14_genotypes.RDS")
 
-
-# For the second scenario, keep only names of genotypes, which are covered by 
-# all data types (i.e. phenotypic, genotypic and transcriptomic).
+# for the second scenario, keep only names of genotypes, which are covered by 
+# all data types (i.e. phenotypic, genotypic and transcriptomic) and which
+# belong to either the first or the fourth cluster of the pca
 common_genotypes <- readRDS(
   "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
 )
+common_genotypes[["cluster14"]] <- cluster14
 common_genotypes <- common_genotypes %>%
   reduce(intersect)
 

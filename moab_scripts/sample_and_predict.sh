@@ -52,9 +52,6 @@
 # data
 #MOAB -v CORE_SET=
 #
-# Which random core sample should be used? (integer)
-#MOAB -v RANDOM_SAMPLE=1
-#
 #MOAB -v RUNS=
 #
 ##### **********************************************************************
@@ -81,14 +78,13 @@ echo "Data_Type=${DATA_TYPE}\
       Pred1=${PRED1}\
       Pred2=${PRED2}\
       Core_Set=${CORE_SET}\
-      Random_Sample=${RANDOM_SAMPLE}\
       Runs=${RUNS}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/sample_and_predict.R\
            ${DATA_TYPE} ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
-           ${PRIOR_PI_COUNT} ${PRED1} ${PRED2} ${CORE_SET} ${RANDOM_SAMPLE}\
+           ${PRIOR_PI_COUNT} ${PRED1} ${PRED2} ${CORE_SET}\
            ${RUNS}"
 
 # Start program

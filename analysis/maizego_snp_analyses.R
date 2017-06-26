@@ -34,13 +34,13 @@ rownames(pc_mat) <- rownames(snp)
 colnames(pc_mat) <- paste0("PC_", seq_len(ncol(pc_mat)))
 
 
+# Explained variance of the first five principal components
 # Assumed number of ancestral populations: 4
 k <- 4
 snp_pc %>%
   tracy.widom() %>%
   pull(percentage) %>%
-  .[seq_len(k)] %>%
-  sum()
+  .[seq_len(k)]
 
 
 pc_df <- pc_mat %>%
@@ -148,6 +148,8 @@ plot_grid(
 )
 
 
+# Select genotypes from the first and the fourth cluster, respectively, given
+# that they cluster together and look homogeneous. 
 selected_geno <- slist %>% 
   set_names(., change_to_k(names(.))) %>% 
   map(.f = ~mutate(., G = genos)) %>% 
@@ -157,6 +159,7 @@ selected_geno <- slist %>%
   filter(main_cluster %in% c("1", "4")) %>%
   pull(G) %>%
   unique()
+saveRDS(selected_geno, "./data/derived/maizego/cluster_14_genotypes.RDS")
 
 
 
@@ -191,7 +194,6 @@ sel_pc_df <- sel_pc_mat %>%
 sel_snp_pc %>%
   tracy.widom() %>%
   pull(percentage) %>%
-  .[seq_len(k)] %>%
-  sum()
+  .[seq_len(k)]
 
 
