@@ -189,15 +189,6 @@ log_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
     filter(ind == core_set, Rep == core_nmb) %>%
     pull(values)
   
-  # Extract the intersect between genotypes that have data for genomic as well
-  # as transcriptomic features.
-  common_genotypes <- readRDS(
-    "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
-  )
-  common_genotypes <- common_genotypes %>%
-    reduce(intersect)
-  
-    
   # Reduce the predictor data to match the size of the pre-specified core sets.
   # Ensure that SNP quality checks are applied to the genomic data in order to 
   # have only polymorphic markers and no markers in perfect LD.

@@ -55,7 +55,7 @@ if (isTRUE(interactive())) {
   # Which random core sample should be used (integer)
   Sys.setenv("RANDOM_SAMPLE" = "3")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "1-2")
+  Sys.setenv("RUNS" = "")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }
