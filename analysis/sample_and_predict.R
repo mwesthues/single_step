@@ -36,7 +36,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("DATA_TYPE" = "Inbred")
   # Which agronomic trait do you want to evaluate? Leave blank if you want to
   # analyze all traits.
-  Sys.setenv("TRAIT" = "")
+  Sys.setenv("TRAIT" = "100grainweight")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "1000") 
   # Prediction model in BGLR()
@@ -47,15 +47,15 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "snp")
+  Sys.setenv("PRED1" = "mrna")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "mrna")
+  Sys.setenv("PRED2" = "")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_SET" = "0.8")
+  Sys.setenv("CORE_SET" = "1.0")
   # Which random core sample should be used (integer)
   Sys.setenv("RANDOM_SAMPLE" = "3")
   # Number of genotypes to predict (only for testing!)
-  Sys.setenv("RUNS" = "")
+  Sys.setenv("RUNS" = "1-2")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }

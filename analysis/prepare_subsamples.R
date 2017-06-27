@@ -1,5 +1,5 @@
-# Goal: Sample core sets of genotypes for the Yan-lab data and scenario two of
-# our predictions in increments of ten percentage points.
+# Goal: Sample core sets of genotypes for the Yan-lab data in increments of ten 
+# percentage points.
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 #devtools::install_github("mwesthues/sspredr", update = FALSE)
@@ -33,14 +33,20 @@ genos <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
   rownames()
 
 runs <- 10
-fractions = seq(from = 0.1, to = 0.9, by = 0.1)
+fractions = seq(from = 0.1, to = 1.0, by = 0.1)
 
 
 
-#### Functions
+## -- FUNCTIONS -------------------------------------------------------------
 compute_totals_from_fractions <- function(nm, frac) {
+  # ---
+  # convert a fraction 'frac' * 100% of genotypes, that shall be included in 
+  # the training set, into an integer specifying the number of genotypes to be
+  # included in the training set.
+
   # nm: vector of names
   # frac: fractions of genotypes with both, mRNA and SNP information
+  #---
   totals <- nm %>%
     length() %>%
     map(function(i) i * frac) %>%
@@ -50,8 +56,13 @@ compute_totals_from_fractions <- function(nm, frac) {
 
 
 sample_fraction <- function(nm, frac) {
+  #---
+  # generate a resampled training set provided a vector of genotype names and
+  # the fraction of genotypes that shall be included in this training set.
+
   # nm: names of genotypes
   # frac: vector of genotypes fractions
+  #---
   totals <- compute_totals_from_fractions(
     nm = common_genotypes,
     frac = frac
@@ -68,19 +79,43 @@ sample_fraction <- function(nm, frac) {
 
 
 sample_loo <- function(geno, frac, iter) {
+  #---
+  # given a vector of genotype names, that shall be evaluated, generate 'iter'
+  # randomly sampled training sets for each genotype, where 'frac' * 100% of the
+  # genotypes in 'geno' shall be included in each training set
+
   # fraction: fraction of genotypes used for the training set
   # geno: names of genotypes
   # iter: number of replicates per genotype
+  #---
+
+  # build the training set by excluding every genotype once from all others
   train_geno <- map(geno, .f = ~ setdiff(geno, .))
   names(train_geno) <- geno
+
+  # from each training set, sample 'frac' * 100% of genotypes at random and
+  # declare them as the resampled training subset. repeat this 'iter' times.
   train_lst <- rerun(.n = iter, {
     sub_train_lst <- map(train_geno, .f = ~sample_fraction(., frac = frac))
     sub_train_df <- bind_rows(sub_train_lst, .id = "TST_Geno")
     sub_train <- dplyr::rename(sub_train_df, TRN_Geno = values)
   })
+
+  # concatenate the ten different training sets per test set genotype in one
+  # data frame.
   iter_seq <- seq_len(iter)
   names(train_lst) <-  as.character(iter_seq)
   train_df <- bind_rows(train_lst, .id = "Iter")
+  
+  ## test whether the test set genotype is never included in any of the 
+  ## training sets
+  isect <- map2(train_geno, geno, .f = intersect) %>%
+    map_int(length) %>%
+    unique()
+  stopifnot(isect == 0)
+  ##
+
+  # return the data frame with the resampling scheme
   as_data_frame(train_df)
 }
 ###
@@ -117,6 +152,7 @@ param_df <- expand.grid(
   filter(!(Predictor == "snp_mrna" & Core_Set == 1))
 
 
+## -- ANALYSIS -------------------------------------------------------------
 log_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
 
   pred_combi <- param_df %>%
@@ -178,15 +214,13 @@ log_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
   
   # Get the random core set of genotypes covering the genetic target space
   # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
-  set.seed(9434)
-  core_genotypes <- rerun(.n = runs, sample_fraction(
+  core_genotypes <- sample_fraction(
     nm = common_genotypes,
     frac = fractions
-    )) %>%
-    bind_rows(.id = "Rep") %>%
+    ) %>%
     as_data_frame() %>%
     mutate(ind = as.character(ind)) %>%
-    filter(ind == core_set, Rep == core_nmb) %>%
+    filter(ind == core_set) %>%
     pull(values)
   
   # Reduce the predictor data to match the size of the pre-specified core sets.
