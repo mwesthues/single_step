@@ -47,11 +47,11 @@ if (isTRUE(interactive())) {
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
   # place.
-  Sys.setenv("PRED1" = "mrna")
+  Sys.setenv("PRED1" = "snp")
   # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "")
+  Sys.setenv("PRED2" = "mrna")
   # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_SET" = "1.0")
+  Sys.setenv("CORE_SET" = "0.6")
   # Which random core sample should be used (integer)
   Sys.setenv("RANDOM_SAMPLE" = "3")
   # Number of genotypes to predict (only for testing!)
@@ -93,17 +93,31 @@ pred_combi <- list(pred1, pred2) %>%
   paste(., collapse = "_")
 
 # Collect log files, which are indispensable for loading the data.
-covered_genotypes <- "./data/derived/log_prepare_subsamples.txt" %>%
+##################### BUG BUG BUG BUG ##############################
+## Bug description: needs to load multiple ETA files, but doesn't.
+covered_geno_lst <- "./data/derived/log_prepare_subsamples.txt" %>%
   read_tsv() %>%
   filter(
     Core_Set == core_set,
     Predictor == pred_combi,
-    Random_Sample == core_nmb
+    Random_Sample %in% core_nmb
   ) %>%
+  rowid_to_column(var = "rowid") %>%
   pull(Data_Location) %>%
   gsub(x = ., pattern = "eta", replacement = "covered_genotypes") %>%
-  readRDS()
+  map(readRDS)
 
+covered_genotypes <- covered_geno_lst %>%
+  reduce(intersect)
+
+# check whether the full set of genotypes is the same for each random sample,
+# which is necessary
+setdiff_len <- covered_geno_lst %>%
+  map(., .f = ~ setdiff(., covered_genotypes)) %>%
+  map_int(length)
+if (!all(setdiff_len == 0)) {
+  stop("Different full set of genotypes for random runs not allowed.")
+}
 
 pred_sets <- pred_combi %>%
   strsplit(split = "_") %>%
@@ -189,6 +203,11 @@ if (nchar(runs) != 0) {
 } else {
   run_length <- seq_len(nrow(pheno_mat))
 }
+
+# 'Loocv_Run': refers to the randomization at the level of the imputed set of
+# genotypes
+# 'Core_Number': refers to the randomization at the level of the incomplete
+# predictor prior to setting up the ETA object
 param_df <- expand.grid(
   Tst_Geno = pre_def_runs %>% pull(TST_Geno) %>% unique() %>% .[run_length],
   Trait = traits,
@@ -213,18 +232,6 @@ if (isTRUE(data_type == "Hybrid")) {
 # Keep track of how long a job is running.
 start_time <- Sys.time()
 yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
-
-  # Load pre-defined ETA objects.
-  # Collect log files, which are indispensable for loading the data.
-  eta <- "./data/derived/log_prepare_subsamples.txt" %>%
-    read_tsv() %>%
-    filter(
-      Core_Set == core_set,
-      Predictor == pred_combi,
-      Random_Sample == core_nmb
-    ) %>%
-    pull(Data_Location) %>%
-    readRDS()
 
   # Test genotype
   tst <- param_df %>%
@@ -252,6 +259,20 @@ yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
 
   # Test and training genotypes
   trn_tst <- c(tst, trn)
+
+
+  # Load pre-defined ETA objects.
+  # Collect log files, which are indispensable for loading the data.
+  eta <- "./data/derived/log_prepare_subsamples.txt" %>%
+    read_tsv() %>%
+    filter(
+      Core_Set == core_set,
+      Predictor == pred_combi,
+      Random_Sample == curr_core_nmb
+    ) %>%
+    pull(Data_Location) %>%
+    readRDS()
+
 
   # Operations required for input checks.
   eta <- lapply(eta, FUN = function(x) {

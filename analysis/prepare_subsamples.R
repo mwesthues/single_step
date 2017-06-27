@@ -135,6 +135,7 @@ saveRDS(loocv_samples, "./data/derived/predictor_subsets/loocv_samples.RDS")
 
 
 
+
 # -- PARAMETERS -------------------------------------
 init_pred_combi <- c("snp", "mrna", "snp_mrna")
 init_pred_model <- "BRR"
