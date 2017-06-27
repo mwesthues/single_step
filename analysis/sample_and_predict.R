@@ -204,6 +204,13 @@ if (nchar(runs) != 0) {
   run_length <- seq_len(nrow(pheno_mat))
 }
 
+# define genotypes, which shall be evaluated in test runs based on the
+# pre-specified number of test runs
+run_genos <- pheno %>%
+  pull(Genotype) %>% 
+  unique() %>%
+  .[run_length]
+
 # 'Loocv_Run': refers to the randomization at the level of the imputed set of
 # genotypes
 # 'Core_Number': refers to the randomization at the level of the incomplete
@@ -217,6 +224,11 @@ param_df <- expand.grid(
   Core_Number = core_nmb
 )
 param_df$Trait <- as.character(param_df$Trait)
+
+# for test runs, keep only genotypes covered by the pre-specified number of runs
+param_df <- param_df %>%
+  as_data_frame() %>%
+  filter(Tst_Geno %in% run_genos)
 
 if (isTRUE(data_type == "Hybrid")) {
   mother_idx <- 2
