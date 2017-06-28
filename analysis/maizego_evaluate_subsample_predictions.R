@@ -4,7 +4,8 @@ pacman::p_load("tidyverse", "broom")
 # load the log file
 log_file <- "./data/derived/uhoh_maizego_prediction_log.txt" %>%
   read_tsv() %>%
-  mutate(Job_ID = as.character(Job_ID))
+  mutate(Job_ID = as.character(Job_ID)) %>%
+  filter(grepl("2017-06-27", x = Start_Time))
 
 # concatenate log file with prediction results for complete information
 pred_data <- log_file %>%
@@ -23,10 +24,10 @@ boot_pred <- pred_data %>%
   summarize(r = mean(x), se = sd(x))
 
 
-saveRDS(boot, "./data/derived/maizego/bootstrap_211_genotypes.RDS")
+saveRDS(boot_pred, "./data/derived/maizego/bootstrap_110_genotypes.RDS")
 
 
-# plot
+# bootstrap plot
 boot_pred %>%
   ungroup() %>%
   mutate(upper = r + se, lower = r - se) %>%
@@ -34,3 +35,12 @@ boot_pred %>%
   geom_bar(stat = "identity") +
   geom_errorbar(aes(ymax = upper, ymin = lower)) +
   facet_wrap(~ Trait)
+
+
+pred_data %>%
+  group_by(Core_Set, Trait) %>%
+  summarize(r = cor(y, yhat)) %>%
+  ggplot(aes(Core_Set %>% as.character() %>% as.factor(), y = r)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ Trait)
+
