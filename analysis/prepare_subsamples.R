@@ -13,6 +13,205 @@ source("./software/prediction_helper_functions.R")
 
 
 
+## -- FUNCTIONS -------------------------------------------------------------
+compute_totals_from_fractions <- function(nm, frac) {
+  # ---
+  # convert a fraction 'frac' * 100% of genotypes, that shall be included in 
+  # the training set, into an integer specifying the number of genotypes to be
+  # included in the training set.
+
+  # nm: vector of names
+  # frac: fractions of genotypes with both, mRNA and SNP information
+  #---
+  nm %>%
+    length() %>%
+    map(function(i) i * frac) %>%
+    flatten_dbl() %>%
+    ceiling()
+}
+
+
+
+
+
+sample_fraction <- function(nm, frac) {
+  #---
+  # generate a resampled training set provided a vector of genotype names and
+  # the fraction of genotypes that shall be included in this training set.
+
+  # nm: names of genotypes
+  # frac: vector of genotypes fractions
+  #---
+  totals <- compute_totals_from_fractions(
+    nm = nm,
+    frac = frac
+  )
+  totals %>%
+    map(.f = ~sample(
+      x = nm,
+      size = .,
+      replace = FALSE
+    )) %>%
+  set_names(., nm = as.character(frac)) %>%
+  stack()
+}
+
+
+
+
+
+create_t0_trn <- function(hybrids, split_char = "_") {
+  #---
+  # take a vector of hybrid names ('hybrids'), extract their parental components
+  # and, separately for each hybrid, return the corresponding set of hybrids
+  # that do not share a parent with the test set hybrid under evaluation
+
+  # hybrids: names of hybrids
+  # split_char: separator character for parental components
+  #---
+
+  # separate paternal and maternal genotypes and pair them with their offspring
+  parent_df <- hybrids %>%
+    as_data_frame() %>%
+    rename(Hybrid = "value") %>%
+    separate(
+      Hybrid,
+      into = c("Parent_A", "Parent_B"),
+      sep = split_char,
+      remove = FALSE
+    )
+
+  # returns the corresponding t0 hybrids for the test set hybrid under
+  # consideration
+  select_t0_trn_hybrids <- function(i) {
+    parent_vec <- parent_df %>%
+      slice(i) %>%
+      select(-Hybrid) %>%
+      flatten_chr()
+
+    trn_hybrids <- parent_df %>%
+      filter(Parent_A != parent_vec[1], Parent_B != parent_vec[2]) %>%
+      pull(Hybrid)
+    trn_hybrids
+  }
+
+  # get the set of t0 hybrid for each test set hybrid
+  parent_df %>%
+    nrow() %>%
+    seq_len() %>%
+    map(select_t0_trn_hybrids)
+}
+
+
+
+
+sample_loo_sets <- function(geno,
+                            frac,
+                            iter,
+                            material = "Inbred",
+                            split_char = "_") {
+  #---
+  # given a vector of genotype names, that shall be evaluated, generate 'iter'
+  # randomly sampled training sets for each genotype, where 'frac' * 100% of the
+  # genotypes in 'geno' shall be included in each training set
+
+  # fraction: fraction of genotypes used for the training set
+  # geno: names of genotypes
+  # iter: number of replicates per genotype
+  # material: 'Inbred' or 'Hybrid'
+  # split_char: separator for hybrid parents
+  #---
+
+  # build the training set by excluding every genotype once from all others
+  if (isTRUE(material == "Inbred")) {
+    train_geno <- map(geno, .f = ~ setdiff(geno, .))
+  } else if (isTRUE(material == "Hybrid")) {
+    train_geno <- create_t0_trn(geno, split_char = split_char)
+  }
+  names(train_geno) <- geno
+
+  # from each training set, sample 'frac' * 100% of genotypes at random and
+  # declare them as the resampled training subset. repeat this 'iter' times.
+  train_lst <- rerun(.n = iter, {
+    sub_train_lst <- map(train_geno, .f = ~sample_fraction(., frac = frac))
+    sub_train_df <- sub_train_lst %>% 
+      bind_rows(.id = "TST_Geno") %>%
+      as_data_frame()
+    sub_train <- dplyr::rename(sub_train_df, TRN_Geno = values)
+    sub_train
+  })
+
+  # concatenate the ten different training sets per test set genotype in one
+  # data frame.
+  iter_seq <- seq_len(iter)
+  names(train_lst) <-  as.character(iter_seq)
+  train_df <- bind_rows(train_lst, .id = "Iter")
+  
+  ### --- Tests ---
+  ## test whether the test set genotype is never included in any of the 
+  ## training sets
+  if (isTRUE(material == "Inbred")) {
+    isect <- map2(train_geno, geno, .f = intersect) %>%
+      map_int(length) %>%
+      unique()
+  } else if (isTRUE(material == "Hybrid")) {
+    isect <- train_geno %>%
+      map(strsplit, split = split_char) %>%
+      map(flatten_chr) %>%
+      map2(.y = geno, .f = intersect) %>%
+      map_int(length) %>%
+      unique()
+  }
+  stopifnot(isect == 0)
+
+  ## test whether the training sets differ in their size, which must be true for
+  ## hybrids
+  if (isTRUE(material == "Hybrid")) {
+    t0_trn_set_size <- train_df %>%
+      select(-id) %>%
+      group_by(Iter, TST_Geno) %>%
+      count() %>%
+      pull(n) %>%
+      unique() %>%
+      length()
+      if (isTRUE(t0_trn_set_size == 0)) {
+        stop("Hybrid training sets should differ in their sizes")
+      }
+  }
+  ## --- End of tests ---
+
+  # return the data frame with the resampling scheme
+  train_df
+}
+
+
+
+
+
+
+## -- LEVEL2 SAMPLING -------------------------------------------------------
+geno <- "./data/derived/uhoh/agro_tibble.RDS" %>%
+  readRDS() %>%
+  mutate(Genotype = gsub(pattern = "DF_", replacement = "", x = Genotype)) %>%
+  pull(Genotype) %>%
+  unique()
+
+loocv_samples <- sample_loo_sets(
+  geno = geno,
+  frac = 0.7,
+  iter = 50
+)
+
+# Inbred
+## Full
+### a, b, c
+## Core
+### a, b, c
+# Hybrid
+## Full
+## Core
+
+
 # load genotypes from the first and the fourth cluster of the pca
 cluster14 <- readRDS("./data/derived/maizego/cluster_14_genotypes.RDS")
 
@@ -36,95 +235,9 @@ runs <- 10
 fractions = seq(from = 0.1, to = 1.0, by = 0.1)
 
 
-
-## -- FUNCTIONS -------------------------------------------------------------
-compute_totals_from_fractions <- function(nm, frac) {
-  # ---
-  # convert a fraction 'frac' * 100% of genotypes, that shall be included in 
-  # the training set, into an integer specifying the number of genotypes to be
-  # included in the training set.
-
-  # nm: vector of names
-  # frac: fractions of genotypes with both, mRNA and SNP information
-  #---
-  totals <- nm %>%
-    length() %>%
-    map(function(i) i * frac) %>%
-    flatten_dbl() %>%
-    ceiling()
-}
-
-
-sample_fraction <- function(nm, frac) {
-  #---
-  # generate a resampled training set provided a vector of genotype names and
-  # the fraction of genotypes that shall be included in this training set.
-
-  # nm: names of genotypes
-  # frac: vector of genotypes fractions
-  #---
-  totals <- compute_totals_from_fractions(
-    nm = common_genotypes,
-    frac = frac
-  )
-  totals %>%
-    map(.f = ~sample(
-      x = nm,
-      size = .,
-      replace = FALSE
-    )) %>%
-  set_names(., nm = as.character(frac)) %>%
-  stack()
-}
-
-
-sample_loo <- function(geno, frac, iter) {
-  #---
-  # given a vector of genotype names, that shall be evaluated, generate 'iter'
-  # randomly sampled training sets for each genotype, where 'frac' * 100% of the
-  # genotypes in 'geno' shall be included in each training set
-
-  # fraction: fraction of genotypes used for the training set
-  # geno: names of genotypes
-  # iter: number of replicates per genotype
-  #---
-
-  # build the training set by excluding every genotype once from all others
-  train_geno <- map(geno, .f = ~ setdiff(geno, .))
-  names(train_geno) <- geno
-
-  # from each training set, sample 'frac' * 100% of genotypes at random and
-  # declare them as the resampled training subset. repeat this 'iter' times.
-  train_lst <- rerun(.n = iter, {
-    sub_train_lst <- map(train_geno, .f = ~sample_fraction(., frac = frac))
-    sub_train_df <- bind_rows(sub_train_lst, .id = "TST_Geno")
-    sub_train <- dplyr::rename(sub_train_df, TRN_Geno = values)
-  })
-
-  # concatenate the ten different training sets per test set genotype in one
-  # data frame.
-  iter_seq <- seq_len(iter)
-  names(train_lst) <-  as.character(iter_seq)
-  train_df <- bind_rows(train_lst, .id = "Iter")
-  
-  ## test whether the test set genotype is never included in any of the 
-  ## training sets
-  isect <- map2(train_geno, geno, .f = intersect) %>%
-    map_int(length) %>%
-    unique()
-  stopifnot(isect == 0)
-  ##
-
-  # return the data frame with the resampling scheme
-  as_data_frame(train_df)
-}
-###
-
-
-
 # Create random LOOCV training set samples for each genotype.
 set.seed(9434)
-loocv_samples <- sample_loo(
+loocv_samples <- sample_loo_sets(
   geno = common_genotypes,
   frac = 0.7,
   iter = runs
