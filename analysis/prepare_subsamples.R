@@ -1,5 +1,14 @@
-# Goal: Sample core sets of genotypes for the Yan-lab data in increments of ten 
+## Goal: 
+# Sample core sets of genotypes for the Yan-lab data in increments of ten 
 # percentage points.
+
+## Topics
+# Level 2 sampling
+# Level 1 sampling
+# ETA setup
+
+
+## -- PACKAGES AND FUNCTIONS -----------------------------------------------
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 #devtools::install_github("mwesthues/sspredr", update = FALSE)
@@ -264,15 +273,15 @@ core_inb_bc <- pred_lst %>%
 core_inb_a <- intersect(core_inb_bc, cluster14)
 
 ### store all genotype information in one data frame
+# note that scenarios 'b' and 'c' are based on the same set of genotypes, and
+# thus, will not be considered as separate cases to save memory
 geno_lst <- list(
   Full_Hybrid_None = full_hyb_genos,
   Core_Hybrid_None = core_hyb_genos,
   Full_Inbred_A = full_inb_a,
   Full_Inbred_B = full_inb_bc,
-  Full_Inbred_C = full_inb_bc,
   Core_Inbred_A = core_inb_a,
-  Core_Inbred_B = core_inb_bc,
-  Core_Inbred_C = core_inb_bc
+  Core_Inbred_B = core_inb_bc
 )
 
 geno_df <- geno_lst %>%
@@ -320,42 +329,40 @@ saveRDS(rnd_level2_df, "./data/derived/predictor_subsets/rnd_level2.RDS")
 
 
 ## -- LEVEL 1 SAMPLING ----------------------------------------------------
+# level 1 sampling is only required for the core set of inbred lines from the
+# maize diversity panel
+core_fractions <- seq(from = 0.1, to = 0.9, by = 0.1)
+level1_frame <- geno_df %>%
+  filter(Extent == "Core", Material == "Inbred") %>%
+  pull(Scenario) %>%
+  unique()
+
+sample_core <- function(x) {
+  geno <- pull(x, G)
+  smp_fraction <- x %>%
+    pull(Core_Fraction) %>%
+    unique()
+  sample_frac(x, size = smp_fraction)
+}
+
+rnd_level1_df <- level1_frame %>%
+  expand.grid(
+    Scenario = .,
+    Core_Fraction = core_fractions,
+    Rnd_Level1 = seq_len(50),
+    stringsAsFactors = FALSE
+  ) %>%
+  as_data_frame() %>%
+  right_join(., y = bla, by = "Scenario") %>%
+  split(list(.$Scenario, .$Core_Fraction, .$Rnd_Level1)) %>%
+  map(sample_core) %>%
+  bind_rows()
+saveRDS(rnd_level1_df, "./data/derived/predictor_subsets/rnd_level1.RDS")
+
+
 
 
 ## -- ETA SETUP -----------------------------------------------------------
-
-
-
-# for the second scenario, keep only names of genotypes, which are covered by 
-# all data types (i.e. phenotypic, genotypic and transcriptomic) and which
-# belong to either the first or the fourth cluster of the pca
-common_genotypes <- readRDS(
-  "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
-)
-common_genotypes[["cluster14"]] <- cluster14
-common_genotypes <- common_genotypes %>%
-  reduce(intersect)
-
-## --- Scenario 2 SNP preparation.
-# Explore the kinship matrix.
-genos <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
-  readRDS() %>%
-  rownames()
-
-runs <- 10
-fractions = seq(from = 0.1, to = 1.0, by = 0.1)
-
-
-# Create random LOOCV training set samples for each genotype.
-set.seed(9434)
-loocv_samples <- sample_loo_sets(
-  geno = common_genotypes,
-  frac = 0.7,
-  iter = runs
-)
-saveRDS(loocv_samples, "./data/derived/predictor_subsets/loocv_samples.RDS")
-
-
 
 
 
