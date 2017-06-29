@@ -1,21 +1,31 @@
 # Data and packages -------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "cowplot", 
-               "ggthemes", "pophelper", "corehunter", "forcats")
+               "ggthemes", "pophelper", "forcats")
 #devtools::install_github("mwesthues/sspredr")
 pacman::p_load_gh("mwesthues/sspredr")
 
 # For the second scenario, keep only names of genotypes, which are covered by 
 # all data types (i.e. phenotypic, genotypic and transcriptomic).
-common_genotypes <- readRDS(
+genotype_sets <- readRDS(
   "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
 )
-common_genotypes <- common_genotypes %>%
+common_genotypes <- genotype_sets %>%
   reduce(intersect)
+
+# keep the largest set of genotypes for scenario 'a'
+max_geno_number <- genotype_sets %>%
+  map_int(length) %>%
+  max()
+geno_a <- genotype_sets %>%
+  keep(~ length(.x) == max_geno_number)
+if (length(geno_a) != 1) {
+  geno_a <- reduce(geno_a, intersect)
+}
+
 
 snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
   readRDS() %>%
-  #.[rownames(.) %in% common_genotypes, ] %>%
   sspredr::ensure_snp_quality(
     ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05, 
     any_missing = FALSE, remove_duplicated = TRUE
@@ -80,12 +90,16 @@ slist <- list.files(
   )
 
 # Select K=4
-# For each individual, return the cluster with the largest coefficient.
 # Assign a color to each cluster.
 # Plot the PCA results with colors corresponding to the cluster with the largest
 # coefficient for that individual.
-
-get_max_cluster <- function(x) {
+get_max_cluster <- function(x, genos) {
+  #---
+  # for each individual, return the cluster with the largest coefficient.
+  #
+  # x: list with STRUCTURE objects
+  # genos: vector with genotype names pertaining to the STRUCTURE objects
+  #---
   x %>%   
     mutate(G = genos) %>% 
     gather(key = "Cluster", value = "AncCoef", -G) %>% 
@@ -96,7 +110,7 @@ get_max_cluster <- function(x) {
 }
 
 cluster_df <- slist %>% 
-  map(get_max_cluster) %>% 
+  map(get_max_cluster, genos = genos) %>% 
   map(.f = ~right_join(., y = pc_df, by = "G")) %>% 
   bind_rows(.id = "K")
 
@@ -154,7 +168,7 @@ selected_geno <- slist %>%
   set_names(., change_to_k(names(.))) %>% 
   map(.f = ~mutate(., G = genos)) %>% 
   keep(names(.) == k) %>% 
-  map(get_max_cluster) %>%
+  map(get_max_cluster, genos = genos) %>%
   .[[1]] %>%
   filter(main_cluster %in% c("1", "4")) %>%
   pull(G) %>%

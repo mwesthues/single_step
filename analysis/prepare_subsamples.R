@@ -190,30 +190,141 @@ sample_loo_sets <- function(geno,
 
 
 ## -- LEVEL2 SAMPLING -------------------------------------------------------
-geno <- "./data/derived/uhoh/agro_tibble.RDS" %>%
-  readRDS() %>%
-  mutate(Genotype = gsub(pattern = "DF_", replacement = "", x = Genotype)) %>%
+# concatenate all predictor data and phenotypic data in one list
+named_list <- create_named_list(
+  inb_snp_path = "./data/processed/maizego/imputed_snp_mat.RDS",
+  inb_agro_path = "./data/derived/maizego/tst_pheno_tibble.RDS",
+  inb_mrna_path = "./data/derived/maizego/mrna.RDS",
+  hyb_snp_path = "./data/derived/uhoh/snp_matrix.RDS",
+  hyb_agro_path = "./data/derived/uhoh/agro_tibble.RDS",
+  hyb_mrna_path = "./data/derived/uhoh/mrna.RDS",
+  hyb_ped_path = "./data/derived/uhoh/pedigree_matrix.RDS"
+)
+named_df <- data.frame(Predictor = names(named_list),
+                       Path = unlist(named_list),
+                       stringsAsFactor = FALSE)
+named_df$Predictor <- gsub(named_df$Predictor,
+                           pattern = "_path",
+                           replacement = "")
+named_df <- named_df %>%
+  as_data_frame() %>%
+  mutate(Path = as.character(Path))
+
+pred_lst <- named_df %>%
+  as_data_frame() %>%
+  select(Path) %>%
+  flatten_chr() %>%
+  map(readRDS)
+
+pred_lst_names <- named_df %>%
+  select(Predictor) %>%
+  flatten_chr()
+names(pred_lst) <- pred_lst_names
+
+# load genotypes from the first and the fourth cluster of the pca (Scenario 'a')
+cluster14 <- readRDS("./data/derived/maizego/cluster_14_genotypes.RDS")
+
+
+
+### hybrids
+hyb_pheno <- pred_lst %>%
+  keep(names(.) == "hyb_agro") %>%
+  .[[1]]
+
+full_hyb_genos <- hyb_pheno %>%
   pull(Genotype) %>%
   unique()
 
-loocv_samples <- sample_loo_sets(
-  geno = geno,
-  frac = 0.7,
-  iter = 50
+core_hyb_parents <- pred_lst %>%
+  keep(names(.) == "hyb_mrna") %>%
+  .[[1]] %>%
+  rownames()
+
+core_hyb_genos <- hyb_pheno %>%
+  separate(Genotype, into = c("Prefix", "Dent", "Flint"), sep = "_") %>%
+  filter(Dent %in% core_hyb_parents & Flint %in% core_hyb_parents) %>%
+  unite(Hybrid, Dent, Flint, sep = "_") %>%
+  mutate(Hybrid = paste0("DF_", Hybrid)) %>%
+  select(Hybrid) %>%
+  unique() %>%
+  flatten_chr()
+
+### inbred lines
+full_inb_bc <- pred_lst %>% 
+  keep(names(.) == "inb_snp") %>% 
+  .[[1]] %>% 
+  rownames()
+
+full_inb_a <- intersect(full_inb_bc, cluster14)
+
+core_inb_bc <- pred_lst %>%
+  keep(names(.) == "inb_mrna") %>%
+  .[[1]] %>%
+  rownames()
+core_inb_a <- intersect(core_inb_bc, cluster14)
+
+### store all genotype information in one data frame
+geno_lst <- list(
+  Full_Hybrid_None = full_hyb_genos,
+  Core_Hybrid_None = core_hyb_genos,
+  Full_Inbred_A = full_inb_a,
+  Full_Inbred_B = full_inb_bc,
+  Full_Inbred_C = full_inb_bc,
+  Core_Inbred_A = core_inb_a,
+  Core_Inbred_B = core_inb_bc,
+  Core_Inbred_C = core_inb_bc
 )
 
-# Inbred
-## Full
-### a, b, c
-## Core
-### a, b, c
-# Hybrid
-## Full
-## Core
+geno_df <- geno_lst %>%
+  utils::stack(drop = TRUE) %>%
+  separate(ind, into = c("Extent", "Material", "Scenario"), sep = "_") %>%
+  rename(G = "values") %>%
+  as_data_frame()
+
+# data frame with all combinations that need to be tested
+geno_param_df <- geno_df %>%
+  select(-G) %>%
+  unique()
+
+sample_by_combination <- function(i) {
+  param_subset <- slice(geno_param_df, i)
+  param_genos <- geno_df %>%
+    inner_join(
+      y = param_subset,
+      by = c("Extent", "Material", "Scenario")
+    ) %>%
+    pull(G)
+  
+  loocv_samples <- sample_loo_sets(
+  geno = param_genos,
+  frac = 0.7,
+  iter = 50
+  )
+  loocv_samples
+}
+
+rnd_level2_df <- geno_param_df %>%
+  nrow() %>%
+  seq_len() %>%
+  map(sample_by_combination) %>%
+  purrr::set_names(nm = names(geno_lst)) %>%
+  bind_rows(.id = "ID") %>%
+  separate(ID, into = c("Extent", "Material", "Scenario"), sep = "_")
+saveRDS(rnd_level2_df, "./data/derived/predictor_subsets/rnd_level2.RDS")
 
 
-# load genotypes from the first and the fourth cluster of the pca
-cluster14 <- readRDS("./data/derived/maizego/cluster_14_genotypes.RDS")
+
+
+
+
+
+
+## -- LEVEL 1 SAMPLING ----------------------------------------------------
+
+
+## -- ETA SETUP -----------------------------------------------------------
+
+
 
 # for the second scenario, keep only names of genotypes, which are covered by 
 # all data types (i.e. phenotypic, genotypic and transcriptomic) and which
