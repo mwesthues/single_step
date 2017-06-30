@@ -318,7 +318,8 @@ rnd_level2_df <- geno_param_df %>%
   map(sample_by_combination) %>%
   purrr::set_names(nm = names(geno_lst)) %>%
   bind_rows(.id = "ID") %>%
-  separate(ID, into = c("Extent", "Material", "Scenario"), sep = "_")
+  separate(ID, into = c("Extent", "Material", "Scenario"), sep = "_") %>%
+  rename(Rnd_Level2 = "Iter")
 saveRDS(rnd_level2_df, "./data/derived/predictor_subsets/rnd_level2.RDS")
 
 
@@ -337,6 +338,10 @@ level1_frame <- geno_df %>%
   pull(Scenario) %>%
   unique()
 
+level1_geno_df <- geno_df %>%
+  filter(Extent == "Core", Material == "Inbred") %>%
+  select(G, Scenario)
+
 sample_core <- function(x) {
   geno <- pull(x, G)
   smp_fraction <- x %>%
@@ -347,24 +352,145 @@ sample_core <- function(x) {
 
 rnd_level1_df <- level1_frame %>%
   expand.grid(
+    Extent = "Core",
+    Material = "Inbred",
     Scenario = .,
     Core_Fraction = core_fractions,
     Rnd_Level1 = seq_len(50),
     stringsAsFactors = FALSE
   ) %>%
   as_data_frame() %>%
-  right_join(., y = bla, by = "Scenario") %>%
+  right_join(., y = level1_geno_df, by = "Scenario") %>%
   split(list(.$Scenario, .$Core_Fraction, .$Rnd_Level1)) %>%
   map(sample_core) %>%
   bind_rows()
+
+# Add all other combinations to the data frame. This will facilitate the setup
+# of ETA objects later on.
+rnd_level1_df <- geno_df %>%
+  filter(!(Extent == "Core" & Material == "Inbred")) %>%
+  mutate(Core_Fraction = 0, Rnd_Level1 = 0) %>%
+  bind_rows(., rnd_level1_df) %>%
+  mutate_all(as.character)
 saveRDS(rnd_level1_df, "./data/derived/predictor_subsets/rnd_level1.RDS")
 
 
 
 
 ## -- ETA SETUP -----------------------------------------------------------
+eta_spec1 <- expand.grid(
+  Extent = "Core",
+  Material = "Inbred",
+  Pred1 = "snp",
+  Pred2 = "mrna",
+  Scenario = c("A", "B"),
+  Rnd_Level1 = seq_len(50) %>% as.character(),
+  Core_Fraction = seq(from = 0.1, to = 0.9, by = 0.1) %>% as.character(),
+  stringsAsFactors = FALSE
+)
+
+eta_spec2 <- expand.grid(
+  Extent = "Core",
+  Material = "Inbred",
+  Pred1 = c("snp", "mrna"),
+  Pred2 = "",
+  Scenario = c("A", "B"),
+  Rnd_Level1 = "0",
+  Core_Fraction = "0",
+  stringsAsFactors = FALSE
+)
+
+eta_spec3 <- expand.grid(
+  Extent = "Full",
+  Material = "Inbred",
+  Pred1 = c("snp", "mrna"),
+  Pred2 = "",
+  Scenario = "None",
+  Rnd_Level1 = "0",
+  Core_Fraction = "0",
+  stringsAsFactors = FALSE
+)
+
+eta_spec4 <- expand.grid(
+  Extent = "Full",
+  Material = "Inbred",
+  Pred1 = "snp",
+  Pred2 = "mrna",
+  Scenario = "None",
+  Rnd_Level1 = "0",
+  Core_Fraction = "0",
+  stringsAsFactors = FALSE
+)
+
+eta_spec5 <- expand.grid(
+  Extent = "Core",
+  Material = "Hybrid",
+  Pred1 = c("snp", "ped", "mrna"),
+  Pred2 = "",
+  Scenario = "None",
+  Rnd_Level1 = "0",
+  Core_Fraction = "0",
+  stringsAsFactors = FALSE
+)
+
+eta_spec6 <- expand.grid(
+  Extent = "Full",
+  Material = "Hybrid",
+  Pred1 = c("snp", "ped"),
+  Pred2 = "mrna",
+  Scenario = "None",
+  Rnd_Level1 = "0",
+  Core_Fraction = "0",
+  stringsAsFactors = FALSE
+)
+
+eta_spec_df <- list(
+  eta_spec1,
+  eta_spec2,
+  eta_spec3,
+  eta_spec4,
+  eta_spec5,
+  eta_spec6
+  ) %>%
+  bind_rows() %>%
+  as_data_frame()
 
 
+scenario_seq <- eta_spec_df %>%
+  nrow() %>%
+  seq_len()
+
+lapply(scenario_seq, FUN = function(i) {
+
+  scen_i <- slice(eta_spec_df, i)
+  pred1 <- pull(scen_i, Pred1)
+  pred2 <- pull(scen_i, Pred2)
+
+  tmp_geno <- inner_join(
+    rnd_level1_df,
+    scen_i,
+    by = c("Extent", "Material", "Scenario", "Core_Fraction", "Rnd_Level1")
+  ) %>%
+  pull(G)
+
+  if (isTRUE(nchar(pred2) == 0)) {
+    pred1_geno <- tmp_geno
+  } else if (all(nchar(c(pred1, pred2)) != 0)) {
+    pred2_geno <- tmp_geno
+    pred1_geno <- inner_join(
+      geno_df,
+      scen_i,
+      by = c("Extent", "Material", "Scenario")
+    ) %>%
+    pull(G)
+  }
+  
+  init_pre_model <- "BRR"
+
+
+
+
+}
 
 
 # -- PARAMETERS -------------------------------------
