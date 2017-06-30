@@ -33,11 +33,11 @@ split_into_hetgroups <- function(x, y, pedigree = FALSE) {
 # throughout all predictions.
 add_parental_hybrid_names <- function(x) {
   x %>%
-    map_if(.p = names(.) == "Dent",
+    modify_if(.p = names(.) == "Dent",
            .f = function(mat) {
              append(mat, list(geno = hybrid_parents$Dent))
            }) %>%
-    map_if(.p = names(.) == "Flint",
+    modify_if(.p = names(.) == "Flint",
            .f = function(mat) {
              append(mat, list(geno = hybrid_parents$Flint))
            })
