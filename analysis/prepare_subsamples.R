@@ -193,7 +193,6 @@ rnd_level1_df <- level1_frame %>%
 # Add all other combinations to the data frame. This will facilitate the setup
 # of ETA objects later on.
 rnd_level1_df <- geno_df %>%
-  filter(!(Extent == "Core" & Material == "Inbred")) %>%
   mutate(Core_Fraction = 0, Rnd_Level1 = 0) %>%
   bind_rows(., rnd_level1_df) %>%
   mutate_all(as.character)
@@ -228,9 +227,9 @@ eta_spec2 <- expand.grid(
 eta_spec3 <- expand.grid(
   Extent = "Full",
   Material = "Inbred",
-  Pred1 = c("snp", "mrna"),
+  Pred1 = "snp",
   Pred2 = "",
-  Scenario = "None",
+  Scenario = c("A", "B"),
   Rnd_Level1 = "0",
   Core_Fraction = "0",
   stringsAsFactors = FALSE
@@ -241,7 +240,7 @@ eta_spec4 <- expand.grid(
   Material = "Inbred",
   Pred1 = "snp",
   Pred2 = "mrna",
-  Scenario = "None",
+  Scenario = c("A", "B"),
   Rnd_Level1 = "0",
   Core_Fraction = "0",
   stringsAsFactors = FALSE
@@ -281,18 +280,20 @@ spec_eta_df <- list(
   as_data_frame()
 saveRDS(spec_eta_df, "./data/derived/predictor_subsets/spec_eta_df.RDS")
 
-scenario_seq <- eta_spec_df %>%
-  nrow() %>%
-  seq_len()
 
 
 pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
-rnd_level1_df <- readRDS("./data/derived/predictor_subsets/rnd_level1_df.RDS")
-rnd_level2_df <- readRDS("./data/derived/predictor_subsets/rnd_level2_df.RDS")
+rnd_level1_df <- readRDS("./data/derived/predictor_subsets/rnd_level1.RDS")
+rnd_level2_df <- readRDS("./data/derived/predictor_subsets/rnd_level2.RDS")
 geno_df <- readRDS("./data/derived/predictor_subsets/geno_df.RDS")
+spec_eta_df <- readRDS("./data/derived/predictor_subsets/spec_eta_df.RDS")
 
-log_lst <- mclapply(scenario_seq, FUN = function(i) {
-  scen_i <- slice(eta_spec_df, i)
+scenario_seq <- spec_eta_df %>%
+  nrow() %>%
+  seq_len()
+
+lapply(scenario_seq, FUN = function(i) {
+  scen_i <- slice(spec_eta_df, i)
   pred1 <- pull(scen_i, Pred1)
   pred2 <- pull(scen_i, Pred2)
   extent <- pull(scen_i, Extent)
@@ -302,7 +303,17 @@ log_lst <- mclapply(scenario_seq, FUN = function(i) {
   } else {
     material_type <- "inb"
   }
-  pred_lst_selector <- paste(material_type, c(pred1, pred2), sep = "_")
+  
+  pred_combi <- list(pred1, pred2) %>%
+     keep(nchar(.) != 0) %>%
+     flatten_chr() %>%
+     paste(., collapse = "_")
+   
+   pred_sets <- pred_combi %>%
+     strsplit(split = "_") %>%
+     flatten_chr()
+
+  pred_lst_selector <- paste(material_type, pred_sets, sep = "_")
 
   # Get the random core set of genotypes covering the genetic target space
   # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
@@ -313,18 +324,10 @@ log_lst <- mclapply(scenario_seq, FUN = function(i) {
   ) %>%
   pull(G)
 
-  if (isTRUE(nchar(pred2) == 0)) {
+  if (isTRUE(nchar(pred2) == 0 && pred1 != "mrna")) {
     full_geno <- tmp_geno
     core_geno <- tmp_geno
-  } else if (all(nchar(c(pred1, pred2)) != 0) && extent == "Core") {
-    core_geno <- tmp_geno
-    full_geno <- inner_join(
-      geno_df,
-      scen_i,
-      by = c("Extent", "Material", "Scenario")
-    ) %>%
-    pull(G)
-  } else if (all(nchar(c(pred1, pred2)) != 0) && extent == "Full") {
+  } else if (pred1 == "mrna" && pred2 == "" && extent == "Full") {
     full_geno <- tmp_geno
     core_geno <- scen_i %>%
       mutate(Extent = "Core") %>%
@@ -333,7 +336,24 @@ log_lst <- mclapply(scenario_seq, FUN = function(i) {
         by = c("Extent", "Material", "Scenario", "Core_Fraction", "Rnd_Level1")
       ) %>%
       pull(G)
-  }
+  } else if (all(nchar(pred_sets) != 0) && extent == "Core") {
+    core_geno <- tmp_geno
+    full_geno <- inner_join(
+      geno_df,
+      scen_i,
+      by = c("Extent", "Material", "Scenario")
+    ) %>%
+    pull(G)
+  } else if (all(nchar(pred_sets) != 0) && extent == "Full") {
+    full_geno <- tmp_geno
+    core_geno <- scen_i %>%
+      mutate(Extent = "Core") %>%
+      inner_join(
+        rnd_level1_df,
+        by = c("Extent", "Material", "Scenario", "Core_Fraction", "Rnd_Level1")
+      ) %>%
+      pull(G)
+  } 
 
 
   # Reduce the predictor data to match the size of the pre-specified core sets.
@@ -403,14 +423,6 @@ log_lst <- mclapply(scenario_seq, FUN = function(i) {
    # Make sure that the predictor matrices are in the intended order, which is
    # crucial for the imputation of the predictor matrix that covers fewer
    # genotypes.
-   pred_combi <- list(pred1, pred2) %>%
-     keep(nchar(.) != 0) %>%
-     flatten_chr() %>%
-     paste(., collapse = "_")
-   
-   pred_sets <- pred_combi %>%
-     strsplit(split = "_") %>%
-     flatten_chr()
    curr_pred_lst <- curr_pred_lst[match(names(curr_pred_lst), pred_sets)]
 
 
@@ -501,18 +513,20 @@ log_lst <- mclapply(scenario_seq, FUN = function(i) {
     object = eta,
     file = data_location
   )
-
-  # Generate a log file to be able to retrieve all information later on.
-  scen_i %>%
-    mutate(Data_Location = data_location)
-}, mc.cores = 3)
+})
 
 # Safe the log file.
-log_idx <- log_lst %>%
-  map_lgl(., ~all(class(.) != "try-error"))
-log_df <- log_lst %>%
-  .[log_idx] %>%
-  bind_rows()
+log_df <- scenario_seq %>%
+  map(function(i) {
+    slice(spec_eta_df, i)
+  }) %>%
+  bind_rows() %>%
+  mutate(Data_Location = paste0(
+    "./data/derived/predictor_subsets/eta_",
+    scenario_seq,
+    ".RDS"
+  ))
+
 log_location <- "./data/derived/log_prepare_subsamples.txt"
 write.table(
   log_df,
