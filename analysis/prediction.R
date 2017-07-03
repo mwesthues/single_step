@@ -261,7 +261,7 @@ res_log <- data_frame(
 )
 
 res_log_location <- "./data/derived/prediction_log.txt"
-write_tsv(
+readr::write_tsv(
   res_log,
   path = res_log_location,
   append = if_else(file.exists(res_log_location), true = TRUE, false = FALSE)

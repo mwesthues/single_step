@@ -8,7 +8,9 @@
 #MOAB -l nodes=1:ppn=16
 #
 # Request memory per process
-#MOAB -l pmem=4000mb
+#MOAB -l pmem=3900mb
+#
+#MOAB -l mem=62400mb
 #
 # Estimated wallclock time for job
 #MOAB -l walltime=00:22:00:00
@@ -61,7 +63,7 @@ echo "Iter=${ITER}\
       VCOV=${VCOV}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
-      Core_Set=${INTERVAL}\
+      Interval=${INTERVAL}\
       Runs=${RUNS}"
 
 # Set-up program
