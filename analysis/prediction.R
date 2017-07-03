@@ -30,12 +30,6 @@ source("./software/prediction_helper_functions.R")
 if (isTRUE(interactive())) {
   # Number of cores
   Sys.setenv("MOAB_PROCCOUNT" = "3")
-  # Are you using inbred ("Inbred") data from the Yan-lab or hybrid ("Hybrid")
-  # data from the UHOH-group?
-  Sys.setenv("DATA_TYPE" = "Inbred")
-  # Which agronomic trait do you want to evaluate? Leave blank if you want to
-  # analyze all traits.
-  Sys.setenv("TRAIT" = "100grainweight")
   # Number of iterations in BGLR()
   Sys.setenv("ITER" = "3000") 
   # Prediction model in BGLR()
@@ -44,14 +38,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
-  # Main predictor. If 'Pred2' and 'Pred3' are empty, no imputation will take
-  # place.
-  Sys.setenv("PRED1" = "snp")
-  # If 'Pred3' is empty, 'Pred2' will be imputed via information from 'Pred1'.
-  Sys.setenv("PRED2" = "mrna")
-  # Fraction of genotypes to be included in the core set.
-  Sys.setenv("CORE_SET" = "A3")
-  # Number of genotypes to predict (only for testing!)
+  # Which interval of data shall be analyzed?
+  Sys.setenv("INTERVAL" = "1")
+  # Number of test runs.
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
@@ -66,481 +55,215 @@ write_session_info(directory = "./data/derived/session_info/",
                    job_id = job_id)
 
 use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
-data_type <- as.character(Sys.getenv("DATA_TYPE"))
+material <- as.character(Sys.getenv("DATA_TYPE"))
 traits <- as.character(Sys.getenv("TRAIT"))
 iter <- as.integer(Sys.getenv("ITER"))
 pred_model <- as.character(Sys.getenv("MODEL"))
 g_method <- as.character(Sys.getenv("VCOV"))
 Pi <- as.numeric(Sys.getenv("PI"))
 PriorPiCount <- as.integer(Sys.getenv("PRIOR_PI_COUNT"))
-pred1 <- as.character(Sys.getenv("PRED1"))
-pred2 <- as.character(Sys.getenv("PRED2"))
-core_set <- as.character(Sys.getenv("CORE_SET"))
-runs <- as.character(Sys.getenv("RUNS"))
 temp <- paste0(as.character(Sys.getenv("TMP")), "/")
-
+pred_interval <- as.character(Sys.getenv("INTERVAL"))
+runs <- as.character(Sys.getenv("RUNS"))
 
 
 
 # -- PREDICTOR INPUT SPECIFICATION -------------------------------------
-pred_combi <- list(pred1, pred2) %>%
-  keep(nchar(.) != 0) %>%
-  flatten_chr() %>%
-  paste(., collapse = "_")
-
-pred_sets <- pred_combi %>%
-  strsplit(split = "_") %>%
-  flatten_chr()
-
-
-## -- INPUT CHECKS AND UPDATES ------------------------------------------
-if (isTRUE(core_set == "1.0" && length(pred_sets) > 1)) {
-  stop("Imputation not possible if all predictors cover the same genotypes")
-}
-
-if (isTRUE(nchar(core_set) != 0 &&
-           core_set != "1.0" &&
-           data_type == "Hybrid")) {
-  stop("Core sampling for hybrids is not yet supported")
-}
-  
-if (isTRUE(data_type == "Hybrid")) {
-  hybrid <- TRUE
-} else hybrid <- FALSE
-
-# Combine all input checks in a function so that it would be easily possible to
-# simply push the checks to another script for the sake of readability of this
-# analysis script.
-stopifnot(data_type %in% c("Inbred", "Hybrid"))
-if (data_type == "Inbred") {
-  if (any(grepl(pred_sets, pattern = "ped"))) {
-    stop("No pedigree data for inbred lines")
-  }
-}
-
-if (!all(pred_sets %in% c("ped", "snp", "mrna"))) {
-  stop("Predictors are unknown")
-}
-
-
-## -- LOAD PREDICTOR DATA ------------------------------------------------
-if (data_type == "Inbred") {
-  snp_path <- "./data/processed/maizego/imputed_snp_mat.RDS"
-  agro_path <- "./data/derived/maizego/tst_pheno_tibble.RDS"
-  mrna_path <- "./data/derived/maizego/mrna.RDS"
-  named_list <- create_named_list(snp_path, agro_path, mrna_path)
-
-} else if (data_type == "Hybrid") {
-  snp_path <- "./data/derived/uhoh/snp_matrix.RDS"
-  agro_path <- "./data/derived/uhoh/agro_tibble.RDS"
-  mrna_path <- "./data/derived/uhoh/mrna.RDS"
-  ped_path <- "./data/derived/uhoh/pedigree_matrix.RDS"
-  named_list <- create_named_list(snp_path, agro_path, mrna_path, ped_path)
-}
-named_df <- data.frame(Predictor = names(named_list),
-                       Path = unlist(named_list),
-                       stringsAsFactor = FALSE)
-named_df$Predictor <- gsub(named_df$Predictor,
-                           pattern = "_path",
-                           replacement = "")
-named_df <- named_df %>%
-  as_data_frame() %>%
-  mutate(Path = as.character(Path))
-
-pred_lst <- named_df %>%
-  as_data_frame() %>%
-  filter(Predictor %in% pred_sets) %>%
-  select(Path) %>%
-  flatten_chr() %>%
-  map(readRDS)
-
-# The order in the path data frame may not coincide with the expected predictor 
-# order. Therefore, we'll extract the predictor names - in the correct order - 
-# from the path data frame and assign them to the loaded predictor data.
-pred_lst_names <- named_df %>%
-  filter(Predictor %in% pred_sets) %>%
-  select(Predictor) %>%
-  flatten_chr()
-names(pred_lst) <- pred_lst_names
-
-# If we want to evaluate the predictive ability of genomic data that are being
-# imputed via pedigree data, we reduce the set of genotypes covered by SNP data
-# to the set of genotypes covered by mrna data. 
-# This way, we have a common reference (set of genotypes covered by mrna data)
-# for all comparisons.
-if (isTRUE(data_type == "Hybrid" &&
-           all(c("ped", "snp") %in% pred_sets) ||
-           core_set == "1.0")) {
-  mrna_genotypes <- readRDS(mrna_path) %>%
-    rownames()
-  pred_lst <- pred_lst %>%
-    map_at("snp", .f = function(x) {
-      x[match(mrna_genotypes, rownames(x)), ]
-    }) %>%
-    map_at("ped", .f = function(x) {
-      x[match(mrna_genotypes, rownames(x)),
-        match(mrna_genotypes, colnames(x))]
-    })
-}
-
-# Make sure that the predictor matrices are in the intended order, which is
-# crucial for the imputation of the predictor matrix that covers fewer
-# genotypes.
-pred_lst <- pred_lst[match(names(pred_lst), pred_sets)]
-
-
-
-
-
-## -- CORE SET SUBSAMPLING OF SNPS -----------------------------------------
-if (isTRUE(nchar(core_set) != 0) && data_type == "Inbred") {
-  core_lst <- readRDS("./data/derived/maizego/augmented_core_list.RDS")
-  names(core_lst) <- gsub(names(core_lst), pattern = "selected_fraction_",
-                          replacement = "")
-  
-  # Extract the intersect between genotypes that have data for genomic as well
-  # as transcriptomic features.
-  common_genotypes <- core_lst %>%
-    keep(names(.) == "1.0") %>%
-    flatten_chr()
-    
-  if (!isTRUE(grepl("A", x = core_set))) {
-    # Get the core set of genotypes that uniformly cover the genetic target space
-    # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
-    core_genotypes <- core_lst %>%
-      keep(names(.) == core_set) %>%
-      flatten_chr()
-  
-    # If we use core sets based on an admixture analysis, invert the set of
-    # 'core_genotypes' and 'common_genotypes' so that the majority of genotypes
-    # is covered by genomic as well as transcriptomic data.
-  } else  if (isTRUE(grepl("A", x = core_set))) {
-    a_genotypes <- core_lst %>% 
-      keep(names(.) == core_set) %>%
-      flatten_chr()
-    core_genotypes <- setdiff(common_genotypes, a_genotypes)
-  }
-
-  # Reduce the predictor data to match the size of the pre-specified core sets.
-  # Ensure that SNP quality checks are applied to the genomic data in order to 
-  # have only polymorphic markers and no markers in perfect LD.
-  pred_lst <- pred_lst %>%
-    map_at("mrna", .f = function(x) {
-      x[rownames(x) %in% core_genotypes, ]
-    }) %>%
-    map_at("snp", .f = function(x) {
-      x[rownames(x) %in% common_genotypes, ]
-    }) %>%
-    map_at("snp",
-           .f = ~sspredr::ensure_snp_quality(
-             ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
-             any_missing = FALSE, remove_duplicated = TRUE
-             )
-    )
-
-}
-
-
-
-
-## -- PREDICTOR TRANSFORMATION FOR HYBRID DATA ---------------------------
-pheno <- named_df %>%
-  filter(Predictor == "agro") %>%
-  select(Path) %>%
-  flatten_chr() %>%
+temp_loc <- "./data/derived/prediction_runs/prediction_template.RDS"
+original_prediction_template <- temp_loc %>%
   readRDS()
 
-high_coverage_geno_name_id <- pred_lst %>%
-  map(rownames) %>%
-  map(length) %>%
-  flatten_int() %>%
-  which.max()
-pred_genotypes <- pred_lst %>%
-  .[[get("high_coverage_geno_name_id")]]  %>%
-  rownames() 
+prediction_template <- original_prediction_template %>%
+  filter(Interval == pred_interval) %>%
+  mutate(Rnd_Level2 = as.character(Rnd_Level2))
 
-# Get the names of genotypes for which there are (parental) inbred lines with 
-# information on at least one predictor.
-# If we do not do this, the BGLR-input matrices will be augmented to genotypes
-# for which we cannot make predictions and the algorithm will fail.
-if (isTRUE(data_type == "Hybrid")) {
-  covered_genotypes <- pheno %>%
-    separate(Genotype, into = c("Prefix", "Dent", "Flint"), sep = "_") %>%
-    filter(Dent %in% pred_genotypes & Flint %in% pred_genotypes) %>%
-    unite(Hybrid, Dent, Flint, sep = "_") %>%
-    mutate(Hybrid = paste0("DF_", Hybrid)) %>%
-    select(Hybrid) %>%
-    unique() %>%
-    flatten_chr()
-} else if (isTRUE(data_type == "Inbred")) {
-  covered_genotypes <- pred_genotypes
+if (isTRUE(nchar(runs) != 0)) {
+  run_seq <- runs %>%
+    strsplit(., split = "-") %>%
+    flatten_chr() %>%
+    as.integer() %>%
+    max() %>%
+    seq_len()
+  prediction_template <- prediction_template %>%
+    slice(run_seq)
 }
 
-pheno <- pheno %>%
-  filter(Genotype %in% covered_genotypes)
+rnd_level2_df <- readRDS("./data/derived/predictor_subsets/rnd_level2.RDS")
+
+# Get the log file for the ETA objects.
+eta_log <- "./data/derived/log_prepare_subsamples.txt" %>%
+  readr::read_tsv() %>%
+  mutate(Pred2 = if_else(is.na(Pred2), true = "", false = Pred2))
 
 
-
-if (isTRUE(data_type == "Hybrid")) {
-  hybrid_parents <- pheno %>%
-    separate(Genotype, into = c("Prefix", "Dent", "Flint"), sep = "_") %>%
-    select(Dent, Flint) %>%
-    unique() %>%
-    gather(key = Pool, value = Genotype) %>%
-    split(.$Pool) %>%
-    map(., ~select(., Genotype)) %>%
-    map(flatten_chr)
-
-  hybrid_names <- pheno %>%
-    select(Genotype) %>%
-    unique() %>%
-    flatten_chr()
-  # In the case of hybrid data, we still need to split all predictor matrices
-  # into Flint and Dent components first.
-  # 1. map_if
-  # In the case of pedigree data, we need to split the data by genotypes in the
-  # x- as well as the y-dimension because there are no features, which is
-  # different for other predictor matrices.
-  # 2. map_at("snp")
-  # Ensure that SNP quality checks are applied separately to the genomic data 
-  # for each heterotic group in order to have only polymorphic markers and no 
-  # markers in perfect LD.
-  pred_lst <- pred_lst %>%
-    map_if(.p = names(.) == "ped",
-           .f = split_into_hetgroups, y = hybrid_parents, pedigree = TRUE) %>%
-    map_if(.p = names(.) != "ped",
-           .f = split_into_hetgroups, y = hybrid_parents, pedigree = FALSE) %>%
-    map_at("snp", .f = ~map(., ~sspredr::ensure_snp_quality(
-      ., callfreq_check = FALSE, maf_check = TRUE,
-      maf_threshold = 0.05, any_missing = FALSE, remove_duplicated = TRUE
-      )))
-
-  # Add the names of the parental hybrids to the objects.
-  # The procedure is necessary for matching predictor data with agronomic data
-  # throughout all predictions.
-  pre_eta <- pred_lst %>%
-    transpose() %>%
-    add_parental_hybrid_names()
-
-} else if (isTRUE(data_type == "Inbred")) {
-
-  pre_eta <- list(Inbred = pred_lst)
-}
-
-## -- AGRONOMIC DATA PREPARATION ------------------------------------------
-# If only one trait was specified, use only that trait, otherwise select all
-# traits.
-if (nchar(traits) == 0 || length(traits) != 1) {
-  traits <- pheno %>% select(Trait) %>% flatten_chr() %>% unique()
-} else {
-  traits <- traits 
-}
-
-# In the case of subsampling based on core samples, we may also have to subset
-# the agronomic data afterwards.
-# Therefore, we need to determine the largest set of genotypes covered by any
-# selected predictor.
-if (isTRUE(data_type == "Inbred")) {
-  pre_eta[[1]][["geno"]] <- pred_genotypes
-} else if (isTRUE(data_type == "Hybrid")) {
-  pred_genotypes <- hybrid_names
-}
-
-pheno_mat <- pheno %>%
-  filter(Trait %in% traits,
-         Genotype %in% pred_genotypes) %>%
-  spread(key = Trait, value = Value) %>%
-  as.data.frame() %>%
-  remove_rownames() %>%
-  column_to_rownames(var = "Genotype") %>%
-  as.matrix()
-
-
-
-
-## -- GENERATE BGLR() INPUT MATRICES --------------------------------------
-# Determine the number of predictors to decide later on, which function to
-# call for the set-up of the kernels.
-raw_args <- pre_eta %>%
-  map(names) %>%
-  reduce(intersect) %>%
-  discard(. == "geno")
-pred_number <- raw_args %>%
-  .[grep("ped|snp|mrna", x = .)] %>%
-  length()
-
-
-# If all predictors are being used, it is known that pedigree data are involved
-# and no measures need to be taken.
-# If only a subset of predigrees will be used, it needs to be determined
-# whether pedigree data are involved or not, since subsequent functions need to
-# 'know' if the predictor matrices need to be scaled or not.
-if (all(grepl("ped", x = raw_args))) {
-  pre_eta <- pre_eta %>%
-    map(.f = function(x) {
-      x$as_kernel <- FALSE
-      x$bglr_model <- pred_model
-      x
-  })
-} else if (any(grepl("ped", x = raw_args))) {
-  pre_eta <- pre_eta %>%
-    map(.f = function(x) {
-      x$is_pedigree <- TRUE
-      x$bglr_model <- pred_model
-      x$as_kernel <- TRUE
-      x
-    })
-} else {
-  pre_eta <- pre_eta %>%
-    map(.f = function(x) {
-      x$is_pedigree <- FALSE
-      x$bglr_model <- pred_model
-      x$as_kernel <- TRUE
-      x
-    })
-}
-
-# Depending on the number of predictors included in the set, choose the correct
-# function for the set-up of the BGLR kernels.
-eta_fun <- c("complete_eta", "impute_eta") %>%
-  .[pred_number]
-
-# Collect the formal arguments from the selected function and then rename the
-# corresponding predictors in the 'pre_eta' object so that the call of the 
-# kernel building function (e.g. "impute_eta") can be generalized.
-eta_fun_args <- eta_fun %>%
-  formals() %>%
-  names()
-eta_pred_nms <- eta_fun_args %>%
-  .[!grepl("as_kernel|is_pedigree|geno|bglr_model", x = .)]
-current_eta_names <- pre_eta %>%
-  map(names) %>%
-  reduce(intersect)
-current_eta_names[seq_len(pred_number)] <- eta_pred_nms
-pre_eta <- pre_eta %>%
-  map(function(x) {
-    names(x) <- current_eta_names
-    x
-  })
-# Build the kernel for BGLR.
-eta <- invoke_map(get(eta_fun), pre_eta) %>%
-  flatten()
-
-# Substitute hybrid names for the current names of the hybrid parents in the
-# ETA objects. This is required for the cross-validation function to detect
-# correct sorting of genotypes in the variance-covariance matrices with respect
-# to the phenotypic traits.
-if (isTRUE(data_type == "Hybrid")) {
-  eta <- lapply(eta, FUN = function(x) {
-    rownames(x$X) <- hybrid_names
-    x
-  })
-}
-
-
+## -- PHENOTYPIC DATA ----------------------------------------------------
+inb_pheno <- readRDS("./data/derived/maizego/tst_pheno_tibble.RDS")
+hyb_pheno <- "./data/derived/uhoh/agro_tibble.RDS" %>%
+  readRDS() %>%
+  separate(
+    col = Genotype,
+    into = c("Prefix", "Dent", "Flint"),
+    sep = "_",
+    remove = FALSE
+  )
 
 
 ## -- PREDICTION -----------------------------------------------------------
 # Define which runs shall be used, i.e., which genotypes shall be included as 
 # test sets.
-if (nchar(runs) != 0) {
-  run_length <- runs %>%
-    strsplit(., split = "-") %>%
-    as_vector() %>%
-    as.integer() %>%
-    invoke(.f = seq, .x = ., by = 1) 
-} else {
-  run_length <- seq_len(nrow(pheno_mat))
-}
-param_df <- expand.grid(Trait = traits,
-                        Iter = iter,
-                        Run = run_length)
-param_df$Trait <- as.character(param_df$Trait)
+pred_seq <- prediction_template %>%
+  nrow() %>%
+  seq_len()
 
-if (isTRUE(data_type == "Hybrid")) {
-  mother_idx <- 2
-  father_idx <- 3
-  split_char <- "_"
-} else if (isTRUE(data_type == "Inbred")) {
-  mother_idx <- NULL
-  father_idx <- NULL
-  split_char <- NULL
-}
-
+# Keep the time of the following computations.
 start_time <- Sys.time()
-# Keep track of how long a job is running.
-yhat_lst <- mclapply(seq_len(nrow(param_df)), FUN = function(i) {
-  run <- param_df[i, "Run"]
-  trait <- param_df[i, "Trait"]
-  iter <- as.integer(param_df[i, "Iter"])
-  pred <- run_loocv(Pheno = pheno_mat,
-                    ETA = eta,
-                    hybrid = hybrid,
-                    mother_idx = mother_idx,
-                    father_idx = father_idx, 
-                    split_char = split_char,
-                    trait = trait,
-                    iter = iter,
-                    speed_tst = FALSE,
-                    run = run,
-                    verbose = FALSE,
-                    out_loc = temp)
-  cbind(pred, Iter = iter)
+
+# Analysis
+mclapply(pred_seq, FUN = function(i) {
+
+  # Collect the current set of parameters.
+  template_i <- prediction_template %>%
+    slice(i)
+
+  # Collect the current ETA object for the prediction.
+  eta_i <- eta_log %>%
+    mutate(
+      Rnd_Level1 = as.numeric(Rnd_Level1),
+      Core_Fraction = as.character(Core_Fraction)
+    ) %>%
+    semi_join(
+      y = template_i,
+      by = c(
+        "Extent", "Material", "Scenario", "Pred1", "Pred2", "Core_Fraction",
+        "Rnd_Level1"
+      )
+    ) %>%
+    pull(Data_Location) %>%
+    readRDS()
+
+  if (isTRUE(pull(template_i, Material) == "Hybrid")) {
+    eta_order <- eta_i %>%
+      map(.f = `[[`, "X") %>%
+      map(rownames) %>%
+      map(as_data_frame) %>%
+      bind_cols() %>%
+      rename(Dent = "value", Flint = "value1") %>%
+      unite(col = Genotype, Dent, Flint, sep = "_") %>%
+      mutate(Genotype = paste0("DF_", Genotype))
+  } else if (isTRUE(pull(template_i, Material) == "Inbred")) {
+    eta_order <- eta_i %>%
+      map(.f = `[[`, "X") %>%
+      map(rownames) %>%
+      reduce(intersect) %>%
+      as_data_frame() %>%
+      rename(Genotype = "value")
+  }
+
+  # Select test and training set individuals for the current combination.
+  rnd_level2_i <- rnd_level2_df %>%
+    semi_join(
+      y = template_i,
+      by = c("Extent", "Material", "Scenario", "Rnd_Level2")
+    ) %>%
+    select(TST_Geno, TRN_Geno)
+
+  # Vector with genotype names.
+  tst_set_i <- rnd_level2_i %>%
+    pull(TST_Geno) %>%
+    unique()
+
+  # Select the correct set of phenotypes.
+  if (isTRUE(pull(template_i, Material) == "Hybrid")) {
+    pheno_i <- hyb_pheno %>%
+      filter(
+        Trait == pull(template_i, Trait),
+        Genotype %in% tst_set_i
+      ) %>%
+      select(-Prefix) %>%
+      rename(Observed = "Value") %>%
+      right_join(y = eta_order, by = "Genotype")
+  } else if (isTRUE(pull(template_i, Material) == "Inbred")) {
+    pheno_i <- inb_pheno %>%
+      filter(
+        Trait == pull(template_i, Trait),
+        Genotype %in% tst_set_i
+      ) %>%
+      rename(Observed = "Value") %>%
+      right_join(y = eta_order, by = "Genotype")
+  }
+
+
+  # Generate all leave-one-out cross-validation predictions for one parameter.
+  eta_seq <- seq_along(tst_set_i)
+  one_param_lst <- lapply(eta_seq, FUN = function(j) {
+
+    tst_geno_j <- pheno_i %>%
+      slice(j) %>%
+      pull(Genotype)
+
+    pheno_j <- pheno_i %>%
+      mutate(Observed = if_else(
+        Genotype == tst_geno_j,
+        true = NA_real_,
+        false = Observed
+      )
+    )
+
+    mod_bglr <- BGLR::BGLR(
+      y = pull(pheno_j, Observed),
+      ETA = eta_i,
+      nIter = iter,
+      burnIn = iter / 2,
+      saveAt = temp,
+      verbose = FALSE
+    )
+    yhat <- mod_bglr$yHat
+    sd_yhat <- mod_bglr$SD.yHat
+    res <- slice(pheno_j, j)
+    res$yhat <- yhat[j]
+    res$var_yhat <- sd_yhat[j] ^ 2
+    res$Observed <- pheno_i %>% slice(j) %>% pull(Observed)
+
+    # Return the predictions.
+    res
+  })
+
+  # Get the ID of the current scenario to reference it appropriately for later
+  # retrieval.
+  row_id <- prediction_template %>%
+    slice(i) %>%
+    pull(rowid)
+
+  one_param_df <- one_param_lst %>%
+    bind_rows() %>%
+    select(Genotype, Observed, yhat, var_yhat) %>%
+    bind_cols(slice(template_i, rep(1:n(), length(one_param_lst)))) %>%
+    mutate(rowid = row_id)
+
+
+  # Save output and link it with a log file.
+  saveRDS(
+    one_param_df,
+    paste0("./data/derived/predictions/template_", row_id, ".RDS")
+  )
+
 }, mc.cores = use_cores)
-res <- rbindlist(yhat_lst)
-
-# If not all three predictors were used, declare the missing ones as "none" and
-# add them, which will facilitate further data analyses.
-max_pred_number <- 2L
-pred_nms <- c(pred_sets,
-              rep("none", times = max_pred_number - length(pred_sets)))
-res <- res %>%
-  rename(Trait = Phenotype,
-         Dent = Mother,
-         Flint = Father) %>%
-  mutate(CV = "LOOCV",
-         Data_Type = data_type,
-         Pred1 = pred_nms[1],
-         Pred2 = pred_nms[2],
-         Core_Set = core_set,
-         Job_ID = job_id,
-         Runs = runs,
-         Elapsed_Time = get_elapsed_time(start_time),
-         Start_Time = as.character(start_time),
-         Cores = use_cores) %>%
-  as.data.table()
-
-log_file <- unique(res[, .(Job_ID, Pred1, Pred2, Data_Type, 
-                           Core_Set, Elapsed_Time, Iter, CV, Start_Time, 
-                           Runs, Cores), ])
-
-# Reduce the size of the prediction object to the minimum possible size.
-res[, `:=` (Iter = NULL, 
-            Pred1 = NULL,
-            Pred2 = NULL,
-            Data_Type = NULL,
-            Core_Set = NULL,
-            CV = NULL,
-            Dent = NULL,
-            Flint = NULL,
-            Runs = NULL,
-            Elapsed_Time = NULL,
-            Start_Time = NULL,
-            Cores = NULL),
-  ]
 
 
-# Prediction results file
-saveRDS(res, 
-        file = paste0("./data/derived/predictions/", job_id, ".RDS"),
-        compress = FALSE)
-                     
-# Log file
-log_location <- "./data/derived/uhoh_maizego_prediction_log.txt"
-write.table(log_file,
-            file = log_location,
-            sep = "\t", row.names = FALSE,
-            col.names = ifelse(file.exists(log_location), yes = FALSE,
-                               no = TRUE),
-            append = ifelse(file.exists(log_location), yes = TRUE, no = FALSE))
+# Write a corresponding log file for the predictions.
+elapsed_time <- get_elapsed_time(start_time)
+res_log <- data_frame(
+  Start_Time = start_time,
+  Finish_Time = Sys.time(),
+  Elapsed_Time = elapsed_time,
+  Interval = pred_interval,
+  Runs = runs
+)
+
+res_log_location <- "./data/derived/prediction_log.txt"
+write_tsv(
+  res_log,
+  path = res_log_location,
+  append = if_else(file.exists(res_log_location), true = TRUE, false = FALSE)
+)
 

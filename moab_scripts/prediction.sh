@@ -8,13 +8,13 @@
 #MOAB -l nodes=1:ppn=16
 #
 # Request memory per process
-#MOAB -l pmem=3800mb
+#MOAB -l pmem=4000mb
 #
 # Estimated wallclock time for job
 #MOAB -l walltime=00:22:00:00
 #
 # Job submission directory
-#MOAB -d /pfs/work2/workspace/scratch/ho_westhues-single_step-0/gamazon
+#MOAB -d /pfs/work2/workspace/scratch/ho_westhues-single_step-0
 #
 # Standard output naming
 #MOAB -o $(JOBNAME)_$(JOBID)
@@ -28,11 +28,6 @@
 # Write standard output (o) and errors (e) to the same file
 #MOAB -j oe
 #
-# Use either 'Hybrid' (UHOH data) or 'Inbred' (Yan-lab data)
-#MOAB -v DATA_TYPE=
-#
-#MOAB -v TRAIT=
-#
 #MOAB -v ITER=30000
 #
 #MOAB -v MODEL=BRR
@@ -43,14 +38,7 @@
 #
 #MOAB -v PRIOR_PI_COUNT=10
 #
-# Predictor: 'ped', 'snp' or 'mrna'
-#MOAB -v PRED1=
-#
-#MOAB -v PRED2=
-#
-# Specify the core set set size, as a fraction of genotypes covered by mrna
-# data
-#MOAB -v CORE_SET=
+#MOAB -v INTERVAL=
 #
 #MOAB -v RUNS=
 #
@@ -68,24 +56,18 @@ echo "Number of cores allocated to job:     $MOAB_PROCCOUNT"
 module load math/R/3.3.1
 
 # Echo input variables
-echo "Data_Type=${DATA_TYPE}\
-      Trait=${TRAIT}\
-      Iter=${ITER}\
+echo "Iter=${ITER}\
       Model=${MODEL}\
       VCOV=${VCOV}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
-      Pred1=${PRED1}\
-      Pred2=${PRED2}\
-      Core_Set=${CORE_SET}\
+      Core_Set=${INTERVAL}\
       Runs=${RUNS}"
 
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/prediction.R\
-           ${DATA_TYPE} ${TRAIT} ${ITER} ${MODEL} ${VCOV} ${PI}\
-           ${PRIOR_PI_COUNT} ${PRED1} ${PRED2} ${CORE_SET}\
-           ${RUNS}"
+           ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT} ${INTERVAL} ${RUNS}"
 
 # Start program
 echo $startprog

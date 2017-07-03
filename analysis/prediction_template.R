@@ -71,7 +71,9 @@ cut_idx <- prediction_template %>%
   cut(breaks = 200, labels = FALSE)
 
 prediction_template <- prediction_template %>%
-  mutate(Interval = as.character(cut_idx))
+  mutate(Interval = as.character(cut_idx)) %>%
+  rowid_to_column()
 
 pred_loc <- "./data/derived/prediction_runs/"
 saveRDS(prediction_template, paste0(pred_loc, "prediction_template.RDS"))
+
