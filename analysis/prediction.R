@@ -9,6 +9,9 @@
 #
 #
 #
+if (isTRUE(interactive())) {
+  .libPaths(c(.libPaths(), "~/R/x86_64-pc-linux-gnu-library/3.4/"))
+}
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 pacman::p_load("BGLR","data.table", "parallel", "magrittr", "dplyr", "dtplyr",
@@ -39,7 +42,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "1")
+  Sys.setenv("INTERVAL" = "2")
   # Number of test runs.
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -257,7 +260,8 @@ res_log <- data_frame(
   Finish_Time = Sys.time(),
   Elapsed_Time = elapsed_time,
   Interval = pred_interval,
-  Runs = runs
+  Runs = runs,
+  JOB_ID = job_id
 )
 
 res_log_location <- "./data/derived/prediction_log.txt"
