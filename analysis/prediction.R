@@ -91,7 +91,23 @@ if (isTRUE(nchar(runs) != 0)) {
     slice(run_seq)
 }
 
-rnd_level2_df <- readRDS("./data/derived/predictor_subsets/rnd_level2.RDS")
+# Get the individual levels of the level2 randomization procedure to load the
+# correct subset of data.
+rnd2_levels <- prediction_template %>%
+  pull(Rnd_Level2) %>% 
+  unique() %>%
+  as.integer()
+
+if (isTRUE(all(rnd2_levels %in% seq_len(25)))) {
+  rnd_level2_df <- readRDS(
+    "./data/derived/predictor_subsets/rnd_level2_1-25.RDS"
+  )
+} else if (isTRUE(all(rnd2_levels %in% seq(from = 26, to = 50, by = 1)))) {
+  rnd_level2_df <- readRDS(
+    "./data/derived/predictor_subsets/rnd_level2_26-50.RDS"
+  )
+}
+
 
 # Get the log file for the ETA objects.
 eta_log <- "./data/derived/log_prepare_subsamples.txt" %>%

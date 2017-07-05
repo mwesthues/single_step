@@ -9,6 +9,9 @@
 
 
 ## -- PACKAGES AND FUNCTIONS -----------------------------------------------
+if (isTRUE(interactive())) {
+  .libPaths(c(.libPaths(), "~/R/x86_64-pc-linux-gnu-library/3.4/"))
+}
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 #devtools::install_github("mwesthues/sspredr", update = FALSE)
@@ -145,7 +148,15 @@ rnd_level2_df <- geno_param_df %>%
   bind_rows(.id = "ID") %>%
   separate(ID, into = c("Extent", "Material", "Scenario"), sep = "_") %>%
   rename(Rnd_Level2 = "Iter")
-saveRDS(rnd_level2_df, "./data/derived/predictor_subsets/rnd_level2.RDS")
+
+# Save the result in two separate data frames to reduce memory requirements when
+# loading only a subset.
+rnd_level2_df %>%
+  filter(Rnd_Level2 %in% seq_len(25)) %>%
+  saveRDS(., "./data/derived/predictor_subsets/rnd_level2_1-25.RDS")
+rnd_level2_df %>%
+  filter(Rnd_Level2 %in% seq(from = 26, to = 50, by = 1)) %>%
+  saveRDS(.,  "./data/derived/predictor_subsets/rnd_level2_26-50.RDS")
 
 
 
