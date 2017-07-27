@@ -1,19 +1,46 @@
+if (isTRUE(interactive())) {
+  .libPaths("~/R/x86_64-pc-linux-gnu-library/3.4/")
+}
+
+
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "broom")
 
-# load the log file
-log_file <- "./data/derived/uhoh_maizego_prediction_log.txt" %>%
-  read_tsv() %>%
-  mutate(Job_ID = as.character(Job_ID)) %>%
-  filter(grepl("2017-06-27", x = Start_Time))
+# load the data
+dat <- "./data/processed/predictions/predictions.RDS" %>%
+  readRDS() %>%
+  filter(complete.cases(.))
 
-# concatenate log file with prediction results for complete information
-pred_data <- log_file %>%
-  pull(Job_ID) %>%
-  map(., .f = ~readRDS(paste0("./data/derived/predictions/", ., ".RDS"))) %>%
-  map(as_data_frame) %>%
-  bind_rows() %>%
-  left_join(x = ., y = log_file, by = "Job_ID")
+
+boot_iter <- 2
+
+boot_pred <- dat %>%
+  dplyr::rename(y = "Observed") %>%
+  tidyr::unite(PredCombi, Pred1, Pred2, sep = "_") %>%
+  tidyr::nest(
+    -Extent,
+    -Material, 
+    -Scenario,
+    -PredCombi,
+    -Rnd_Level1,
+    -Rnd_Level2,
+    -Core_Fraction,
+    -Trait
+  ) %>%
+  dplyr::mutate(cors_boot = purrr::map(
+    data,
+    ~broom::bootstrap(., boot_iter) %>% do(broom::tidy(cor(.$y, .$yhat))))
+  ) %>%
+  tidyr::unnest(cors_boot) %>%
+  dplyr::group_by(
+    Extent,
+    Material,
+    Scenario,
+    PredCombi,
+    Core_Fraction,
+    Trait
+  ) %>%
+  dplyr::summarize(r = mean(x), se = sd(x))
 
 boot_pred <- pred_data %>%
   nest(-Core_Set, -Core_run, -Loocv_run, -Trait) %>%
