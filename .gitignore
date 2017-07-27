@@ -17,7 +17,6 @@
 
 # However, ignore all files, which start with the following identifier: 
 input_*
-analysis/prediction_arguments.R
 software*
 
 
