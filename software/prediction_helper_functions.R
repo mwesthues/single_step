@@ -218,7 +218,7 @@ sample_loo_sets <- function(geno,
   ## hybrids
   if (isTRUE(material == "Hybrid")) {
     t0_trn_set_size <- train_df %>%
-      select(-id) %>%
+      select(-ind) %>%
       group_by(Iter, TST_Geno) %>%
       count() %>%
       pull(n) %>%
