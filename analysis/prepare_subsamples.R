@@ -123,22 +123,35 @@ geno_param_df <- geno_df %>%
   select(-G) %>%
   unique()
 
+
+
 sample_by_combination <- function(i) {
+
   param_subset <- slice(geno_param_df, i)
+
+  material_i <- geno_param_df %>% 
+    slice(i) %>%
+    pull(Material)
+
   param_genos <- geno_df %>%
     inner_join(
       y = param_subset,
       by = c("Extent", "Material", "Scenario")
     ) %>%
-    pull(G)
+    pull(G) %>%
+    gsub(pattern = "DF_", x = ., replacement = "")
   
   loocv_samples <- sample_loo_sets(
   geno = param_genos,
   frac = 0.7,
+  material = material_i,
   iter = 50
-  )
+  ) %>%
+  mutate(TST_Geno = paste0("DF_", TST_Geno))
   loocv_samples
 }
+
+
 
 rnd_level2_df <- geno_param_df %>%
   nrow() %>%
