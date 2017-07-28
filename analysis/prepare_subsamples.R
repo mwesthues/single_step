@@ -292,13 +292,25 @@ eta_spec6 <- expand.grid(
   stringsAsFactors = FALSE
 )
 
+eta_spec7 <- expand.grid(
+  Extent = "Full",
+  Material = "Hybrid",
+  Pred1 = c("snp", "ped"),
+  Pred2 = "",
+  Scenario = "None",
+  Rnd_Level1 = "0",
+  Core_Fraction = "0",
+  stringsAsFactors = FALSE
+)
+
 spec_eta_df <- list(
   eta_spec1,
   eta_spec2,
   eta_spec3,
   eta_spec4,
   eta_spec5,
-  eta_spec6
+  eta_spec6,
+  eta_spec7
   ) %>%
   bind_rows() %>%
   as_data_frame()
