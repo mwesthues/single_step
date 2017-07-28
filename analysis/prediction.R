@@ -232,13 +232,35 @@ mclapply(pred_seq, FUN = function(i) {
       dplyr::slice(j) %>%
       dplyr::pull(Genotype)
 
-    pheno_j <- pheno_i %>%
-      dplyr::mutate(Observed = if_else(
-        Genotype == tst_geno_j,
-        true = NA_real_,
-        false = Observed
+    # In the case of hybrid genotypes, filter T0 hybrids.
+    if (isTRUE(dplyr::pull(template_i, Material) == "Hybrid")) {
+      tst_dent <- tst_geno_j %>%
+        strsplit(split = "_") %>%
+        map_chr(`[[`, 2)
+
+      tst_flint <- tst_geno_j %>%
+        strsplit(split = "_") %>%
+        map_chr(`[[`, 3)
+
+      pheno_j <- pheno_i %>%
+        dplyr::mutate(Observed = if_else(
+          Genotype == tst_geno_j | Dent == tst_dent | Flint == tst_flint,
+          true = NA_real_,
+          false = Observed
+        )
       )
-    )
+    } else if (isTRUE(dplyr::pull(template_i, Material) == "Inbred")) {
+      
+      pheno_j <- pheno_i %>%
+        dplyr::mutate(Observed = if_else(
+          Genotype == tst_geno_j,
+          true = NA_real_,
+          false = Observed
+        )
+      )
+    }
+
+
 
     mod_bglr <- BGLR::BGLR(
       y = dplyr::pull(pheno_j, Observed),
