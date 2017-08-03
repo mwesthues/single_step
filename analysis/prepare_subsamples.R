@@ -9,9 +9,6 @@
 
 
 ## -- PACKAGES AND FUNCTIONS -----------------------------------------------
-if (isTRUE(interactive())) {
-  .libPaths(c(.libPaths(), "~/R/x86_64-pc-linux-gnu-library/3.4/"))
-}
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
 #devtools::install_github("mwesthues/sspredr", update = FALSE)
@@ -212,6 +209,7 @@ sample_core <- function(x) {
 }
 
 
+core_location <- "./data/derived/predictor_subsets/core_set"
 core_fractions <- seq(from = 0.1, to = 0.9, by = 0.1)
 lapply(core_fractions, FUN = function(i) {
   print(i)
@@ -230,24 +228,45 @@ lapply(core_fractions, FUN = function(i) {
       y = level2_geno_df,
       by = "Scenario"
     ) %>%
-    base::split(list(.$Scenario, .$Rnd_Level1, .$Rnd_Level2, .$TST_Geno), drop = TRUE) %>%
+    base::split(
+      list(.$Scenario, .$Rnd_Level1, .$Rnd_Level2, .$TST_Geno),
+      drop = TRUE
+    ) %>%
     purrr::map(sample_core) %>%
     dplyr::bind_rows() %>%
     saveRDS(
       object = .,
-      file = paste0("./data/derived/predictor_subsets/core_set", i, ".RDS")
+      file = paste0(core_location, i, ".RDS")
     )
 })
 
 
+filter_files <- function(file_loc) {
+  file_loc %>%
+    readRDS() %>%
+    dplyr::mutate(Rnd_Level2 = as.integer(Rnd_Level2)) %>%
+    dplyr::filter(
+      Rnd_Level1 %in% seq_len(20),
+      Rnd_Level2 %in% seq_len(20)
+    )
+}
 
-## Add all other combinations to the data frame. This will facilitate the setup
-## of ETA objects later on.
-#rnd_level1_df <- geno_df %>%
-#  dplyr::mutate(Core_Fraction = 0, Rnd_Level1 = 0) %>%
-#  dplyr::bind_rows(., rnd_level1_df) %>%
-#  dplyr::mutate_all(as.character)
-#saveRDS(rnd_level1_df, "./data/derived/predictor_subsets/rnd_level1.RDS")
+rnd_level1_df <- core_fractions %>%
+  purrr::map(.f = ~paste0(core_location, ., ".RDS")) %>%
+  purrr::map(filter_files) %>%
+  bind_rows()
+
+# Combine the correct randomizations for all materials, extents and scenarios.
+rnd_df <- rnd_level2_df %>%
+  dplyr::filter(!(Extent == "Core" & Material == "Inbred")) %>%
+  dplyr::select(-ind) %>%
+  dplyr::mutate(
+    Core_Fraction = 0,
+    Rnd_Level1 = 0,
+    Rnd_Level2 = as.integer(Rnd_Level2)
+  ) %>%
+  dplyr::bind_rows(rnd_level1_df %>% dplyr::select(-ind))
+saveRDS(rnd_df, "./data/derived/predictor_subsets/rnd_df.RDS")
 
 
 
@@ -259,7 +278,8 @@ eta_spec1 <- expand.grid(
   Pred1 = "snp",
   Pred2 = "mrna",
   Scenario = c("A", "B"),
-  Rnd_Level1 = seq_len(50) %>% as.character(),
+  Rnd_Level1 = seq_len(20) %>% as.character(),
+  Rnd_Level2 = seq_len(20) %>% as.character(),
   Core_Fraction = seq(from = 0.1, to = 0.9, by = 0.1) %>% as.character(),
   stringsAsFactors = FALSE
 )
@@ -271,6 +291,7 @@ eta_spec2 <- expand.grid(
   Pred2 = "",
   Scenario = c("A", "B"),
   Rnd_Level1 = "0",
+  Rnd_Level2 = seq_len(20) %>% as.character(),
   Core_Fraction = "0",
   stringsAsFactors = FALSE
 )
@@ -282,6 +303,7 @@ eta_spec3 <- expand.grid(
   Pred2 = "",
   Scenario = c("A", "B"),
   Rnd_Level1 = "0",
+  Rnd_Level2 = seq_len(20) %>% as.character(),
   Core_Fraction = "0",
   stringsAsFactors = FALSE
 )
@@ -293,6 +315,7 @@ eta_spec4 <- expand.grid(
   Pred2 = "mrna",
   Scenario = c("A", "B"),
   Rnd_Level1 = "0",
+  Rnd_Level2 = seq_len(20) %>% as.character(),
   Core_Fraction = "0",
   stringsAsFactors = FALSE
 )
@@ -304,6 +327,7 @@ eta_spec5 <- expand.grid(
   Pred2 = "",
   Scenario = "None",
   Rnd_Level1 = "0",
+  Rnd_Level2 = seq_len(20) %>% as.character(),
   Core_Fraction = "0",
   stringsAsFactors = FALSE
 )
@@ -315,6 +339,7 @@ eta_spec6 <- expand.grid(
   Pred2 = "mrna",
   Scenario = "None",
   Rnd_Level1 = "0",
+  Rnd_Level2 = seq_len(20) %>% as.character(),
   Core_Fraction = "0",
   stringsAsFactors = FALSE
 )
@@ -326,6 +351,7 @@ eta_spec7 <- expand.grid(
   Pred2 = "",
   Scenario = "None",
   Rnd_Level1 = "0",
+  Rnd_Level2 = seq_len(20) %>% as.character(),
   Core_Fraction = "0",
   stringsAsFactors = FALSE
 )
@@ -345,9 +371,13 @@ saveRDS(spec_eta_df, "./data/derived/predictor_subsets/spec_eta_df.RDS")
 
 
 
-pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
+#FIXME: not yet defined
 rnd_level1_df <- readRDS("./data/derived/predictor_subsets/rnd_level1.RDS")
-rnd_level2_df <- readRDS("./data/derived/predictor_subsets/rnd_level2.RDS")
+
+pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
+rnd_level2_df <- "./data/derived/predictor_subsets/rnd_level2_1-25.RDS" %>%
+  readRDS() %>%
+  dplyr::filter(Rnd_Level2 %in% seq_len(20))
 geno_df <- readRDS("./data/derived/predictor_subsets/geno_df.RDS")
 spec_eta_df <- readRDS("./data/derived/predictor_subsets/spec_eta_df.RDS")
 
