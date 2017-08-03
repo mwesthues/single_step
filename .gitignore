@@ -18,6 +18,7 @@
 # However, ignore all files, which start with the following identifier: 
 input_*
 software*
+tmp*
 
 
 .Rproj.user
