@@ -423,42 +423,6 @@ rm(hyb)
 
 
 
-## -- INBRED ETA SETUP ------------------------------------------------------
-inbred_spec_eta <- spec_eta_df %>%
-  dplyr::filter(Material == "Inbred")
-
-inbred_pre_eta_df <- rnd_df %>%
-  dplyr::filter(Material == "Inbred") %>%
-  tidyr::gather(key = Set, value = Genotype, TST_Geno, TRN_Geno) %>%
-  dplyr::select(-Set) %>%
-  split(list(.$Extent, .$Scenario, .$Core_Fraction), sep = "_") %>%
-  purrr::map(~split(., list(.$Rnd_Level1), drop = TRUE, sep = "_")) %>%
-  purrr::modify_depth(
-    .depth = 2,
-    .f = ~split(., list(.$Rnd_Level2), drop = TRUE, sep = "_")
-  ) %>%
-  purrr::modify_depth(.depth = 3, .f = ~dplyr::distinct(., Genotype)) %>%
-  purrr::keep(.p = ~length(.) != 0) %>%
-  purrr::modify_depth(
-    .depth = 2,
-    .f = ~dplyr::bind_rows(., .id = "Rnd_Level2")
-  ) %>%
-  purrr::map(.f = ~dplyr::bind_rows(., .id = "Rnd_Level1")) %>%
-  bind_rows(.id = "ID") %>%
-  tidyr::separate(
-    col = ID,
-    into = c("Extent", "Scenario", "Core_Fraction"),
-    sep = "_"
-  ) %>%
-  dplyr::mutate(Core_Fraction = as.numeric(Core_Fraction)) %>%
-  dplyr::full_join(
-    y = inbred_spec_eta,
-    by = c("Extent", "Core_Fraction", "Scenario")
-  )
-
-
-
-
 ## -- HYBRID ETA SETUP -----------------------------------------------------
 pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
 geno_df <- readRDS( "./data/derived/predictor_subsets/geno_df.RDS")
@@ -690,175 +654,126 @@ lapply(hyb_scenario_seq, FUN = function(i) {
       ".RDS"
     )
   )
-  #print(paste("Successfully processed element", i))
+  print(paste("Successfully processed element", i))
 })
 
 
 
 
 
+## -- INBRED ETA SETUP ------------------------------------------------------
+pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
+geno_df <- readRDS( "./data/derived/predictor_subsets/geno_df.RDS")
+scen_df <- readRDS("./data/derived/predictor_subsets/scen_df.RDS")
+
+inb_level2_pre_eta <- geno_df %>%
+  dplyr::filter(Material == "Inbred") %>%
+  dplyr::full_join(
+    y = scen_df %>%
+          dplyr::filter(Material == "Inbred", Core_Fraction == 1) %>%
+          dplyr::select(-Core_Fraction) %>%
+          tibble::as_data_frame(),
+    by = c("Extent", "Material", "Scenario")
+  ) %>%
+  tidyr::unite(col = "Predictor", c("Pred1", "Pred2"), remove = TRUE) %>%
+  dplyr::mutate(Predictor = gsub("_$", x = Predictor, replacement = ""))
 
 
 
+# Generate a sequence of all possible scenarios for easy looping.
+# Additionally, generate a unique ID for each combination of parameters for
+# which a separate ETA object will be created.
+inb_level2_unique_eta_combis <- inb_level2_pre_eta %>%
+  dplyr::distinct(Material, Extent, Predictor, Scenario, .keep_all = FALSE) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(UUID = uuid::UUIDgenerate())
+saveRDS(
+  inb_level2_unique_eta_combis,
+  file = "./data/derived/predictor_subsets/inb_level2_unique_eta_combis.RDS"
+)
+inb_level2_scenario_seq <- inb_level2_unique_eta_combis %>%
+  nrow() %>%
+  seq_len()
+
+# Specify which BGLR algorithm shall be used.
+pred_model <- "BRR"
 
 
+lapply(inb_level2_scenario_seq, FUN = function(i) {
+  # For setting up ETA objects it is crucial to know which predictors are in
+  # use.
+  current_scenario <- dplyr::slice(inb_level2_unique_eta_combis, i)
+  pred_combi <- dplyr::pull(current_scenario, Predictor)
+  pred_sets <- pred_combi %>%
+    base::strsplit(split = "_") %>%
+    purrr::flatten_chr()
+  pred_lst_selector <-  current_scenario %>%
+    dplyr::mutate(Material = dplyr::if_else(
+      Material == "Hybrid",
+      true = "hyb",
+      false = "inb"
+    )) %>%
+    dplyr::pull(Material) %>%
+    paste(., pred_sets, sep = "_")
 
-
-#TODO: Run ETA generation for each scenario.
-lapply(hyb_scenario_seq, FUN = function(i) {
-
-  # Extract a subset of the data corresponding to the current scenario.
-  rnd_select <- unique_scenarios %>%
-    dplyr::slice(i)
-  data.table::setkeyv(rnd_select, cols = key_cols)
-  rnd_i <- data.table::copy(rnd_dt[rnd_select, nomatch = 0])
-
-  pred1 <- dplyr::pull(rnd_select, Pred1)
-  pred2 <- dplyr::pull(rnd_select, Pred2)
-  extent <- dplyr::pull(rnd_select, Extent)
-  pred_model <- "BRR"
-
-  # We need to distinguish between core set inbred lines and all other genotypes.
-  material <- dplyr::if_else(
-    dplyr::pull(rnd_select, Material) == "Hybrid",
-    true = "Hybrid",
-    false = "Inbred"
+  # Get the names of the hybrids and their parental components to properly
+  # augment the ETA objects to match their phenotypic data.
+  current_inb_df <- inb_level2_pre_eta %>%
+    dplyr::inner_join(
+      y = current_scenario,
+      by = c("Extent", "Predictor", "Material", "Scenario")
   )
+  full_geno <- dplyr::pull(current_inb_df, G)
 
-  pred_combi <- list(pred1, pred2) %>%
-     purrr::keep(nchar(.) != 0) %>%
-     purrr::flatten_chr() %>%
-     paste(., collapse = "_")
-
-   pred_sets <- pred_combi %>%
-     strsplit(split = "_") %>%
-     purrr::flatten_chr()
-
-  pred_lst_selector <- paste(material, pred_sets, sep = "_")
-
-  # Get the random core set of genotypes covering the genetic target space
-  # of a pre-specified size (as a fraction of genotypes covered by mRNA data).
-  tmp_geno <-
-
-  if (isTRUE(nchar(pred2) == 0 && pred1 != "mrna")) {
-    full_geno <- tmp_geno
-    core_geno <- tmp_geno
-  } else if (pred1 == "mrna" && pred2 == "" && extent == "Full") {
-    full_geno <- tmp_geno
-    core_geno <- scen_i %>%
-      dplyr::mutate(Extent = "Core") %>%
-      dplyr::inner_join(
-        rnd_level1_df,
-        by = c("Extent", "Material", "Scenario", "Core_Fraction", "Rnd_Level1")
+  if (length(pred_sets) != 1 || "mrna" %in% pred_sets) {
+    core_geno <- current_scenario %>%
+      dplyr::mutate(
+        Extent = "Core",
+        Predictor = "mrna"
       ) %>%
-      dplyr::pull(G)
-  } else if (all(nchar(pred_sets) != 0) && extent == "Core") {
-    core_geno <- tmp_geno
-    full_geno <- dplyr::inner_join(
-      geno_df,
-      scen_i,
-      by = c("Extent", "Material", "Scenario")
+      dplyr::inner_join(
+        y = inb_level2_pre_eta,
+        by = c("Extent", "Predictor", "Material", "Scenario")
     ) %>%
     dplyr::pull(G)
-  } else if (all(nchar(pred_sets) != 0) && extent == "Full") {
-    full_geno <- tmp_geno
-    core_geno <- scen_i %>%
-      dplyr::mutate(Extent = "Core") %>%
-      dplyr::inner_join(
-        rnd_level1_df,
-        by = c("Extent", "Material", "Scenario", "Core_Fraction", "Rnd_Level1")
-      ) %>%
-      dplyr::pull(G)
   }
 
-
-  # Reduce the predictor data to match the size of the pre-specified core sets.
-  # Ensure that SNP quality checks are applied to the genomic data in order to
-  # have only polymorphic markers and no markers in perfect LD.
-  if (isTRUE(pull(scen_i, Material) == "Inbred")) {
-    curr_pred_lst <- pred_lst %>%
-      purrr::keep(names(.) %in% pred_lst_selector) %>%
-      purrr::set_names(
-        nm = gsub(pattern = "^[^_]*_", replacement = "", x = names(.))
-      ) %>%
-      purrr::modify_at("mrna", .f = function(x) {
-        x[rownames(x) %in% core_geno, ]
-      }) %>%
-      purrr::modify_at("snp", .f = function(x) {
-        x[rownames(x) %in% full_geno, ]
-      }) %>%
-      purrr::modify_at("snp",
-        .f = ~sspredr::ensure_snp_quality(
-          ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
-          any_missing = FALSE, remove_duplicated = TRUE
-        )
-      )
-  }
-
-
-  if (isTRUE(dplyr::pull(scen_i, Material) == "Hybrid")) {
-    hybrid_parents <- full_geno %>%
-      tibble::as_data_frame() %>%
-      dplyr::rename(Genotype = "value") %>%
-      tidyr::separate(
-        Genotype,
-        into = c("Prefix", "Dent", "Flint"),
-        sep = "_"
-      ) %>%
-      dplyr::select(Dent, Flint) %>%
-      unique() %>%
-      tidyr::gather(key = Pool, value = Genotype) %>%
-      base::split(.$Pool) %>%
-      purrr::map(., ~select(., Genotype)) %>%
-      purrr::map(flatten_chr)
-
-    hybrid_names <- full_geno
-
-    # In the case of hybrid data, we still need to split all predictor matrices
-    # into Flint and Dent components first.
-    # 1. map_if
-    # In the case of pedigree data, we need to split the data by genotypes in the
-    # x- as well as the y-dimension because there are no features, which is
-    # different for other predictor matrices.
-    # 2. map_at("snp")
-    # Ensure that SNP quality checks are applied separately to the genomic data
-    # for each heterotic group in order to have only polymorphic markers and no
-    # markers in perfect LD.
-    curr_pred_lst <- pred_lst %>%
-      purrr::keep(names(.) %in% pred_lst_selector) %>%
-      purrr::set_names(
-        nm = gsub(pattern = "^[^_]*_", replacement = "", x = names(.))
-      ) %>%
-      purrr::modify_if(.p = names(.) == "ped",
-             .f = split_into_hetgroups, y = hybrid_parents, pedigree = TRUE) %>%
-      purrr::modify_if(.p = names(.) != "ped",
-             .f = split_into_hetgroups, y = hybrid_parents, pedigree = FALSE) %>%
-      purrr::modify_at("snp", .f = ~map(., ~sspredr::ensure_snp_quality(
-        ., callfreq_check = FALSE, maf_check = TRUE,
-        maf_threshold = 0.05, any_missing = FALSE, remove_duplicated = TRUE
-        )
+  # In the case of hybrid data, we still need to split all predictor matrices
+  # into Flint and Dent components first.
+  # 1. modify_if
+  # In the case of pedigree data, we need to split the data by genotypes in the
+  # x- as well as the y-dimension because there are no features, which is
+  # different for other predictor matrices.
+  # 2. modify_at("snp")
+  # Ensure that SNP quality checks are applied separately to the genomic data
+  # for each heterotic group in order to have only polymorphic markers and no
+  # markers in perfect LD.
+  curr_pred_lst <- pred_lst %>%
+    purrr::keep(names(.) %in% pred_lst_selector) %>%
+    purrr::set_names(
+      nm = gsub(pattern = "^[^_]*_", replacement = "", x = names(.))
+    ) %>%
+    purrr::modify_at("mrna", .f = function(x) {
+      x[rownames(x) %in% core_geno, ]
+    }) %>%
+    purrr::modify_at("snp", .f = function(x) {
+      x[rownames(x) %in% full_geno, ]
+    }) %>%
+    purrr::modify_at("snp", .f = ~sspredr::ensure_snp_quality(
+      ., callfreq_check = FALSE, maf_check = TRUE,
+      maf_threshold = 0.05, any_missing = FALSE, remove_duplicated = TRUE
       )
     )
 
-   # Make sure that the predictor matrices are in the intended order, which is
-   # crucial for the imputation of the predictor matrix that covers fewer
-   # genotypes.
-   curr_pred_lst <- curr_pred_lst[match(names(curr_pred_lst), pred_sets)]
+  # Make sure that the predictor matrices are in the intended order, which is
+  # crucial for the imputation of the predictor matrix that covers fewer
+  # genotypes.
+  curr_pred_lst <- curr_pred_lst[match(names(curr_pred_lst), pred_sets)]
 
-
-    # Add the names of the parental hybrids to the objects.
-    # The procedure is necessary for matching predictor data with agronomic data
-    # throughout all predictions.
-    pre_eta <- curr_pred_lst %>%
-      purrr::transpose() %>%
-      add_parental_hybrid_names()
-
-  } else if (isTRUE(dplyr::pull(scen_i, Material) == "Inbred")) {
-
-    pre_eta <- list(Inbred = curr_pred_lst)
-    pre_eta[[1]][["geno"]] <- full_geno
-  }
-
+  # The additionn of names is necessary for matching predictor data with
+  # agronomic data throughout all predictions.
+  pre_eta <- list(Inbred = curr_pred_lst)
+  pre_eta[[1]][["geno"]] <- full_geno
 
   # Determine the number of predictors to decide later on, which function to
   # call for the set-up of the kernels.
@@ -876,30 +791,14 @@ lapply(hyb_scenario_seq, FUN = function(i) {
   # If only a subset of predigrees will be used, it needs to be determined
   # whether pedigree data are involved or not, since subsequent functions need to
   # 'know' if the predictor matrices need to be scaled or not.
-  if (all(grepl("ped", x = raw_args))) {
-    pre_eta <- pre_eta %>%
-      purrr::map(.f = function(x) {
-        x$as_kernel <- FALSE
-        x$bglr_model <- pred_model
-        x
-    })
-  } else if (any(grepl("ped", x = raw_args))) {
-    pre_eta <- pre_eta %>%
-      purrr::map(.f = function(x) {
-        x$is_pedigree <- TRUE
-        x$bglr_model <- pred_model
-        x$as_kernel <- TRUE
-        x
-      })
-  } else {
-    pre_eta <- pre_eta %>%
-      purrr::map(.f = function(x) {
-        x$is_pedigree <- FALSE
-        x$bglr_model <- pred_model
-        x$as_kernel <- TRUE
-        x
-      })
-  }
+  pre_eta <- pre_eta %>%
+   purrr::map(.f = function(x) {
+     x$is_pedigree <- FALSE
+     x$bglr_model <- pred_model
+     x$as_kernel <- TRUE
+     x
+  })
+
 
   # Depending on the number of predictors included in the set, choose the correct
   # function for the set-up of the BGLR kernels.
@@ -927,33 +826,40 @@ lapply(hyb_scenario_seq, FUN = function(i) {
   eta <- purrr::invoke_map(get(eta_fun), pre_eta) %>%
     purrr::flatten()
 
-  ## Save individual files.
-  data_location <- paste0("./data/derived/predictor_subsets/eta_", i, ".RDS")
+  current_uuid <- dplyr::pull(current_scenario, UUID)
   saveRDS(
-    object = eta,
-    file = data_location
+    eta,
+    file = paste0(
+      "./data/derived/predictor_subsets/ETA_",
+      current_uuid,
+      ".RDS"
+    )
   )
+  print(i)
 })
 
-# Safe the log file.
-log_df <- scenario_seq %>%
-  purrr::map(function(i) {
-    dplyr::slice(spec_eta_df, i)
-  }) %>%
-  dplyr::bind_rows() %>%
-  dplyr::mutate(Data_Location = paste0(
-    "./data/derived/predictor_subsets/eta_",
-    scenario_seq,
-    ".RDS"
-  ))
 
-log_location <- "./data/derived/log_prepare_subsamples.txt"
-write.table(
-  log_df,
-  file = log_location,
-  sep = "\t",
-  row.names = FALSE,
-  col.names = TRUE,
-  append = FALSE
-)
+
+
+## Safe the log file.
+#log_df <- scenario_seq %>%
+#  purrr::map(function(i) {
+#    dplyr::slice(spec_eta_df, i)
+#  }) %>%
+#  dplyr::bind_rows() %>%
+#  dplyr::mutate(Data_Location = paste0(
+#    "./data/derived/predictor_subsets/eta_",
+#    scenario_seq,
+#    ".RDS"
+#  ))
+#
+#log_location <- "./data/derived/log_prepare_subsamples.txt"
+#write.table(
+#  log_df,
+#  file = log_location,
+#  sep = "\t",
+#  row.names = FALSE,
+#  col.names = TRUE,
+#  append = FALSE
+#)
 
