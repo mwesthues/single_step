@@ -402,7 +402,8 @@ inb_level1 <- rnd_df %>%
   dplyr::full_join(
     y = scen_inb_level1,
     by = c("Extent", "Material", "Scenario", "Core_Fraction")
-  )
+  ) %>%
+  dplyr::filter(complete.cases(.))
 inb_level1 %>%
   saveRDS(file = "./data/derived/predictor_subsets/inbred_level1_table.RDS")
 rm(inb_level1)
@@ -414,6 +415,7 @@ hyb <-  rnd_df %>%
     y = dplyr::filter(scen_df, Material == "Hybrid"),
     by = c("Extent", "Material", "Scenario", "Core_Fraction")
   )
+  dplyr::filter(complete.cases(.))
 hyb %>%
   saveRDS(file = "./data/derived/predictor_subsets/hybrid_table.RDS")
 rm(hyb)
@@ -841,25 +843,193 @@ lapply(inb_level2_scenario_seq, FUN = function(i) {
 
 
 
-## Safe the log file.
-#log_df <- scenario_seq %>%
-#  purrr::map(function(i) {
-#    dplyr::slice(spec_eta_df, i)
-#  }) %>%
-#  dplyr::bind_rows() %>%
-#  dplyr::mutate(Data_Location = paste0(
-#    "./data/derived/predictor_subsets/eta_",
-#    scenario_seq,
-#    ".RDS"
-#  ))
-#
-#log_location <- "./data/derived/log_prepare_subsamples.txt"
-#write.table(
-#  log_df,
-#  file = log_location,
-#  sep = "\t",
-#  row.names = FALSE,
-#  col.names = TRUE,
-#  append = FALSE
-#)
+
+
+
+
+
+## -- INBRED CORE_SET != 1 ETA SETUP ------------------------------------------
+pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
+scen_df <- readRDS("./data/derived/predictor_subsets/scen_df.RDS")
+geno_df <-  "./data/derived/predictor_subsets/geno_df.RDS" %>%
+  readRDS() %>%
+  data.table::as.data.table() %>%
+  data.table::setkey()
+
+# Define how the data should be sorted. This will considerably accelerate the
+# inner join of the 'current' scenario with the entire data set in order to
+# select the corresponding genotype names.
+keycols <- c(
+  "Extent",
+  "Predictor",
+  "Scenario",
+  "Core_Fraction",
+  "TST_Geno",
+  "Rnd_Level1",
+  "Rnd_Level2"
+)
+
+inb_level1_pre_eta <- readRDS(
+  "./data/derived/predictor_subsets/inbred_level1_table.RDS"
+  ) %>%
+  tidyr::unite(Predictor, c("Pred1", "Pred2"), sep = "_") %>%
+  data.table::as.data.table() %>%
+  data.table::setkeyv(cols = keycols)
+
+inb_level1_unique_eta_combis <- inb_level1_pre_eta %>%
+  dplyr::distinct(
+    Material,
+    Extent,
+    Scenario,
+    Rnd_Level1,
+    Rnd_Level2,
+    Core_Fraction,
+    TST_Geno,
+    Predictor
+  ) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
+  dplyr::ungroup()
+
+inb_level1_scenario_seq <- inb_level1_unique_eta_combis %>%
+  nrow() %>%
+  seq_len()
+
+# Specify which BGLR algorithm shall be used.
+pred_model <- "BRR"
+
+
+
+system.time(
+lapply(inb_level1_scenario_seq, FUN = function(i) {
+  # For setting up ETA objects it is crucial to know which predictors are in
+  # use.
+  current_scenario <- dplyr::slice(inb_level1_unique_eta_combis, i) %>%
+    data.table::as.data.table() %>%
+    data.table::setkeyv(cols = keycols)
+  pred_combi <- dplyr::pull(current_scenario, Predictor)
+  pred_sets <- pred_combi %>%
+    base::strsplit(split = "_") %>%
+    purrr::flatten_chr()
+  pred_lst_selector <- paste("inb", pred_sets, sep = "_")
+
+  # Get the names of the hybrids and their parental components to properly
+  # augment the ETA objects to match their phenotypic data.
+  # This implementation usies data.table because its use of keys and the size
+  # of the two data sets to be merged make it a lot faster than the dplyr
+  # solution.
+  core_geno <- inb_level1_pre_eta[current_scenario, nomatch = 0] %>%
+    .[, .(TST_Geno, TRN_Geno), ] %>%
+    tidyr::gather(key = Set, value = Genotype) %>%
+    dplyr::distinct(Genotype) %>%
+    dplyr::pull(Genotype)
+
+  full_geno <- current_scenario %>%
+    dplyr::select(Extent, Material, Scenario) %>%
+    dplyr::inner_join(
+      y = geno_df,
+      by = c("Extent", "Material", "Scenario")
+    ) %>%
+    dplyr::pull(G)
+
+  # In the case of hybrid data, we still need to split all predictor matrices
+  # into Flint and Dent components first.
+  # 1. modify_if
+  # In the case of pedigree data, we need to split the data by genotypes in the
+  # x- as well as the y-dimension because there are no features, which is
+  # different for other predictor matrices.
+  # 2. modify_at("snp")
+  # Ensure that SNP quality checks are applied separately to the genomic data
+  # for each heterotic group in order to have only polymorphic markers and no
+  # markers in perfect LD.
+  curr_pred_lst <- pred_lst %>%
+    purrr::keep(names(.) %in% pred_lst_selector) %>%
+    purrr::set_names(
+      nm = gsub(pattern = "^[^_]*_", replacement = "", x = names(.))
+    ) %>%
+    purrr::modify_at("mrna", .f = function(x) {
+      x[rownames(x) %in% core_geno, ]
+    }) %>%
+    purrr::modify_at("snp", .f = function(x) {
+      x[rownames(x) %in% full_geno, ]
+    }) %>%
+    purrr::modify_at("snp", .f = ~sspredr::ensure_snp_quality(
+      ., callfreq_check = FALSE, maf_check = TRUE,
+      maf_threshold = 0.05, any_missing = FALSE, remove_duplicated = TRUE
+      )
+    )
+
+  # Make sure that the predictor matrices are in the intended order, which is
+  # crucial for the imputation of the predictor matrix that covers fewer
+  # genotypes.
+  curr_pred_lst <- curr_pred_lst[match(names(curr_pred_lst), pred_sets)]
+
+  # The additionn of names is necessary for matching predictor data with
+  # agronomic data throughout all predictions.
+  pre_eta <- list(Inbred = curr_pred_lst)
+  pre_eta[[1]][["geno"]] <- full_geno
+
+  # Determine the number of predictors to decide later on, which function to
+  # call for the set-up of the kernels.
+  raw_args <- pre_eta %>%
+    purrr::map(names) %>%
+    purrr::reduce(intersect) %>%
+    purrr::discard(. == "geno")
+  pred_number <- raw_args %>%
+    .[grep("ped|snp|mrna", x = .)] %>%
+    length()
+
+
+  # If all predictors are being used, it is known that pedigree data are involved
+  # and no measures need to be taken.
+  # If only a subset of predigrees will be used, it needs to be determined
+  # whether pedigree data are involved or not, since subsequent functions need to
+  # 'know' if the predictor matrices need to be scaled or not.
+  pre_eta <- pre_eta %>%
+   purrr::map(.f = function(x) {
+     x$is_pedigree <- FALSE
+     x$bglr_model <- pred_model
+     x$as_kernel <- TRUE
+     x
+  })
+
+
+  # Depending on the number of predictors included in the set, choose the correct
+  # function for the set-up of the BGLR kernels.
+  eta_fun <- c("complete_eta", "impute_eta") %>%
+    .[pred_number]
+
+  # Collect the formal arguments from the selected function and then rename the
+  # corresponding predictors in the 'pre_eta' object so that the call of the
+  # kernel building function (e.g. "impute_eta") can be generalized.
+  eta_fun_args <- eta_fun %>%
+    formals() %>%
+    names()
+  eta_pred_nms <- eta_fun_args %>%
+    .[!grepl("as_kernel|is_pedigree|geno|bglr_model", x = .)]
+  current_eta_names <- pre_eta %>%
+    purrr::map(names) %>%
+    purrr::reduce(intersect)
+  current_eta_names[seq_len(pred_number)] <- eta_pred_nms
+  pre_eta <- pre_eta %>%
+    purrr::map(function(x) {
+      names(x) <- current_eta_names
+      x
+    })
+  # Build the kernel for BGLR.
+  eta <- purrr::invoke_map(get(eta_fun), pre_eta) %>%
+    purrr::flatten()
+
+  current_uuid <- dplyr::pull(current_scenario, UUID)
+  saveRDS(
+    eta,
+    file = paste0(
+      "./data/derived/predictor_subsets/ETA_",
+      current_uuid,
+      ".RDS"
+    ),
+    compress = FALSE
+  )
+})
+
 
