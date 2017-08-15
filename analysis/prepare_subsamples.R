@@ -409,7 +409,7 @@ inb_level1 %>%
 rm(inb_level1)
 
 # 3) Hybrid
-hyb <-  rnd_df %>%
+hyb <- rnd_df %>%
   dplyr::filter(Material == "Hybrid") %>%
   dplyr::full_join(
     y = dplyr::filter(scen_df, Material == "Hybrid"),
@@ -447,14 +447,20 @@ hyb_pre_eta <- geno_df %>%
 # Generate a sequence of all possible scenarios for easy looping.
 # Additionally, generate a unique ID for each combination of parameters for
 # which a separate ETA object will be created.
-hyb_unique_eta_combis <- hyb_pre_eta %>%
-  dplyr::distinct(Material, Extent, Predictor, .keep_all = FALSE) %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(UUID = uuid::UUIDgenerate())
-saveRDS(
-  hyb_unique_eta_combis,
-  file = "./data/derived/predictor_subsets/hyb_unique_eta_combis.RDS"
-)
+hyb_file_nm <- "./data/derived/predictor_subsets/unique_hyb.RDS"
+if (!file.exists(hyb_file_nm)) {
+  hyb_unique_eta_combis <- hyb_pre_eta %>%
+    dplyr::distinct(Material, Extent, Predictor, .keep_all = FALSE) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(UUID = uuid::UUIDgenerate())
+  saveRDS(
+    hyb_unique_eta_combis,
+    file = hyb_file_nm
+  )
+} else {
+  hyb_unique_eta_combis <- readRDS(hyb_file_nm)
+}
+
 hyb_scenario_seq <- hyb_unique_eta_combis %>%
   nrow() %>%
   seq_len()
@@ -651,14 +657,16 @@ lapply(hyb_scenario_seq, FUN = function(i) {
   saveRDS(
     eta,
     file = paste0(
-      "./data/derived/predictor_subsets/ETA_",
+      "./data/derived/predictor_subsets/eta/eta_",
       current_uuid,
       ".RDS"
-    )
+    ),
+    compress = FALSE
   )
-  print(paste("Successfully processed element", i))
 })
 
+rm(list = ls())
+gc()
 
 
 
@@ -685,14 +693,26 @@ inb_level2_pre_eta <- geno_df %>%
 # Generate a sequence of all possible scenarios for easy looping.
 # Additionally, generate a unique ID for each combination of parameters for
 # which a separate ETA object will be created.
-inb_level2_unique_eta_combis <- inb_level2_pre_eta %>%
-  dplyr::distinct(Material, Extent, Predictor, Scenario, .keep_all = FALSE) %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(UUID = uuid::UUIDgenerate())
-saveRDS(
-  inb_level2_unique_eta_combis,
-  file = "./data/derived/predictor_subsets/inb_level2_unique_eta_combis.RDS"
-)
+lev2_file_nm <-  "./data/derived/predictor_subsets/unique_level2.RDS"
+if (!file.exists(lev2_file_nm)) {
+  inb_level2_unique_eta_combis <- inb_level2_pre_eta %>%
+    dplyr::distinct(
+      Material,
+      Extent,
+      Predictor,
+      Scenario,
+      .keep_all = FALSE
+    ) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(UUID = uuid::UUIDgenerate())
+  saveRDS(
+    inb_level2_unique_eta_combis,
+    file = lev2_file_nm
+  )
+} else {
+  inb_level2_unique_eta_combis <- readRDS(lev2_file_nm)
+}
+
 inb_level2_scenario_seq <- inb_level2_unique_eta_combis %>%
   nrow() %>%
   seq_len()
@@ -832,15 +852,16 @@ lapply(inb_level2_scenario_seq, FUN = function(i) {
   saveRDS(
     eta,
     file = paste0(
-      "./data/derived/predictor_subsets/ETA_",
+      "./data/derived/predictor_subsets/eta/eta_",
       current_uuid,
       ".RDS"
-    )
+    ),
+    compress = FALSE
   )
-  print(i)
 })
 
-
+rm(list = ls())
+gc()
 
 
 
@@ -876,20 +897,31 @@ inb_level1_pre_eta <- readRDS(
   data.table::as.data.table() %>%
   data.table::setkeyv(cols = keycols)
 
-inb_level1_unique_eta_combis <- inb_level1_pre_eta %>%
-  dplyr::distinct(
-    Material,
-    Extent,
-    Scenario,
-    Rnd_Level1,
-    Rnd_Level2,
-    Core_Fraction,
-    TST_Geno,
-    Predictor
-  ) %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
-  dplyr::ungroup()
+
+lev1_file_nm <- "./data/derived/predictor_subsets/unique_level1.RDS"
+if (!file.exists(lev1_file_nm)) {
+  inb_level1_unique_eta_combis <- inb_level1_pre_eta %>%
+    dplyr::distinct(
+      Material,
+      Extent,
+      Scenario,
+      Rnd_Level1,
+      Rnd_Level2,
+      Core_Fraction,
+      TST_Geno,
+      Predictor
+    ) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
+    dplyr::ungroup()
+  saveRDS(
+    inb_level1_unique_eta_combis,
+    file = lev1_file_nm
+  )
+} else {
+  inb_level1_unique_eta_combis <- readRDS(lev1_file_nm)
+}
+
 
 inb_level1_scenario_seq <- inb_level1_unique_eta_combis %>%
   nrow() %>%
@@ -900,8 +932,7 @@ pred_model <- "BRR"
 
 
 
-system.time(
-lapply(inb_level1_scenario_seq, FUN = function(i) {
+parallel::mclapply(inb_level1_scenario_seq, FUN = function(i) {
   # For setting up ETA objects it is crucial to know which predictors are in
   # use.
   current_scenario <- dplyr::slice(inb_level1_unique_eta_combis, i) %>%
@@ -1024,12 +1055,12 @@ lapply(inb_level1_scenario_seq, FUN = function(i) {
   saveRDS(
     eta,
     file = paste0(
-      "./data/derived/predictor_subsets/ETA_",
+      "./data/derived/predictor_subsets/eta/eta_",
       current_uuid,
       ".RDS"
     ),
     compress = FALSE
   )
-})
+}, mc.cores = 3, mc.preschedule = FALSE, mc.silent = TRUE)
 
-
+rm(list = ls())
