@@ -125,130 +125,14 @@ geno_df <- geno_lst %>%
   tibble::as_data_frame()
 saveRDS(geno_df, "./data/derived/predictor_subsets/geno_df.RDS")
 
-# data frame with all combinations that need to be tested
-geno_param_df <- geno_df %>%
-  dplyr::select(-G) %>%
-  base::unique()
 
-
-
-
-## -- LEVEL 2 SAMPLING -------------------------------------------------------
-# For each combination of 'Extent', 'Material' and 'Scenario' sample 70% of
-# the available genotypes at random.
-sample_by_combination <- function(i) {
-
-  param_subset <- dplyr::slice(geno_param_df, i)
-
-  material_i <- geno_param_df %>%
-    dplyr::slice(i) %>%
-    dplyr::pull(Material)
-
-  param_genos <- geno_df %>%
-    dplyr::inner_join(
-      y = param_subset,
-      by = c("Extent", "Material", "Scenario")
-    ) %>%
-    dplyr::pull(G) %>%
-    gsub(pattern = "DF_", x = ., replacement = "")
-
-  loocv_samples <- sample_loo_sets(
-  geno = param_genos,
-  frac = 0.7,
-  material = material_i,
-  iter = 20
-  )
-  if (isTRUE(material_i == "Hybrid")) {
-    loocv_samples %>%
-    dplyr::mutate(TST_Geno = paste0("DF_", TST_Geno))
-  } else if (isTRUE(material_i == "Inbred")) {
-    loocv_samples
-  }
-}
-
-
-
-rnd_level2_df <- geno_param_df %>%
-  nrow() %>%
-  seq_len() %>%
-  purrr::map(sample_by_combination) %>%
-  purrr::set_names(nm = names(geno_lst)) %>%
-  dplyr::bind_rows(.id = "ID") %>%
-  tidyr::separate(
-    ID,
-    into = c("Extent", "Material", "Scenario"),
-    sep = "_"
-  ) %>%
-  dplyr::rename(Rnd_Level2 = "Iter")
-
-# Save the result in two separate data frames to reduce memory requirements when
-# loading only a subset.
-rnd_level2_df %>%
-  saveRDS(., "./data/derived/predictor_subsets/rnd_level2_1-20.RDS")
-
-
-
-
-
-
-## -- LEVEL 1 SAMPLING ----------------------------------------------------
-# level 1 sampling is only required for the core set of inbred lines from the
-# maize diversity panel
-level2_geno_df <- rnd_level2_df %>%
-  dplyr::filter(Extent == "Core", Material == "Inbred") %>%
-  dplyr::select(-Extent, -Material)
-
-level1_frame <- geno_df %>%
-  dplyr::filter(Extent == "Core", Material == "Inbred") %>%
-  dplyr::distinct(Scenario)
-
-# Sample a fraction of training set individuals based on the core set size,
-# which is specified as a fraction of 1.
-sample_core <- function(x) {
-  smp_fraction <- x %>%
-    dplyr::pull(Core_Fraction) %>%
-    base::unique()
-  sample_frac(x, size = smp_fraction)
-}
-
-
-core_location <- "./data/derived/predictor_subsets/core_set"
-core_fractions <- seq(from = 0.1, to = 0.9, by = 0.1)
-lapply(core_fractions, FUN = function(i) {
-  print(i)
-  level1_frame %>%
-    expand.grid(
-      Extent = "Core",
-      Material = "Inbred",
-      Scenario = .,
-      Core_Fraction = i,
-      Rnd_Level1 = seq_len(50),
-      stringsAsFactors = FALSE
-    ) %>%
-    tibble::as_data_frame() %>%
-    dplyr::right_join(
-      x = .,
-      y = level2_geno_df,
-      by = "Scenario"
-    ) %>%
-    base::split(
-      list(.$Scenario, .$Rnd_Level1, .$Rnd_Level2, .$TST_Geno),
-      drop = TRUE
-    ) %>%
-    purrr::map(sample_core) %>%
-    dplyr::bind_rows() %>%
-    saveRDS(
-      object = .,
-      file = paste0(core_location, i, ".RDS")
-    )
-})
 
 
 
 
 ## -- LEVEL 1 AND LEVEL 2 CONCATENATION --------------------------------------
 # Specify all possible scenarios that need to be considered. This is crucial
-# for augmenting previously generated data frames with information on which
+# for augmenting all subsequent data frames with information on which
 # genotypes are part of the training or test set (or none of the two) for each
 # combination of 'Material', 'Extent', 'Scenario', 'Rnd_Level1' and
 # 'Rnd_Level2', respectively.
@@ -348,34 +232,137 @@ scen_df <- list(
   dplyr::mutate(Core_Fraction = as.numeric(Core_Fraction))
 saveRDS(scen_df, file = "./data/derived/predictor_subsets/scen_df.RDS")
 
-# Collect the data from the level 2 randomization, the level 1 randomization
-# and combine them in a single data frame.
-filter_files <- function(file_loc) {
-  file_loc %>%
-    readRDS() %>%
-    dplyr::mutate(Rnd_Level2 = as.integer(Rnd_Level2)) %>%
-    dplyr::filter(
-      Rnd_Level1 %in% seq_len(20),
-      Rnd_Level2 %in% seq_len(20)
+
+
+## -- LEVEL 2 SAMPLING (HYBRIDS) -----------------------------------------------
+# For each 'Scenario' sample 70% of the available genotypes at random and
+# assign them to the training set.
+# In a second step, separately for each scenario and value of 'Rnd_Level2',
+# pick any genotype, assign it to the test set and assign all other unrelated
+# genotypes to the training set.
+# Do this for every genotype in turn.
+hybrid_file_nm <- "./data/derived/predictor_subsets/hybrid_lvl2_df.RDS"
+if (!file.exists(hybrid_file_nm)) {
+  hyb_lvl2_df <- geno_df %>%
+    dplyr::filter(Material == "Hybrid") %>%
+    dplyr::select(G, Extent) %>%
+    dplyr::mutate(
+      geno = gsub("DF_", x = G, replacement = ""),
+      frac = 0.7,
+      iter = 20,
+      material = "Hybrid",
+      split_char = "_"
+    ) %>%
+    dplyr::select(-G) %>%
+    split(list(.$Extent)) %>%
+    purrr::map(.f = ~dplyr::select(., -Extent)) %>%
+    purrr::map(~as.list(.)) %>%
+    purrr::modify_depth(.depth = 2, .f = ~unique(.)) %>%
+    purrr::map(~purrr::invoke(.f = sample_loo_sets, .x = .)) %>%
+    dplyr::bind_rows(.id = "Extent") %>%
+    dplyr::select(-ind) %>%
+    dplyr::rename(Rnd_Level2 = "Iter") %>%
+    dplyr::mutate_at(
+      .vars = vars(TST_Geno, TRN_Geno),
+      .funs = funs(paste0("DF_", .))
+    ) %>%
+    dplyr::mutate(
+      Material = "Hybrid",
+      Scenario = "None"
     )
+
+  hyb_lvl2_df %>%
+    saveRDS(file = hybrid_file_nm)
+} else {
+  hyb_lvl2_df <- readRDS(hybrid_file_nm)
+  print("The hybrid file already exists! Loading it instead.")
 }
 
-rnd_level1_df <- core_fractions %>%
-  purrr::map(.f = ~paste0(core_location, ., ".RDS")) %>%
-  purrr::map(filter_files) %>%
-  bind_rows()
 
 
-# Combine the correct randomizations for all materials, extents and scenarios.
-rnd_df <- rnd_level2_df %>%
-  dplyr::select(-ind) %>%
-  dplyr::mutate(
-    Core_Fraction = 1,
-    Rnd_Level1 = 0,
-    Rnd_Level2 = as.integer(Rnd_Level2)
-  ) %>%
-  dplyr::bind_rows(rnd_level1_df %>% dplyr::select(-ind))
-saveRDS(rnd_df, "./data/derived/predictor_subsets/rnd_df.RDS")
+## -- LEVEL 2 SAMPLING (INBREDS) -----------------------------------------------
+inbred_file_nm <- "./data/derived/predictor_subsets/inbred_lvl2_df.RDS"
+if (!file.exists(inbred_file_nm)) {
+  inbred_lvl2_df <- rerun(
+    .n = 20,
+    geno_df %>%
+      dplyr::filter(Material == "Inbred") %>%
+      dplyr::group_by(Extent, Scenario) %>%
+      dplyr::sample_frac(size = 0.7) %>%
+      dplyr::ungroup()
+    ) %>%
+    dplyr::bind_rows(.id = "Rnd_Level2")
+
+  inbred_lvl2_df %>%
+    saveRDS(file = inbred_file_nm)
+} else {
+  inbred_lvl2_df <- readRDS(inbred_file_nm)
+  print("The inbred file already exists! Loading it instead.")
+}
+
+
+
+
+## -- LEVEL 1 SAMPLING ----------------------------------------------------
+# Sample a fraction of training set individuals based on the core set size,
+# which is specified as a fraction of 1.
+sample_core <- function(df, core_fraction) {
+
+  core_fraction <- rlang::enquo(core_fraction)
+  smp_fraction <- df %>%
+    dplyr::pull(!!core_fraction) %>%
+    base::unique()
+  dplyr::sample_frac(df, size = smp_fraction)
+}
+
+core_file_nm <- "./data/derived/predictor_subsets/core_inbred_lvl_df.RDS"
+if (!file.exists(core_file_nm)) {
+  # Create the level 2 randomization for the core inbred lines, separately for
+  # each scenario and 20 runs.
+  core_lvl2_df <- purrr::rerun(
+    .n = 20,
+    geno_df %>%
+      dplyr::filter(Extent == "Core", Material == "Inbred") %>%
+      dplyr::group_by(Scenario) %>%
+      dplyr::sample_frac(size = 0.7) %>%
+      dplyr::ungroup()
+    ) %>%
+    dplyr::bind_rows(.id = "Rnd_Level2")
+
+  # Merge data with the second level randomization to sample from these
+  # genotypes.
+  two_lvl_i <- expand.grid(
+     Extent = "Core",
+     Material = "Inbred",
+     Scenario = c("A", "B"),
+     Core_Fraction = seq(from = 0.1, to = 0.9, by = 0.1),
+     Rnd_Level1 = seq_len(20),
+     stringsAsFactors = FALSE
+    ) %>%
+    tibble::as_data_frame() %>%
+    dplyr::right_join(
+      x = .,
+      y = core_lvl2_df,
+      by = c("Extent", "Material", "Scenario")
+    )
+
+  core_df <- two_lvl_i %>%
+    split(
+      list(.$Scenario, .$Rnd_Level1, .$Rnd_Level2, .$Core_Fraction),
+      sep = "_",
+      drop = TRUE
+    ) %>%
+    purrr::map(.f = sample_core, core_fraction = Core_Fraction) %>%
+    dplyr::bind_rows()
+
+  core_df %>%
+    saveRDS(file = core_file_nm)
+} else {
+  core_df <- readRDS(core_file_nm)
+  print("The core file already exists! Loading it instead.")
+}
+
+
 
 
 
@@ -383,42 +370,112 @@ saveRDS(rnd_df, "./data/derived/predictor_subsets/rnd_df.RDS")
 
 
 ## -- THREE MAJOR SCENARIOS ---------------------------------------------------
-# 1) Inbred, Core_Fraction == 1
-inb_level2 <- rnd_df %>%
-  dplyr::filter(Core_Fraction == 1, Material == "Inbred") %>%
+### 1) Inbred, Core_Fraction == 1
+inbred_aug <- inbred_lvl2_df %>%
   dplyr::full_join(
-    y = dplyr::filter(scen_df, Material == "Inbred", Core_Fraction == 1),
-    by = c("Extent", "Material", "Scenario", "Core_Fraction")
-  )
-inb_level2 %>%
-  saveRDS(file = "./data/derived/predictor_subsets/inbred_level2_table.RDS")
-rm(inb_level2)
+    y = scen_df %>% dplyr::filter(Material == "Inbred", Core_Fraction == 1),
+    by = c("Extent", "Material", "Scenario")
+  ) %>%
+  dplyr::filter(complete.cases(.))
 
-# 2) Inbred, Core_Fraction != 1
-scen_inb_level1 <- scen_df %>%
-  dplyr::filter(Extent == "Core", Material == "Inbred", Core_Fraction != 1)
-inb_level1 <- rnd_df %>%
-  dplyr::filter(Extent == "Core", Material == "Inbred", Core_Fraction != 1) %>%
+# Inbred scenarios
+inbred_pre_eta_nm <- "./data/derived/predictor_subsets/inbred_pre_eta_df.RDS"
+if (!file.exists(inbred_pre_eta_nm)) {
+  inbred_pre_eta_df <- inbred_aug %>%
+    dplyr::distinct(Material, Extent, Scenario, Pred1, Pred2) %>%
+    tidyr::unite(Predictor, c("Pred1", "Pred2"), remove = FALSE) %>%
+    dplyr::mutate_at(vars(Predictor), .funs = funs(
+      gsub("_$", x = ., replacement = "")
+    )) %>%
+    dplyr::left_join(
+      y = geno_df,
+      by = c("Material", "Extent", "Scenario")
+    ) %>%
+    dplyr::filter(complete.cases(.)) %>%
+    dplyr::group_by(Material, Extent, Scenario, Predictor) %>%
+    dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
+    dplyr::ungroup()
+
+    saveRDS(
+      inbred_pre_eta_df,
+      file = inbred_pre_eta_nm
+    )
+} else {
+  inbred_pre_eta_df <- readRDS(inbred_pre_eta_nm)
+  print("Inbred ETA DF file already exists! Loading it instead.")
+}
+
+
+
+### 2) Inbred, Core_Fraction != 1
+core_aug <- core_df %>%
   dplyr::full_join(
-    y = scen_inb_level1,
+    y = scen_df %>% dplyr::filter(Material == "Inbred", Core_Fraction != 1),
     by = c("Extent", "Material", "Scenario", "Core_Fraction")
   ) %>%
   dplyr::filter(complete.cases(.))
-inb_level1 %>%
-  saveRDS(file = "./data/derived/predictor_subsets/inbred_level1_table.RDS")
-rm(inb_level1)
 
-# 3) Hybrid
-hyb <- rnd_df %>%
-  dplyr::filter(Material == "Hybrid") %>%
-  dplyr::full_join(
-    y = dplyr::filter(scen_df, Material == "Hybrid"),
-    by = c("Extent", "Material", "Scenario", "Core_Fraction")
+# Core scenarios
+core_pre_eta_nm <- "./data/derived/predictor_subsets/core_pre_eta_df.RDS"
+if (!file.exists(core_pre_eta_nm)) {
+  core_pre_eta_df <- core_aug %>%
+    dplyr::group_by(
+      Extent,
+      Scenario,
+      Core_Fraction,
+      Rnd_Level1,
+      Rnd_Level2,
+      Pred1,
+      Pred2
+    ) %>%
+    dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
+    dplyr::ungroup()
+
+  saveRDS(
+    core_pre_eta_df,
+    file = core_pre_eta_nm
   )
+} else {
+  core_pre_eta_df <- readRDS(core_pre_eta_nm)
+  print("Core ETA DF file already exists! Loading it instead.")
+}
+
+
+
+### 3) Hybrid
+hybrid_aug <- hyb_lvl2_df %>%
+  dplyr::full_join(
+    y = scen_df %>% dplyr::filter(Material == "Hybrid"),
+    by = c("Extent", "Material", "Scenario")
+  ) %>%
   dplyr::filter(complete.cases(.))
-hyb %>%
-  saveRDS(file = "./data/derived/predictor_subsets/hybrid_table.RDS")
-rm(hyb)
+
+# Hybrid scenarios
+hybrid_pre_eta_nm <- "./data/derived/predictor_subsets/hybrid_pre_eta_df.RDS"
+if (!file.exists(hybrid_pre_eta_nm)) {
+  hybrid_pre_eta_df <- hybrid_aug %>%
+    dplyr::distinct(Material, Extent, Scenario, Pred1, Pred2) %>%
+    tidyr::unite(col = Predictor, c("Pred1", "Pred2"), remove = FALSE) %>%
+    dplyr::mutate_at(vars(Predictor), .funs = funs(
+      gsub("_$", x = ., replacement = "")
+    )) %>%
+    dplyr::left_join(
+      y = geno_df,
+      by = c("Material", "Extent", "Scenario")
+    ) %>%
+    dplyr::filter(complete.cases(.)) %>%
+    dplyr::group_by(Material, Extent, Scenario, Predictor) %>%
+    dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
+    dplyr::ungroup()
+
+  saveRDS(
+    hybrid_pre_eta_df,
+    file = hybrid_pre_eta_nm
+  )
+} else {
+  hybrid_pre_eta_df <- readRDS(hybrid_pre_eta_nm)
+  print("Hybrid ETA DF file already exists! Loading it instead.")
+}
 
 
 
@@ -426,53 +483,28 @@ rm(hyb)
 
 
 ## -- HYBRID ETA SETUP -----------------------------------------------------
+hybrid_pre_eta_nm <- "./data/derived/predictor_subsets/hybrid_pre_eta_df.RDS"
 pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
-geno_df <- readRDS( "./data/derived/predictor_subsets/geno_df.RDS")
-scen_df <- readRDS("./data/derived/predictor_subsets/scen_df.RDS")
-
-hyb_pre_eta <- geno_df %>%
-  dplyr::filter(Material == "Hybrid") %>%
-  dplyr::full_join(
-    y = scen_df %>%
-          dplyr::filter(Material == "Hybrid") %>%
-          dplyr::select(-Core_Fraction) %>%
-          tibble::as_data_frame(),
-    by = c("Extent", "Material", "Scenario")
-  ) %>%
-  tidyr::unite(col = "Predictor", c("Pred1", "Pred2"), remove = TRUE) %>%
-  dplyr::mutate(Predictor = gsub("_$", x = Predictor, replacement = ""))
-
-
-
-# Generate a sequence of all possible scenarios for easy looping.
-# Additionally, generate a unique ID for each combination of parameters for
-# which a separate ETA object will be created.
-hyb_file_nm <- "./data/derived/predictor_subsets/unique_hyb.RDS"
-if (!file.exists(hyb_file_nm)) {
-  hyb_unique_eta_combis <- hyb_pre_eta %>%
-    dplyr::distinct(Material, Extent, Predictor, .keep_all = FALSE) %>%
-    dplyr::rowwise() %>%
-    dplyr::mutate(UUID = uuid::UUIDgenerate())
-  saveRDS(
-    hyb_unique_eta_combis,
-    file = hyb_file_nm
-  )
-} else {
-  hyb_unique_eta_combis <- readRDS(hyb_file_nm)
-}
-
-hyb_scenario_seq <- hyb_unique_eta_combis %>%
-  nrow() %>%
-  seq_len()
+hybrid_pre_eta_df <- readRDS(hybrid_pre_eta_nm)
 
 # Specify which BGLR algorithm shall be used.
 pred_model <- "BRR"
 
+# Generate a sequence of all possible scenarios for easy looping.
+# Additionally, generate a unique ID for each combination of parameters for
+# which a separate ETA object will be created.
+hyb_scenario_seq <- hybrid_pre_eta_df %>%
+  dplyr::distinct(UUID) %>%
+  dplyr::pull(UUID)
 
-lapply(hyb_scenario_seq, FUN = function(i) {
+
+
+lapply(hyb_scenario_seq, FUN = function(uuid) {
   # For setting up ETA objects it is crucial to know which predictors are in
   # use.
-  current_scenario <- dplyr::slice(hyb_unique_eta_combis, i)
+  current_scenario <- hybrid_pre_eta_df %>%
+    dplyr::filter(UUID == uuid) %>%
+    dplyr::distinct(Material, Extent, Scenario, Predictor)
   pred_combi <- dplyr::pull(current_scenario, Predictor)
   pred_sets <- pred_combi %>%
     base::strsplit(split = "_") %>%
@@ -489,7 +521,7 @@ lapply(hyb_scenario_seq, FUN = function(i) {
 
   # Get the names of the hybrids and their parental components to properly
   # augment the ETA objects to match their phenotypic data.
-  current_hyb_df <- hyb_pre_eta %>%
+  current_hyb_df <- hybrid_pre_eta_df %>%
     dplyr::inner_join(
       y = current_scenario,
       by = c("Extent", "Predictor", "Material")
@@ -509,15 +541,11 @@ lapply(hyb_scenario_seq, FUN = function(i) {
     purrr::map(.f = ~purrr::flatten_chr(.))
 
   if (isTRUE(length(pred_sets) == 2 && pred_sets[1] == "ped")) {
-    snp_hybrid_parents <- hyb_pre_eta %>%
-      dplyr::inner_join(
-        y = hyb_unique_eta_combis %>%
-              dplyr::filter(
-                Material == "Hybrid",
-                Extent == "Core",
-                Predictor == "ped"
-              ),
-        by = c("Extent", "Predictor", "Material")
+    snp_hybrid_parents <- hybrid_pre_eta_df %>%
+      dplyr::filter(
+        Material == "Hybrid",
+        Extent == "Core",
+        Predictor == "ped"
       ) %>%
       tidyr::separate(
         G,
@@ -653,12 +681,11 @@ lapply(hyb_scenario_seq, FUN = function(i) {
   eta <- purrr::invoke_map(get(eta_fun), pre_eta) %>%
     purrr::flatten()
 
-  current_uuid <- dplyr::pull(current_scenario, UUID)
   saveRDS(
     eta,
     file = paste0(
       "./data/derived/predictor_subsets/eta/eta_",
-      current_uuid,
+      uuid,
       ".RDS"
     ),
     compress = FALSE
@@ -673,58 +700,25 @@ gc()
 
 ## -- INBRED ETA SETUP ------------------------------------------------------
 pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
-geno_df <- readRDS( "./data/derived/predictor_subsets/geno_df.RDS")
-scen_df <- readRDS("./data/derived/predictor_subsets/scen_df.RDS")
-
-inb_level2_pre_eta <- geno_df %>%
-  dplyr::filter(Material == "Inbred") %>%
-  dplyr::full_join(
-    y = scen_df %>%
-          dplyr::filter(Material == "Inbred", Core_Fraction == 1) %>%
-          dplyr::select(-Core_Fraction) %>%
-          tibble::as_data_frame(),
-    by = c("Extent", "Material", "Scenario")
-  ) %>%
-  tidyr::unite(col = "Predictor", c("Pred1", "Pred2"), remove = TRUE) %>%
-  dplyr::mutate(Predictor = gsub("_$", x = Predictor, replacement = ""))
-
-
-
-# Generate a sequence of all possible scenarios for easy looping.
-# Additionally, generate a unique ID for each combination of parameters for
-# which a separate ETA object will be created.
-lev2_file_nm <-  "./data/derived/predictor_subsets/unique_level2.RDS"
-if (!file.exists(lev2_file_nm)) {
-  inb_level2_unique_eta_combis <- inb_level2_pre_eta %>%
-    dplyr::distinct(
-      Material,
-      Extent,
-      Predictor,
-      Scenario,
-      .keep_all = FALSE
-    ) %>%
-    dplyr::rowwise() %>%
-    dplyr::mutate(UUID = uuid::UUIDgenerate())
-  saveRDS(
-    inb_level2_unique_eta_combis,
-    file = lev2_file_nm
-  )
-} else {
-  inb_level2_unique_eta_combis <- readRDS(lev2_file_nm)
-}
-
-inb_level2_scenario_seq <- inb_level2_unique_eta_combis %>%
-  nrow() %>%
-  seq_len()
+inbred_pre_eta_nm <- "./data/derived/predictor_subsets/inbred_pre_eta_df.RDS"
+inbred_pre_eta_df <- readRDS(inbred_pre_eta_nm)
 
 # Specify which BGLR algorithm shall be used.
 pred_model <- "BRR"
 
+# Generate a sequence of all possible scenarios for easy looping.
+# Additionally, generate a unique ID for each combination of parameters for
+# which a separate ETA object will be created.
+inb_scenario_seq <- inbred_pre_eta_df %>%
+  dplyr::distinct(UUID) %>%
+  dplyr::pull(UUID)
 
-lapply(inb_level2_scenario_seq, FUN = function(i) {
+lapply(inb_scenario_seq, FUN = function(uuid) {
   # For setting up ETA objects it is crucial to know which predictors are in
   # use.
-  current_scenario <- dplyr::slice(inb_level2_unique_eta_combis, i)
+  current_scenario <- inbred_pre_eta_df %>%
+    dplyr::filter(UUID == uuid) %>%
+    dplyr::distinct(Material, Extent, Scenario, Predictor)
   pred_combi <- dplyr::pull(current_scenario, Predictor)
   pred_sets <- pred_combi %>%
     base::strsplit(split = "_") %>%
@@ -740,7 +734,7 @@ lapply(inb_level2_scenario_seq, FUN = function(i) {
 
   # Get the names of the hybrids and their parental components to properly
   # augment the ETA objects to match their phenotypic data.
-  current_inb_df <- inb_level2_pre_eta %>%
+  current_inb_df <- inbred_pre_eta_df %>%
     dplyr::inner_join(
       y = current_scenario,
       by = c("Extent", "Predictor", "Material", "Scenario")
@@ -754,7 +748,7 @@ lapply(inb_level2_scenario_seq, FUN = function(i) {
         Predictor = "mrna"
       ) %>%
       dplyr::inner_join(
-        y = inb_level2_pre_eta,
+        y = inbred_pre_eta_df,
         by = c("Extent", "Predictor", "Material", "Scenario")
     ) %>%
     dplyr::pull(G)
@@ -848,12 +842,11 @@ lapply(inb_level2_scenario_seq, FUN = function(i) {
   eta <- purrr::invoke_map(get(eta_fun), pre_eta) %>%
     purrr::flatten()
 
-  current_uuid <- dplyr::pull(current_scenario, UUID)
   saveRDS(
     eta,
     file = paste0(
       "./data/derived/predictor_subsets/eta/eta_",
-      current_uuid,
+      uuid,
       ".RDS"
     ),
     compress = FALSE
@@ -871,73 +864,37 @@ gc()
 
 ## -- INBRED CORE_SET != 1 ETA SETUP ------------------------------------------
 pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
-scen_df <- readRDS("./data/derived/predictor_subsets/scen_df.RDS")
-geno_df <-  "./data/derived/predictor_subsets/geno_df.RDS" %>%
+geno_df <- readRDS("./data/derived/predictor_subsets/geno_df.RDS")
+core_pre_eta_nm <- "./data/derived/predictor_subsets/core_pre_eta_df.RDS"
+core_pre_eta_df <- core_pre_eta_nm %>%
   readRDS() %>%
-  data.table::as.data.table() %>%
-  data.table::setkey()
-
-# Define how the data should be sorted. This will considerably accelerate the
-# inner join of the 'current' scenario with the entire data set in order to
-# select the corresponding genotype names.
-keycols <- c(
-  "Extent",
-  "Predictor",
-  "Scenario",
-  "Core_Fraction",
-  "TST_Geno",
-  "Rnd_Level1",
-  "Rnd_Level2"
-)
-
-inb_level1_pre_eta <- readRDS(
-  "./data/derived/predictor_subsets/inbred_level1_table.RDS"
-  ) %>%
-  tidyr::unite(Predictor, c("Pred1", "Pred2"), sep = "_") %>%
-  data.table::as.data.table() %>%
-  data.table::setkeyv(cols = keycols)
-
-
-lev1_file_nm <- "./data/derived/predictor_subsets/unique_level1.RDS"
-if (!file.exists(lev1_file_nm)) {
-  inb_level1_unique_eta_combis <- inb_level1_pre_eta %>%
-    dplyr::distinct(
-      Material,
-      Extent,
-      Scenario,
-      Rnd_Level1,
-      Rnd_Level2,
-      Core_Fraction,
-      TST_Geno,
-      Predictor
-    ) %>%
-    dplyr::rowwise() %>%
-    dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
-    dplyr::ungroup()
-  saveRDS(
-    inb_level1_unique_eta_combis,
-    file = lev1_file_nm
-  )
-} else {
-  inb_level1_unique_eta_combis <- readRDS(lev1_file_nm)
-}
-
-
-inb_level1_scenario_seq <- inb_level1_unique_eta_combis %>%
-  nrow() %>%
-  seq_len()
+  tidyr::unite(Predictor, c("Pred1", "Pred2"), remove = TRUE)
 
 # Specify which BGLR algorithm shall be used.
 pred_model <- "BRR"
 
+# Generate a sequence of all possible scenarios for easy looping.
+# Additionally, generate a unique ID for each combination of parameters for
+# which a separate ETA object will be created.
+core_scenario_seq <- core_pre_eta_df %>%
+  dplyr::distinct(UUID) %>%
+  dplyr::pull(UUID)
 
 
-parallel::mclapply(inb_level1_scenario_seq, FUN = function(i) {
+parallel::mclapply(core_scenario_seq, FUN = function(uuid) {
   # For setting up ETA objects it is crucial to know which predictors are in
   # use.
-  current_scenario <- dplyr::slice(inb_level1_unique_eta_combis, i) %>%
-    data.table::as.data.table() %>%
-    data.table::setkeyv(cols = keycols)
+  current_scenario <- core_pre_eta_df %>%
+    dplyr::filter(UUID == uuid) %>%
+    dplyr::distinct(
+      Material,
+      Extent,
+      Scenario,
+      Core_Fraction,
+      Rnd_Level1,
+      Rnd_Level2,
+      Predictor
+    )
   pred_combi <- dplyr::pull(current_scenario, Predictor)
   pred_sets <- pred_combi %>%
     base::strsplit(split = "_") %>%
@@ -949,17 +906,25 @@ parallel::mclapply(inb_level1_scenario_seq, FUN = function(i) {
   # This implementation usies data.table because its use of keys and the size
   # of the two data sets to be merged make it a lot faster than the dplyr
   # solution.
-  core_geno <- inb_level1_pre_eta[current_scenario, nomatch = 0] %>%
-    .[, .(TST_Geno, TRN_Geno), ] %>%
-    tidyr::gather(key = Set, value = Genotype) %>%
-    dplyr::distinct(Genotype) %>%
-    dplyr::pull(Genotype)
-
-  full_geno <- current_scenario %>%
-    dplyr::select(Extent, Material, Scenario) %>%
+  core_geno <- core_pre_eta_df %>%
     dplyr::inner_join(
-      y = geno_df,
-      by = c("Extent", "Material", "Scenario")
+      y = current_scenario,
+      by = c(
+        "Extent",
+        "Material",
+        "Scenario",
+        "Core_Fraction",
+        "Rnd_Level1",
+        "Rnd_Level2",
+        "Predictor"
+      )
+  ) %>%
+  dplyr::pull(G)
+
+  full_geno <- geno_df %>%
+    dplyr::inner_join(
+      y = current_scenario,
+      by = c("Material", "Extent", "Scenario")
     ) %>%
     dplyr::pull(G)
 
@@ -1051,12 +1016,11 @@ parallel::mclapply(inb_level1_scenario_seq, FUN = function(i) {
   eta <- purrr::invoke_map(get(eta_fun), pre_eta) %>%
     purrr::flatten()
 
-  current_uuid <- dplyr::pull(current_scenario, UUID)
   saveRDS(
     eta,
     file = paste0(
       "./data/derived/predictor_subsets/eta/eta_",
-      current_uuid,
+      uuid,
       ".RDS"
     ),
     compress = FALSE
