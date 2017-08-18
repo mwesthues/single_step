@@ -376,7 +376,16 @@ inbred_aug <- inbred_lvl2_df %>%
     y = scen_df %>% dplyr::filter(Material == "Inbred", Core_Fraction == 1),
     by = c("Extent", "Material", "Scenario")
   ) %>%
-  dplyr::filter(complete.cases(.))
+  dplyr::filter(complete.cases(.)) %>%
+  dplyr::mutate(Rnd_Level1 = 1) %>%
+  dplyr::mutate_at(vars(Rnd_Level1, Rnd_Level2), .funs = as.numeric)
+
+inbred_aug_nm <- "./data/derived/predictor_subsets/inbred_trn_df.RDS"
+if (!file.exists(inbred_aug_nm)) {
+  saveRDS(inbred_aug, file = inbred_aug_nm, compress = FALSE)
+} else {
+  print("The file already exists!")
+}
 
 # Inbred scenarios
 inbred_pre_eta_nm <- "./data/derived/predictor_subsets/inbred_pre_eta_df.RDS"
@@ -466,7 +475,8 @@ if (!file.exists(hybrid_pre_eta_nm)) {
     dplyr::filter(complete.cases(.)) %>%
     dplyr::group_by(Material, Extent, Scenario, Predictor) %>%
     dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    dplyr::rename(TST_Geno = "G")
 
   saveRDS(
     hybrid_pre_eta_df,

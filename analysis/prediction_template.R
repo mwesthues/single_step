@@ -1,14 +1,169 @@
-if (isTRUE(interactive())) {
-  .libPaths(c(.libPaths(), "~/R/x86_64-pc-linux-gnu-library/3.4/"))
-}
-
 if (!require("pacman")) install.packages("pacman")
 if (!require("devtools")) install.packages("devtools")
-pacman::p_load("tidyverse")
+pacman::p_load("tidyverse", "data.table", "dtplyr")
 
 
-rnd_level2_df <- readRDS("./data/derived/predictor_subsets/rnd_level2.RDS")
-spec_eta_df <- readRDS("./data/derived/predictor_subsets/spec_eta_df.RDS")
+
+
+## -- SCENARIO INFORMATION -----------------------------------------------
+main_dir <- "./data/derived/predictor_subsets/"
+
+# Use this function to extract the first letter of 'Extent', 'Scenario'
+# and 'Material' to concatenate them.
+# This will save memory and reduce the number of variables that need to
+# be specified when picking a cluster for predictions.
+abbreviate_combi <- function(x) {
+  substr(x, start = 1, stop = 1)
+}
+
+### All genotypes by Material, Extent, Scenario
+geno_df <- readRDS(paste0(main_dir, "geno_df.RDS"))
+
+
+### Material == "Inbred" && Core_Fraction == 1
+inbred_aug <- readRDS(paste0(main_dir, "inbred_trn_df.RDS"))
+inbred_pre_eta_df <- readRDS(paste0(main_dir, "inbred_pre_eta_df.RDS"))
+
+inbred_df <- inbred_aug %>%
+  tidyr::unite(Predictor, c("Pred1", "Pred2"), remove = TRUE) %>%
+  dplyr::mutate(Predictor = gsub("_$", x = Predictor, replacement = "")) %>%
+  dplyr::full_join(
+    y = inbred_pre_eta_df,
+    by = c("Material", "Extent", "Scenario", "Predictor", "G")
+   ) %>%
+  dplyr::filter(complete.cases(.)) %>%
+  dplyr::rename(TRN_Geno = "G") %>%
+  data.table::as.data.table()
+
+# Concatenate the initials of 'Extent' (E), 'Material' (M) and 'Scenario' (S)
+# for alleviated referencing of combinations and add some dummy variables for
+# consistency with data from other combinations.
+cols_to_del <- c("Extent", "Material", "Scenario", "E", "M", "S", "Pred1", "Pred2")
+inbred_df[
+  ,
+  c("E", "M", "S") := lapply(.SD, FUN = abbreviate_combi),
+  .SDcols = c("Extent", "Material", "Scenario")
+ ][
+  ,
+  Combi := do.call(paste0, args = .SD),
+  .SDcols = c("E", "M", "S")
+  ][
+  ,
+  `:=` (TST_Geno = NA_character_,
+        TRN_Geno = NA_character_
+        ),
+  ][
+  ,
+  (cols_to_del) := NULL,
+  ]
+
+
+
+
+
+### Material == "Hybrid"
+keycols = c("Material", "Extent", "Scenario", "TST_Geno")
+hyb_lvl2_df <- readRDS(paste0(main_dir, "hybrid_lvl2_df.RDS")) %>%
+  data.table::as.data.table()
+data.table::setkeyv(hyb_lvl2_df, cols = keycols)
+
+hybrid_pre_eta_df <- readRDS(paste0(main_dir, "hybrid_pre_eta_df.RDS")) %>%
+  dplyr::select(-Pred1, -Pred2) %>%
+  data.table::as.data.table() %>%
+  data.table::setkeyv(cols = keycols)
+
+hybrid_df <- merge(
+  x = hyb_lvl2_df,
+  y = hybrid_pre_eta_df,
+  all = TRUE,
+  allow.cartesian = TRUE
+)
+
+# Concatenate the initials of 'Extent' (E), 'Material' (M) and 'Scenario' (S)
+# for alleviated referencing of combinations and add some dummy variables for
+# consistency with data from other combinations.
+cols_to_del <- c("Extent", "Material", "Scenario", "E", "M", "S")
+hybrid_df[
+  ,
+  c("E", "M", "S") := lapply(.SD, FUN = abbreviate_combi),
+  .SDcols = c("Extent", "Material", "Scenario")
+ ][
+  ,
+  Combi := do.call(paste0, args = .SD),
+  .SDcols = c("E", "M", "S")
+  ][
+  ,
+  `:=` (Core_Fraction = NA_real_,
+        Rnd_Level1 = NA_real_
+        ),
+  ][
+  ,
+  (cols_to_del) := NULL,
+  ]
+
+
+
+
+### Material == "Inbred" && Core_Fraction != 1
+cols_to_del <- c("Extent", "Material", "Scenario", "E", "M", "S")
+core_df <- readRDS(paste0(main_dir, "core_pre_eta_df.RDS")) %>%
+  tidyr::unite(Predictor, c("Pred1", "Pred2"), remove = TRUE) %>%
+  dplyr::select(-G) %>%
+  dplyr::distinct() %>%
+  data.table::as.data.table()
+
+# Concatenate the initials of 'Extent' (E), 'Material' (M) and 'Scenario' (S)
+# for alleviated referencing of combinations and add some dummy variables for
+# consistency with data from other combinations.
+core_df[
+  ,
+  c("E", "M", "S") := lapply(.SD, FUN = abbreviate_combi),
+  .SDcols = c("Extent", "Material", "Scenario")
+  ][
+  ,
+  Combi := do.call(paste0, args = .SD),
+  .SDcols = c("E", "M", "S")
+  ][
+  ,
+  `:=` (TST_Geno = NA_character_,
+        TRN_Geno = NA_character_
+        ),
+  ][
+  ,
+  (cols_to_del) := NULL,
+  ]
+
+
+
+## -- COMBINE UNIQUE SCENARIOS
+# Keep only scenarios not including training or test set hybrids, respectively.
+hybrid_scen_df <- hybrid_df %>%
+  .[
+  ,
+  `:=` (TST_Geno = NA_character_,
+        TRN_Geno = NA_character_
+        ),
+  ] %>%
+  data.table::setkey(., NULL) %>%
+  unique()
+
+rm(hybrid_df)
+gc();gc();gc();gc();gc();gc()
+
+core_scen_df <- core_df %>%
+  data.table::setkey(., NULL) %>%
+  unique()
+
+inbred_scen_df <- inbred_df %>%
+  data.table::setkey(., NULL) %>%
+  unique()
+
+full_scen_df <- rbindlist(list(core_scen_df, inbred_scen_df, hybrid_scen_df))
+
+
+
+
+
 
 ## -- PHENOTYPIC DATA ----------------------------------------------------
 inb_traits <- "./data/derived/maizego/tst_pheno_tibble.RDS" %>%
