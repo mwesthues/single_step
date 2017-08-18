@@ -16,7 +16,20 @@ abbreviate_combi <- function(x) {
   substr(x, start = 1, stop = 1)
 }
 
-### All genotypes by Material, Extent, Scenario
+# Sort all data.tables using this common key, which is essential for
+# concatenating them.
+common_key <- c(
+  "UUID",
+  "Combi",
+  "Predictor",
+  "Core_Fraction",
+  "Rnd_Level1",
+  "Rnd_Level2",
+  "TST_Geno",
+  "TRN_Geno"
+)
+
+# Data for all genotypes by Material, Extent, Scenario.
 geno_df <- readRDS(paste0(main_dir, "geno_df.RDS"))
 
 
@@ -56,7 +69,7 @@ inbred_df[
   ,
   (cols_to_del) := NULL,
   ]
-
+data.table::setkeyv(inbred_df, cols = common_key)
 
 
 
@@ -100,7 +113,7 @@ hybrid_df[
   ,
   (cols_to_del) := NULL,
   ]
-
+data.table::setkeyv(hybrid_df, cols = common_key)
 
 
 
@@ -132,20 +145,13 @@ core_df[
   ,
   (cols_to_del) := NULL,
   ]
+data.table::setkeyv(core_df, cols = common_key)
+
+
 
 
 
 ## -- COMBINE UNIQUE SCENARIOS
-common_key <- c(
-  "UUID",
-  "Combi",
-  "Predictor",
-  "Core_Fraction",
-  "Rnd_Level1",
-  "Rnd_Level2",
-  "TST_Geno",
-  "TRN_Geno"
-)
 # Keep only scenarios not including training or test set hybrids, respectively.
 hybrid_scen_df <- hybrid_df %>%
   .[
@@ -155,41 +161,65 @@ hybrid_scen_df <- hybrid_df %>%
         ),
   ] %>%
   data.table::setkey(., NULL) %>%
-  unique() %>%
-  data.table::setkeyv(cols = common_key)
+  unique()
 
 #rm(hybrid_df)
 #gc();gc();gc();gc();gc();gc()
 
 core_scen_df <- core_df %>%
   data.table::setkey(., NULL) %>%
-  unique() %>%
-  data.table::setkeyv(cols = common_key)
+  unique()
 
 inbred_scen_df <- inbred_df %>%
   data.table::setkey(., NULL) %>%
-  unique() %>%
-  data.table::setkeyv(cols = common_key)
-
-full_scen_df <- rbindlist(
-  list(core_scen_df, inbred_scen_df, hybrid_scen_df),
-  use.names = TRUE
-)
-
+  unique()
 
 
 
 
 
 ## -- PHENOTYPIC DATA ----------------------------------------------------
+# Augment the scenario data.table by the phenotypic traits, separately for
+# inbred lines and hybrids, respectively.
 inb_traits <- "./data/derived/maizego/tst_pheno_tibble.RDS" %>%
   readRDS() %>%
-  pull(Trait) %>%
-  unique()
+  dplyr::distinct(Trait) %>%
+  dplyr::mutate(Material = "I")
+
 hyb_traits <- "./data/derived/uhoh/agro_tibble.RDS" %>%
   readRDS() %>%
-  pull(Trait) %>%
-  unique()
+  dplyr::distinct(Trait) %>%
+  dplyr::mutate(Material = "H")
+
+trait_df <- dplyr::bind_rows(inb_traits, hyb_traits) %>%
+  data.table::as.data.table() %>%
+  data.table::setkeyv(cols = "Material")
+
+
+full_scen_df <- rbindlist(
+  list(core_scen_df, inbred_scen_df, hybrid_scen_df),
+  use.names = TRUE
+)
+full_scen_df[, Material := substr(Combi, start = 2, stop = 2), ]
+data.table::setkeyv(full_scen_df, cols = "Material")
+full_scen_df <- merge(
+  trait_df,
+  full_scen_df,
+  all = TRUE,
+  allow.cartesian = TRUE
+)
+full_scen_df[, Material := NULL, ]
+
+# Rename the UUID-variable to clarify that it pertains to unique ETA objects
+# and not to unique rows in this data.table.
+data.table::setnames(
+  x = full_scen_df,
+  old = "UUID",
+  new = "ETA_UUID"
+)
+
+
+
 
 
 
