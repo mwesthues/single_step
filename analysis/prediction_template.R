@@ -136,6 +136,16 @@ core_df[
 
 
 ## -- COMBINE UNIQUE SCENARIOS
+common_key <- c(
+  "UUID",
+  "Combi",
+  "Predictor",
+  "Core_Fraction",
+  "Rnd_Level1",
+  "Rnd_Level2",
+  "TST_Geno",
+  "TRN_Geno"
+)
 # Keep only scenarios not including training or test set hybrids, respectively.
 hybrid_scen_df <- hybrid_df %>%
   .[
@@ -145,20 +155,26 @@ hybrid_scen_df <- hybrid_df %>%
         ),
   ] %>%
   data.table::setkey(., NULL) %>%
-  unique()
+  unique() %>%
+  data.table::setkeyv(cols = common_key)
 
-rm(hybrid_df)
-gc();gc();gc();gc();gc();gc()
+#rm(hybrid_df)
+#gc();gc();gc();gc();gc();gc()
 
 core_scen_df <- core_df %>%
   data.table::setkey(., NULL) %>%
-  unique()
+  unique() %>%
+  data.table::setkeyv(cols = common_key)
 
 inbred_scen_df <- inbred_df %>%
   data.table::setkey(., NULL) %>%
-  unique()
+  unique() %>%
+  data.table::setkeyv(cols = common_key)
 
-full_scen_df <- rbindlist(list(core_scen_df, inbred_scen_df, hybrid_scen_df))
+full_scen_df <- rbindlist(
+  list(core_scen_df, inbred_scen_df, hybrid_scen_df),
+  use.names = TRUE
+)
 
 
 
