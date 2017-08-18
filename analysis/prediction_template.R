@@ -218,6 +218,82 @@ data.table::setnames(
   new = "ETA_UUID"
 )
 
+saveRDS(
+  full_scen_df,
+  file = "./data/derived/prediction_runs/prediction_template.RDS",
+  compress = FALSE
+)
+
+
+
+## -- SPLIT HYBRID DATA ---------------------------------------------------
+# The pile of hybrid data has become excessively large and we do not want
+# to load everything (several GB) into memory every time we are making
+# predictions using merely a small subset of the data.
+# Hence, split the hybrid data based on unique combinations defined above.
+
+# The function `uuid::UUIDgenerate()` generates random character vectors with
+# 36 characters, each.
+# The first test ensures that the hybrid data have not yet been created and
+# only proceeds otherwise.
+if (length(list.files(main_dir, pattern = "hybrid_.{36}\\.RDS")) == 0) {
+
+  hybrid_df[
+    ,
+    Hybrid_UUID := uuid::UUIDgenerate(),
+    by = .(UUID, Combi, Predictor, Rnd_Level2)
+    ]
+
+  data.table::setnames(
+    hybrid_df,
+    old = "UUID",
+    new = "ETA_UUID"
+  )
+
+
+  hybrid_lst <- split(
+    x = hybrid_df,
+    by = "Hybrid_UUID",
+    drop = TRUE
+  )
+
+  rm(hybrid_df)
+  gc();gc();gc();gc();gc();gc();gc()
+
+
+  lapply(seq_along(hybrid_lst), FUN = function(i) {
+    name_i <- names(hybrid_lst)[i]
+    object_i <- hybrid_lst[[i]]
+    saveRDS(
+      object_i,
+      file = paste0(
+        "./data/derived/predictor_subsets/hybrid_",
+        name_i,
+        ".RDS"
+      )
+    )
+  })
+
+  # Now that we have assigned unique IDs to each hybrid scenario, spit those out
+  # so that we can use them as a reference later.
+  hybrid_scen_df <- hybrid_lst %>%
+    purrr::map(function(x) {
+    x[, `:=` (TST_Geno = NA_character_, TRN_Geno = NA_character_), ]
+    data.table::setkey(x, NULL)
+    unique(x)
+    }) %>%
+    dplyr::bind_rows()
+
+  saveRDS(
+    hybrid_scen_df,
+    file = paste0(main_dir, "hybrid_scenario_df.RDS")
+  )
+
+} else {
+  print("The hybrid subsets have already been created. Don't overwrite them!")
+}
+
+
 
 
 
@@ -241,7 +317,7 @@ n_hyb <- template_precursor %>%
 n_inb <- template_precursor %>%
   filter(Material == "Inbred") %>%
   nrow()
-  
+
 hyb_template <- template_precursor %>%
   filter(Material == "Hybrid") %>%
   slice(rep(1:n(), each = length(hyb_traits))) %>%
