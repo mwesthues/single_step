@@ -31,15 +31,15 @@ if (isTRUE(interactive())) {
   # Number of cores
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "3000")
+  Sys.setenv("ITER" = "30000")
   # Algorithm to generate variance-covariance matrices.
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "FHN")
+  Sys.setenv("INTERVAL" = "CIA")
   # Number of test runs.
-  Sys.setenv("RUNS" = "1-3")
+  Sys.setenv("RUNS" = "")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }
@@ -81,23 +81,14 @@ prediction_template <- original_prediction_template %>%
     Combi == pred_interval,
     Rnd_Level2 %in% as.character(seq_len(2)),
     (Combi == "CIB" & Predictor == "snp_mrna" & Rnd_Level1 == "1" &
-     Core_Fraction == "0.8") | (Combi != "CIB" & Predictor == "snp"),
-    (Combi %in% c("FHN", "CHN") & Trait == "GTM") | Trait == "100grainweight"
+     Core_Fraction == "0.8") | (Combi != "CIB" & Predictor == "mrna"),
+    (Combi %in% c("FHN", "CHN") & Trait == "XZ") | Trait == "100grainweight"
   ) %>%
   dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID)) %>%
   dplyr::filter(!is.na(Trait))
 #**********************************************************************************
 
-if (isTRUE(nchar(runs) != 0)) {
-  run_seq <- runs %>%
-    strsplit(., split = "-") %>%
-    purrr::flatten_chr() %>%
-    as.integer() %>%
-    max() %>%
-    seq_len()
-  prediction_template <- prediction_template %>%
-    dplyr::slice(run_seq)
-}
+
 
 
 # -- LOAD ADDITIONAL INFO -------------------------------------------------------
@@ -390,7 +381,7 @@ if (material == "I") {
 
 
 
-## -- PREDICTION -----------------------------------------------------------
+## -- PREDICTION RUN DEF ------------------------------------------------------
 # Define which runs shall be used, i.e., which genotypes shall be included as
 # test sets.
 aug_pred_template <- geno_df %>%
@@ -425,11 +416,28 @@ pred_seq <- unq_pred_template %>%
   nrow() %>%
   seq_len()
 
+if (nchar(runs) != 0){
+
+  seq_sub <- runs %>%
+    base::strsplit(., split = "-") %>%
+    purrr::map(function(x) {seq(from = x[1], to = x[2], by = 1)}) %>%
+    purrr::flatten_dbl() %>%
+    as.integer()
+  pred_seq <- pred_seq[seq_sub]
+
+}
+
+
 # Keep the time of the following computations.
 start_time <- Sys.time()
 
-# Analysis
-mclapply(pred_seq, FUN = function(i) {
+
+
+
+
+
+## -- BGLR --------------------------------------------------------------------
+pred_lst <- mclapply(pred_seq, FUN = function(i) {
 
   # Collect the current set of parameters.
   template_i <- unq_pred_template %>%
@@ -477,9 +485,10 @@ mclapply(pred_seq, FUN = function(i) {
       y = pheno,
       by = c("Genotype", "Trait")
     ) %>%
-    dplyr::mutate(Value = dplyr::if_else(
+    dplyr::rename(Original_Observed = "Value") %>%
+    dplyr::mutate(Observed_NA = dplyr::if_else(
       Set == "TRN",
-      true = Value,
+      true = Original_Observed,
       false = NA_real_
       )
     )
@@ -524,85 +533,37 @@ mclapply(pred_seq, FUN = function(i) {
   }
 
 
-
-  # Generate all leave-one-out cross-validation predictions for one parameter.
-  eta_seq <- seq_along(tst_set_i)
-  one_param_lst <- lapply(eta_seq, FUN = function(j) {
-
-    tst_geno_j <- pheno_i %>%
-      dplyr::slice(j) %>%
-      dplyr::pull(Genotype)
-
-    # In the case of hybrid genotypes, filter T0 hybrids.
-    if (isTRUE(dplyr::pull(template_i, Material) == "Hybrid")) {
-      tst_dent <- tst_geno_j %>%
-        strsplit(split = "_") %>%
-        map_chr(`[[`, 2)
-
-      tst_flint <- tst_geno_j %>%
-        strsplit(split = "_") %>%
-        map_chr(`[[`, 3)
-
-      pheno_j <- pheno_i %>%
-        dplyr::mutate(Observed = if_else(
-          Genotype == tst_geno_j | Dent == tst_dent | Flint == tst_flint,
-          true = NA_real_,
-          false = Observed
-        )
-      )
-    } else if (isTRUE(dplyr::pull(template_i, Material) == "Inbred")) {
-
-      pheno_j <- pheno_i %>%
-        dplyr::mutate(Observed = if_else(
-          Genotype == tst_geno_j,
-          true = NA_real_,
-          false = Observed
-        )
-      )
-    }
-
-
-
-    mod_bglr <- BGLR::BGLR(
-      y = dplyr::pull(pheno_j, Observed),
-      ETA = eta_i,
-      nIter = iter,
-      burnIn = iter / 2,
-      saveAt = temp,
-      verbose = FALSE
-    )
-    yhat <- mod_bglr$yHat
-    sd_yhat <- mod_bglr$SD.yHat
-    res <- dplyr::slice(pheno_j, j)
-    res$yhat <- yhat[j]
-    res$var_yhat <- sd_yhat[j] ^ 2
-    res$Observed <- pheno_i %>% dplyr::slice(j) %>% dplyr::pull(Observed)
-
-    # Return the predictions.
-    res
-  })
-
-  # Get the ID of the current scenario to reference it appropriately for later
-  # retrieval.
-  row_id <- prediction_template %>%
-    dplyr::slice(i) %>%
-    dplyr::pull(rowid)
-
-  one_param_df <- one_param_lst %>%
-    dplyr::bind_rows() %>%
-    dplyr::select(Genotype, Observed, yhat, var_yhat) %>%
-    dplyr::bind_cols(slice(template_i, rep(1:n(), length(one_param_lst)))) %>%
-    dplyr::mutate(rowid = row_id)
-
-
-  # Save output and link it with a log file.
-  saveRDS(
-    one_param_df,
-    paste0("./data/derived/predictions/template_", row_id, ".RDS")
+  # Run the BGLR model.
+  mod_bglr <- BGLR::BGLR(
+    y = dplyr::pull(pheno_i, Observed_NA),
+    ETA = eta_i,
+    nIter = iter,
+    burnIn = iter / 2,
+    saveAt = temp,
+    verbose = FALSE
   )
 
+  # Extract the index of the test set genotype from the phenotypic data in
+  # order to extract the corresponding elements from the BGLR model ouptut.
+  tst_idx <- pheno_i %>%
+    dplyr::mutate(IDX = seq_len(n())) %>%
+    dplyr::filter(Set == "TST") %>%
+    dplyr::pull(IDX)
+
+  # Save the results in a new data frame.
+  yhat <- mod_bglr$yHat
+  sd_yhat <- mod_bglr$SD.yHat
+  res <- template_i
+  res %>%
+    dplyr::mutate(
+      y = pheno_i %>% dplyr::slice(tst_idx) %>% dplyr::pull(Original_Observed),
+      yhat = yhat[tst_idx],
+      yhat_variance = sd_yhat[tst_idx] ^ 2
+    )
 }, mc.cores = use_cores)
 
+pred_df <- pred_lst %>%
+  dplyr::bind_rows()
 
 # Write a corresponding log file for the predictions.
 elapsed_time <- get_elapsed_time(start_time)
