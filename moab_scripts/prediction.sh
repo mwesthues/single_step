@@ -21,7 +21,7 @@
 # Standard output naming
 #MOAB -o $(JOBNAME)_$(JOBID)
 #
-# Queue: Use a single node 
+# Queue: Use a single node
 #MOAB -q singlenode
 #
 # Send email when job begins (b), aborts (a) and ends (e)
@@ -31,8 +31,6 @@
 #MOAB -j oe
 #
 #MOAB -v ITER=30000
-#
-#MOAB -v MODEL=BRR
 #
 #MOAB -v VCOV=RadenII
 #
@@ -59,7 +57,6 @@ module load math/R/3.3.1
 
 # Echo input variables
 echo "Iter=${ITER}\
-      Model=${MODEL}\
       VCOV=${VCOV}\
       Pi=${PI}\
       PriorPiCount=${PRIOR_PI_COUNT}\
@@ -69,7 +66,7 @@ echo "Iter=${ITER}\
 # Set-up program
 startprog="Rscript --no-save --no-restore --slave\
            ./analysis/prediction.R\
-           ${ITER} ${MODEL} ${VCOV} ${PI} ${PRIOR_PI_COUNT} ${INTERVAL} ${RUNS}"
+           ${ITER} ${VCOV} ${PI} ${PRIOR_PI_COUNT} ${INTERVAL} ${RUNS}"
 
 # Start program
 echo $startprog
