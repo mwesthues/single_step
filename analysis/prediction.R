@@ -484,8 +484,6 @@ mclapply(pred_seq, FUN = function(i) {
       )
     )
 
-
-  #TODO: Sort phenotypes for hybrids!!!!!!!!!!!!!!
   # Order phenotypic data according to the order of the ETA object.
   if (material == "I") {
     get_eta_rownames <- function(x) rownames(x[[1]])
@@ -504,7 +502,27 @@ mclapply(pred_seq, FUN = function(i) {
         dplyr::pull(pheno_i, Genotype)
       )
     )
+  } else if (material == "H") {
+
+    eta_geno_order <- eta_i %>%
+      purrr::map(`[[`, 1) %>%
+      purrr::map(rownames) %>%
+      purrr::set_names(nm = c("Dent", "Flint")) %>%
+      dplyr::bind_cols() %>%
+      tidyr::unite(col = Genotype, Dent, Flint, sep = "_") %>%
+      dplyr::mutate(Genotype = paste0("DF_", Genotype))
+
+    pheno_i <- eta_geno_order %>%
+      dplyr::inner_join(y = pheno_i, by = "Genotype")
+
+    stopifnot(
+      identical(
+        dplyr::pull(eta_geno_order, Genotype),
+        dplyr::pull(pheno_i, Genotype)
+      )
+    )
   }
+
 
 
   # Generate all leave-one-out cross-validation predictions for one parameter.
