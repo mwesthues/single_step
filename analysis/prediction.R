@@ -37,9 +37,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "CIA")
+  Sys.setenv("INTERVAL" = "CIA_1")
   # Number of test runs.
-  Sys.setenv("RUNS" = "")
+  Sys.setenv("RUNS" = "1-10")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }
@@ -71,24 +71,7 @@ original_prediction_template <- temp_loc %>%
 prediction_template <- original_prediction_template %>%
   tibble::as_data_frame() %>%
   dplyr::filter(Interval == pred_interval) %>%
-  dplyr::mutate(Rnd_Level2 = as.character(Rnd_Level2)) %>%
   dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID))
-
-#**********************************************************************************
-# Remove this after finishing the script!!!!!!!!!!!!!!!!!!
-prediction_template <- original_prediction_template %>%
-  dplyr::filter(
-    Combi == pred_interval,
-    Rnd_Level2 %in% as.character(seq_len(2)),
-    (Combi == "CIB" & Predictor == "snp_mrna" & Rnd_Level1 == "1" &
-     Core_Fraction == "0.8") | (Combi != "CIB" & Predictor == "mrna"),
-    (Combi %in% c("FHN", "CHN") & Trait == "XZ") | Trait == "100grainweight"
-  ) %>%
-  dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID)) %>%
-  dplyr::filter(!is.na(Trait))
-#**********************************************************************************
-
-
 
 
 # -- LOAD ADDITIONAL INFO -------------------------------------------------------
@@ -562,8 +545,16 @@ pred_lst <- mclapply(pred_seq, FUN = function(i) {
     )
 }, mc.cores = use_cores)
 
-pred_df <- pred_lst %>%
-  dplyr::bind_rows()
+pred_lst %>%
+  dplyr::bind_rows() %>%
+  saveRDS(
+    object = .,
+    file = paste0(
+      "./data/derived/predictions/template_",
+      job_id,
+      ".RDS"
+    )
+  )
 
 # Write a corresponding log file for the predictions.
 elapsed_time <- get_elapsed_time(start_time)
