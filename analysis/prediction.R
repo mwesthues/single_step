@@ -37,7 +37,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "CIA_1")
+  Sys.setenv("INTERVAL" = "FHN_1")
   # Number of test runs.
   Sys.setenv("RUNS" = "1-10")
   # Output directory for temporary BGLR files
@@ -182,7 +182,7 @@ if (material == "H") {
       tst_geno <- x[, (unique(TST_Geno)), ]
       unq_x_combi <- unique(
         x[, .(Rnd_Level2, Predictor, ETA_UUID, Combi, Core_Fraction, Rnd_Level1,
-              Hybrid_UUID, Trait), ]
+              Hybrid_UUID, Trait, Interval), ]
       )
       var_tbl <- unq_x_combi[rep(seq_len(.N), times = nrow(hold_out_trn)), ]
       hold_out <- cbind(hold_out_trn, var_tbl)
