@@ -37,9 +37,9 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "FHN_1")
+  Sys.setenv("INTERVAL" = "CIA_10")
   # Number of test runs.
-  Sys.setenv("RUNS" = "1-10")
+  Sys.setenv("RUNS" = "1-2")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }
@@ -98,228 +98,6 @@ full_geno_df <- "./data/derived/predictor_subsets/geno_df.RDS" %>%
   )
 
 
-if (material == "H") {
-
-  # Load a table that connects the different variables to the data frame that
-  # information on the corresponding TRN and TST genotypes.
-  hybrid_scenario_df <- readRDS(
-    "./data/derived/predictor_subsets/hybrid_scenario_df.RDS"
-  ) %>%
-  tibble::as_data_frame() %>%
-  dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID)) %>%
-  dplyr::inner_join(
-    y = prediction_template,
-    by = c(
-      "Core_Fraction",
-      "Rnd_Level1",
-      "Rnd_Level2",
-      "Predictor",
-      "ETA_UUID",
-      "Combi",
-      "TST_Geno",
-      "TRN_Geno"
-    )
-  )
-
-  # Load TRN and TST genotypes.
-  geno_trn_df <- hybrid_scenario_df %>%
-    dplyr::distinct(Hybrid_UUID, .keep_all = FALSE) %>%
-    dplyr::pull(Hybrid_UUID) %>%
-    purrr::map(
-      ~paste0("./data/derived/predictor_subsets/hybrid_", ., ".RDS")
-    ) %>%
-    purrr::map(~readRDS(.)) %>%
-    dplyr::bind_rows() %>%
-    tibble::as_data_frame() %>%
-    dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID)) %>%
-    dplyr::inner_join(
-      y = hybrid_scenario_df %>% dplyr::select(-TST_Geno, -TRN_Geno),
-      by = c(
-        "Rnd_Level2",
-        "Predictor",
-        "ETA_UUID",
-        "Combi",
-        "Core_Fraction",
-        "Rnd_Level1",
-        "Hybrid_UUID"
-      )
-    )
-
-  hyb_scen_geno_df <- full_geno_df %>%
-    dplyr::right_join(
-      y = prediction_template,
-      by = "Combi"
-    ) %>%
-    dplyr::select(-TRN_Geno, -TST_Geno) %>%
-    dplyr::rename(TRN_Geno = "G") %>%
-    dplyr::distinct(TRN_Geno) %>%
-    data.table::as.data.table() %>%
-    data.table::setkey()
-
-  # Separately for each combination of 'TST_Geno', 'Combi', 'Trait',
-  # 'Core_Fraction', 'Rnd_Level1', 'Rnd_Level2', 'Predictor' and 'ETA_UUID'...
-  # i) extract the training set
-  # ii) define the hold-out set as its complement
-  # iii) concatenate training set and hold-out set.
-  geno_df <- geno_trn_df %>%
-    data.table::data.table() %>%
-    split(.,
-      by = c(
-        "TST_Geno",
-        "Combi",
-        "Trait",
-        "Core_Fraction",
-        "Rnd_Level1",
-        "Rnd_Level2",
-        "Predictor",
-        "ETA_UUID"
-      )
-    ) %>%
-    purrr::map(function(x) {
-      x[, Set := "TRN", ]
-      data.table::setkey(x)
-      hold_out_trn <- data.table::copy(hyb_scen_geno_df[!x, on = "TRN_Geno"])
-      tst_geno <- x[, (unique(TST_Geno)), ]
-      unq_x_combi <- unique(
-        x[, .(Rnd_Level2, Predictor, ETA_UUID, Combi, Core_Fraction, Rnd_Level1,
-              Hybrid_UUID, Trait, Interval), ]
-      )
-      var_tbl <- unq_x_combi[rep(seq_len(.N), times = nrow(hold_out_trn)), ]
-      hold_out <- cbind(hold_out_trn, var_tbl)
-      hold_out[, `:=` (TST_Geno = tst_geno,
-                       Set = "Hold_Out"), ]
-      data.table::setkeyv(hold_out, cols = key(x))
-      dplyr::bind_rows(x, hold_out)
-    }) %>%
-    data.table::rbindlist() %>%
-    tibble::as_data_frame()
-
-
-} else if (material == "I" && all(core_fraction == "1")) {
-
-  geno_trn_df <- "./data/derived/predictor_subsets/inbred_trn_df.RDS" %>%
-    readRDS() %>%
-    dplyr::mutate_at(
-      .vars = vars(Extent, Material, Scenario),
-      .funs = funs(substr(., start = 1, stop = 1)
-    )) %>%
-    tidyr::unite(
-      col = Combi,
-      c("Extent", "Material", "Scenario"),
-      sep = "",
-      remove = TRUE
-    ) %>%
-    tidyr::unite(Predictor, c("Pred1", "Pred2"), remove = TRUE) %>%
-    dplyr::mutate_at(
-      .vars = vars(Predictor),
-      .funs = funs(gsub("_$", x = ., replacement = ""))
-    ) %>%
-    dplyr::rename(TRN_Geno = "G") %>%
-    dplyr::mutate(
-      TST_Geno = NA_character_,
-      Rnd_Level2 = as.character(Rnd_Level2)
-    ) %>%
-    dplyr::inner_join(
-      y = prediction_template %>% dplyr::select(-TST_Geno, -TRN_Geno),
-      by = c(
-        "Core_Fraction",
-        "Rnd_Level1",
-        "Rnd_Level2",
-        "Predictor",
-        "Combi"
-      )
-    ) %>%
-    dplyr::mutate(Set = "TRN")
-
-  # Generate hold-old genotypes, which are genotypes that are present but were
-  # not selected for a given scenario.
-  hold_out_df <- full_geno_df %>%
-    dplyr::right_join(
-      y = prediction_template,
-      by = "Combi"
-    ) %>%
-    dplyr::anti_join(
-      y = geno_trn_df,
-      by = c(
-        "G" = "TRN_Geno",
-        "Combi",
-        "Trait",
-        "Core_Fraction",
-        "Rnd_Level1",
-        "Rnd_Level2",
-        "Predictor",
-        "ETA_UUID",
-        "TST_Geno"
-      )
-    ) %>%
-    dplyr::select(-TRN_Geno) %>%
-    dplyr::rename(TRN_Geno = "G") %>%
-    dplyr::mutate(Set = "Hold_Out")
-
-  inbred_key <- c(
-    "Combi",
-    "Trait",
-    "Core_Fraction",
-    "Rnd_Level1",
-    "Rnd_Level2",
-    "Predictor",
-    "ETA_UUID"
-  )
-
-  trn_df <- dplyr::bind_rows(hold_out_df, geno_trn_df) %>%
-    dplyr::select(-TST_Geno) %>%
-    data.table::as.data.table() %>%
-    data.table::setkeyv(., cols = inbred_key)
-
-  tst_geno <- full_geno_df %>%
-    dplyr::right_join(
-      y = prediction_template,
-      by = "Combi"
-    ) %>%
-    dplyr::select(-TST_Geno, -TRN_Geno) %>%
-    dplyr::rename(TST_Geno = "G") %>%
-    data.table::as.data.table() %>%
-    data.table::setkeyv(., cols = inbred_key)
-
-  geno_df <- merge(trn_df, tst_geno, all = TRUE, allow.cartesian = TRUE) %>%
-    tibble::as_data_frame()
-
-
-} else if (material == "I" && any(core_fraction != "1")) {
-
-  # For the inbred lines, generate leave-one-out cross-validation (LOOCV)
-  # data frames with each genotypes occurring once as a TST genotype and
-  # n times as a TRN genotype where n denotes the number of genotypes.
-  # This will facilitate setting the correct genotypes to NA in the pertaining
-  # data frame with phenotypic data and is crucial for predictions.
-  geno_scen_df <- full_geno_df %>%
-  dplyr::right_join(
-    y = prediction_template,
-    by = "Combi"
-  )
-
-  tst_geno <- geno_scen_df %>%
-    dplyr::distinct(G) %>%
-    dplyr::pull(G)
-
-  # TRN_Geno, TST_Geno, Combi, Trait, Core_Fraction, Rnd_Level1, Rnd_Level2,
-  # Predictor, ETA_UUID
-  geno_df <- tst_geno %>%
-    purrr::map(function(x) {
-    trn_geno <- base::setdiff(tst_geno, x)
-    tibble::data_frame(TRN_Geno = trn_geno, TST_Geno = x)
-  }) %>%
-  dplyr::bind_rows() %>%
-  dplyr::full_join(
-    y = geno_scen_df %>% dplyr::select(-TRN_Geno, -TST_Geno),
-    by = c("TST_Geno" = "G")
-  ) %>%
-  dplyr::filter(complete.cases(.)) %>%
-  dplyr::mutate(Set = "TRN")
-}
-
-
-
 
 ## -- ETA OBJECTS -------------------------------------------------------
 # Load all ETA objects associated with the specified scenarios in the global
@@ -328,7 +106,7 @@ if (material == "H") {
 # while processing predictions in parallel will likely cause a lot of
 # unncecessary overhead.
 eta_dir <- "./data/derived/predictor_subsets/eta/"
-eta_uuid <- geno_df %>%
+eta_uuid <- prediction_template %>%
   dplyr::distinct(ETA_UUID) %>%
   dplyr::pull(ETA_UUID)
 
@@ -364,44 +142,16 @@ if (material == "I") {
 
 
 
-## -- PREDICTION RUN DEF ------------------------------------------------------
-# Define which runs shall be used, i.e., which genotypes shall be included as
-# test sets.
-aug_pred_template <- geno_df %>%
-  dplyr::inner_join(
-    y = prediction_template %>% dplyr::select(-TRN_Geno, -TST_Geno),
-    by = c(
-      "Combi",
-      "Trait",
-      "Core_Fraction",
-      "Rnd_Level1",
-      "Rnd_Level2",
-      "Predictor",
-      "ETA_UUID"
-    )
-  )
 
-# Ignoring training set genotypes, build a unique set of prediction runs to
-# loop over.
-unq_pred_template <- aug_pred_template %>%
-  dplyr::distinct(
-    TST_Geno,
-    Trait,
-    Core_Fraction,
-    Rnd_Level1,
-    Rnd_Level2,
-    Predictor,
-    ETA_UUID
-  )
-
-
-pred_seq <- unq_pred_template %>%
+# Sequence of all prediction scenarios that are scheduled in this particular
+# run.
+scenario_seq <- prediction_template %>%
   nrow() %>%
   seq_len()
 
 if (nchar(runs) != 0){
 
-  pred_seq <- runs %>%
+  scenario_seq <- runs %>%
     base::strsplit(., split = "-") %>%
     purrr::flatten_chr() %>%
     as.integer() %>%
@@ -417,134 +167,391 @@ start_time <- Sys.time()
 
 
 
+scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
 
-## -- BGLR --------------------------------------------------------------------
-pred_lst <- mclapply(pred_seq, FUN = function(i) {
-
-  # Collect the current set of parameters.
-  template_i <- unq_pred_template %>%
+  template_i <- prediction_template %>%
     dplyr::slice(i)
 
-  # Collect the current ETA object for the prediction.
-  eta_i <- template_i %>%
-    dplyr::pull(ETA_UUID) %>%
-    get(.)
+  if (material == "H") {
 
-  tst_i <- template_i %>%
-    dplyr::select(TST_Geno, Trait) %>%
-    dplyr::mutate(Set = "TST") %>%
-    dplyr::rename(Genotype = "TST_Geno")
-
-  # Combine the current test and the pre-built training and hold-out set.
-  # Make sure to remove any genotype that was previously assigned to the
-  # hold-out set when it is equal to the current test set.
-  # Otherwise the data set `geno_i` would contain duplicate entries.
-  geno_i <- aug_pred_template %>%
+    # Load a table that connects the different variables to the data frame that
+    # information on the corresponding TRN and TST genotypes.
+    hybrid_scenario_df <- readRDS(
+      "./data/derived/predictor_subsets/hybrid_scenario_df.RDS"
+    ) %>%
+    tibble::as_data_frame() %>%
+    dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID)) %>%
     dplyr::inner_join(
       y = template_i,
       by = c(
-        "TST_Geno",
-        "Trait",
         "Core_Fraction",
         "Rnd_Level1",
         "Rnd_Level2",
         "Predictor",
-        "ETA_UUID"
-      )
-    ) %>%
-    dplyr::select(TRN_Geno, Trait, Set) %>%
-    dplyr::rename(Genotype = "TRN_Geno") %>%
-    dplyr::anti_join(
-      y = tst_i %>% dplyr::mutate(Set = "Hold_Out"),
-      by = c("Genotype", "Trait")
-    ) %>%
-    dplyr::bind_rows(tst_i)
-
-  # Add missing genotypes as a third set (hold-out) and set their phenotypic
-  # values to NA.
-  pheno_i <- geno_i %>%
-    dplyr::left_join(
-      y = pheno,
-      by = c("Genotype", "Trait")
-    ) %>%
-    dplyr::rename(Original_Observed = "Value") %>%
-    dplyr::mutate(Observed_NA = dplyr::if_else(
-      Set == "TRN",
-      true = Original_Observed,
-      false = NA_real_
+        "ETA_UUID",
+        "Combi",
+        "TST_Geno",
+        "TRN_Geno"
       )
     )
 
-  # Order phenotypic data according to the order of the ETA object.
-  if (material == "I") {
-    get_eta_rownames <- function(x) rownames(x[[1]])
-    eta_geno_order <- eta_i %>%
-      purrr::pluck(1, get_eta_rownames) %>%
+    # Load TRN and TST genotypes.
+    geno_trn_df <- hybrid_scenario_df %>%
+      dplyr::distinct(Hybrid_UUID, .keep_all = FALSE) %>%
+      dplyr::pull(Hybrid_UUID) %>%
+      purrr::map(
+        ~paste0("./data/derived/predictor_subsets/hybrid_", ., ".RDS")
+      ) %>%
+      purrr::map(~readRDS(.)) %>%
+      dplyr::bind_rows() %>%
       tibble::as_data_frame() %>%
-      dplyr::rename(Genotype = "value")
-    pheno_i <- eta_geno_order %>%
-      dplyr::left_join(
-        y = pheno_i,
-        by = "Genotype"
+      dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID)) %>%
+      dplyr::inner_join(
+        y = hybrid_scenario_df %>% dplyr::select(-TST_Geno, -TRN_Geno),
+        by = c(
+          "Rnd_Level2",
+          "Predictor",
+          "ETA_UUID",
+          "Combi",
+          "Core_Fraction",
+          "Rnd_Level1",
+          "Hybrid_UUID"
+        )
       )
-    stopifnot(
-      identical(
-        dplyr::pull(eta_geno_order, Genotype),
-        dplyr::pull(pheno_i, Genotype)
-      )
+
+    hyb_scen_geno_df <- full_geno_df %>%
+      dplyr::right_join(
+        y = template_i,
+        by = "Combi"
+      ) %>%
+      dplyr::select(-TRN_Geno, -TST_Geno) %>%
+      dplyr::rename(TRN_Geno = "G") %>%
+      dplyr::distinct(TRN_Geno) %>%
+      data.table::as.data.table() %>%
+      data.table::setkey()
+
+    # Separately for each combination of 'TST_Geno', 'Combi', 'Trait',
+    # 'Core_Fraction', 'Rnd_Level1', 'Rnd_Level2', 'Predictor' and 'ETA_UUID'...
+    # i) extract the training set
+    # ii) define the hold-out set as its complement
+    # iii) concatenate training set and hold-out set.
+    geno_df <- geno_trn_df %>%
+      data.table::data.table() %>%
+      split(.,
+        by = c(
+          "TST_Geno",
+          "Combi",
+          "Trait",
+          "Core_Fraction",
+          "Rnd_Level1",
+          "Rnd_Level2",
+          "Predictor",
+          "ETA_UUID"
+        )
+      ) %>%
+      purrr::map(function(x) {
+        x[, Set := "TRN", ]
+        data.table::setkey(x)
+        hold_out_trn <- data.table::copy(hyb_scen_geno_df[!x, on = "TRN_Geno"])
+        tst_geno <- x[, (unique(TST_Geno)), ]
+        unq_x_combi <- unique(
+          x[, .(Rnd_Level2, Predictor, ETA_UUID, Combi, Core_Fraction, Rnd_Level1,
+                Hybrid_UUID, Trait, Interval), ]
+        )
+        var_tbl <- unq_x_combi[rep(seq_len(.N), times = nrow(hold_out_trn)), ]
+        hold_out <- cbind(hold_out_trn, var_tbl)
+        hold_out[, `:=` (TST_Geno = tst_geno,
+                         Set = "Hold_Out"), ]
+        data.table::setkeyv(hold_out, cols = key(x))
+        dplyr::bind_rows(x, hold_out)
+      }) %>%
+      data.table::rbindlist() %>%
+      tibble::as_data_frame()
+
+  } else if (material == "I" && all(core_fraction == "1")) {
+
+    geno_trn_df <- "./data/derived/predictor_subsets/inbred_trn_df.RDS" %>%
+      readRDS() %>%
+      dplyr::mutate_at(
+        .vars = vars(Extent, Material, Scenario),
+        .funs = funs(substr(., start = 1, stop = 1)
+      )) %>%
+      tidyr::unite(
+        col = Combi,
+        c("Extent", "Material", "Scenario"),
+        sep = "",
+        remove = TRUE
+      ) %>%
+      tidyr::unite(Predictor, c("Pred1", "Pred2"), remove = TRUE) %>%
+      dplyr::mutate_at(
+        .vars = vars(Predictor),
+        .funs = funs(gsub("_$", x = ., replacement = ""))
+      ) %>%
+      dplyr::rename(TRN_Geno = "G") %>%
+      dplyr::mutate(
+        TST_Geno = NA_character_,
+        Rnd_Level2 = as.character(Rnd_Level2)
+      ) %>%
+      dplyr::inner_join(
+        y = template_i %>% dplyr::select(-TST_Geno, -TRN_Geno),
+        by = c(
+          "Core_Fraction",
+          "Rnd_Level1",
+          "Rnd_Level2",
+          "Predictor",
+          "Combi"
+        )
+      ) %>%
+      dplyr::mutate(Set = "TRN")
+
+    # Generate hold-old genotypes, which are genotypes that are present but were
+    # not selected for a given scenario.
+    hold_out_df <- full_geno_df %>%
+      dplyr::right_join(
+        y = template_i,
+        by = "Combi"
+      ) %>%
+      dplyr::anti_join(
+        y = geno_trn_df,
+        by = c(
+          "G" = "TRN_Geno",
+          "Combi",
+          "Trait",
+          "Core_Fraction",
+          "Rnd_Level1",
+          "Rnd_Level2",
+          "Predictor",
+          "ETA_UUID",
+          "TST_Geno"
+        )
+      ) %>%
+      dplyr::select(-TRN_Geno) %>%
+      dplyr::rename(TRN_Geno = "G") %>%
+      dplyr::mutate(Set = "Hold_Out")
+
+    inbred_key <- c(
+      "Combi",
+      "Trait",
+      "Core_Fraction",
+      "Rnd_Level1",
+      "Rnd_Level2",
+      "Predictor",
+      "ETA_UUID"
     )
-  } else if (material == "H") {
 
-    eta_geno_order <- eta_i %>%
-      purrr::map(`[[`, 1) %>%
-      purrr::map(rownames) %>%
-      purrr::set_names(nm = c("Dent", "Flint")) %>%
-      dplyr::bind_cols() %>%
-      tidyr::unite(col = Genotype, Dent, Flint, sep = "_") %>%
-      dplyr::mutate(Genotype = paste0("DF_", Genotype))
+    trn_df <- dplyr::bind_rows(hold_out_df, geno_trn_df) %>%
+      dplyr::select(-TST_Geno) %>%
+      data.table::as.data.table() %>%
+      data.table::setkeyv(., cols = inbred_key)
 
-    pheno_i <- eta_geno_order %>%
-      dplyr::inner_join(y = pheno_i, by = "Genotype")
+    tst_geno <- full_geno_df %>%
+      dplyr::right_join(
+        y = template_i,
+        by = "Combi"
+      ) %>%
+      dplyr::select(-TST_Geno, -TRN_Geno) %>%
+      dplyr::rename(TST_Geno = "G") %>%
+      data.table::as.data.table() %>%
+      data.table::setkeyv(., cols = inbred_key)
 
-    stopifnot(
-      identical(
-        dplyr::pull(eta_geno_order, Genotype),
-        dplyr::pull(pheno_i, Genotype)
-      )
+    geno_df <- merge(trn_df, tst_geno, all = TRUE, allow.cartesian = TRUE) %>%
+      tibble::as_data_frame()
+
+  } else if (material == "I" && any(core_fraction != "1")) {
+
+    # For the inbred lines, generate leave-one-out cross-validation (LOOCV)
+    # data frames with each genotypes occurring once as a TST genotype and
+    # n times as a TRN genotype where n denotes the number of genotypes.
+    # This will facilitate setting the correct genotypes to NA in the pertaining
+    # data frame with phenotypic data and is crucial for predictions.
+    geno_scen_df <- full_geno_df %>%
+    dplyr::right_join(
+      y = template_i,
+      by = "Combi"
     )
+
+    tst_geno <- geno_scen_df %>%
+      dplyr::distinct(G) %>%
+      dplyr::pull(G)
+
+    # TRN_Geno, TST_Geno, Combi, Trait, Core_Fraction, Rnd_Level1, Rnd_Level2,
+    # Predictor, ETA_UUID
+    geno_df <- tst_geno %>%
+      purrr::map(function(x) {
+      trn_geno <- base::setdiff(tst_geno, x)
+      tibble::data_frame(TRN_Geno = trn_geno, TST_Geno = x)
+    }) %>%
+    dplyr::bind_rows() %>%
+    dplyr::full_join(
+      y = geno_scen_df %>% dplyr::select(-TRN_Geno, -TST_Geno),
+      by = c("TST_Geno" = "G")
+    ) %>%
+    dplyr::filter(complete.cases(.)) %>%
+    dplyr::mutate(Set = "TRN")
   }
 
 
-  # Run the BGLR model.
-  mod_bglr <- BGLR::BGLR(
-    y = dplyr::pull(pheno_i, Observed_NA),
-    ETA = eta_i,
-    nIter = iter,
-    burnIn = iter / 2,
-    saveAt = temp,
-    verbose = FALSE
-  )
-
-  # Extract the index of the test set genotype from the phenotypic data in
-  # order to extract the corresponding elements from the BGLR model ouptut.
-  tst_idx <- pheno_i %>%
-    dplyr::mutate(IDX = seq_len(n())) %>%
-    dplyr::filter(Set == "TST") %>%
-    dplyr::pull(IDX)
-
-  # Save the results in a new data frame.
-  yhat <- mod_bglr$yHat
-  sd_yhat <- mod_bglr$SD.yHat
-  res <- template_i
-  res %>%
-    dplyr::mutate(
-      y = pheno_i %>% dplyr::slice(tst_idx) %>% dplyr::pull(Original_Observed),
-      yhat = yhat[tst_idx],
-      yhat_variance = sd_yhat[tst_idx] ^ 2
+  # Ignoring training set genotypes, build a unique set of prediction runs to
+  # loop over.
+  unq_pred_template <- geno_df %>%
+    dplyr::distinct(
+      TST_Geno,
+      Trait,
+      Core_Fraction,
+      Rnd_Level1,
+      Rnd_Level2,
+      Predictor,
+      ETA_UUID,
+      Interval
     )
-}, mc.cores = use_cores)
 
-pred_lst %>%
+  # Define a sequence with length equal to the number of unique test set
+  # genotypes to build a loop from them where separate predictions are being
+  # carried out for each fold of the loop.
+  tst_seq <- unq_pred_template %>%
+    nrow() %>%
+    seq_len()
+
+
+
+
+
+  ## -- BGLR ------------------------------------------------------------------
+  tst_pred_lst <- lapply(tst_seq, FUN = function(j) {
+
+    # Collect the current set of parameters.
+    template_j <- unq_pred_template %>%
+      dplyr::slice(j)
+
+    # Collect the current ETA object for the prediction.
+    eta_j <- template_j %>%
+      dplyr::pull(ETA_UUID) %>%
+      get(.)
+
+    tst_j <- template_j %>%
+      dplyr::select(TST_Geno, Trait) %>%
+      dplyr::mutate(Set = "TST") %>%
+      dplyr::rename(Genotype = "TST_Geno")
+
+    # Combine the current test and the pre-built training and hold-out set.
+    # Make sure to remove any genotype that was previously assigned to the
+    # hold-out set when it is equal to the current test set.
+    # Otherwise the data set `geno_i` would contain duplicate entries.
+    geno_j <- geno_df %>%
+      dplyr::inner_join(
+        y = template_j,
+        by = c(
+          "TST_Geno",
+          "Trait",
+          "Core_Fraction",
+          "Rnd_Level1",
+          "Rnd_Level2",
+          "Predictor",
+          "ETA_UUID"
+        )
+      ) %>%
+      dplyr::select(TRN_Geno, Trait, Set) %>%
+      dplyr::rename(Genotype = "TRN_Geno") %>%
+      dplyr::anti_join(
+        y = tst_j %>% dplyr::mutate(Set = "Hold_Out"),
+        by = c("Genotype", "Trait")
+      ) %>%
+      dplyr::bind_rows(tst_j)
+
+    # Add missing genotypes as a third set (hold-out) and set their phenotypic
+    # values to NA.
+    pheno_j <- geno_j %>%
+      dplyr::left_join(
+        y = pheno,
+        by = c("Genotype", "Trait")
+      ) %>%
+      dplyr::rename(Original_Observed = "Value") %>%
+      dplyr::mutate(Observed_NA = dplyr::if_else(
+        Set == "TRN",
+        true = Original_Observed,
+        false = NA_real_
+        )
+      )
+
+    # Order phenotypic data according to the order of the ETA object.
+    if (material == "I") {
+      get_eta_rownames <- function(x) rownames(x[[1]])
+      eta_geno_order <- eta_j %>%
+        purrr::pluck(1, get_eta_rownames) %>%
+        tibble::as_data_frame() %>%
+        dplyr::rename(Genotype = "value")
+      pheno_j <- eta_geno_order %>%
+        dplyr::left_join(
+          y = pheno_j,
+          by = "Genotype"
+        )
+      stopifnot(
+        identical(
+          dplyr::pull(eta_geno_order, Genotype),
+          dplyr::pull(pheno_j, Genotype)
+        )
+      )
+    } else if (material == "H") {
+
+      eta_geno_order <- eta_j %>%
+        purrr::map(`[[`, 1) %>%
+        purrr::map(rownames) %>%
+        purrr::set_names(nm = c("Dent", "Flint")) %>%
+        dplyr::bind_cols() %>%
+        tidyr::unite(col = Genotype, Dent, Flint, sep = "_") %>%
+        dplyr::mutate(Genotype = paste0("DF_", Genotype))
+
+      pheno_j <- eta_geno_order %>%
+        dplyr::inner_join(y = pheno_j, by = "Genotype")
+
+      stopifnot(
+        identical(
+          dplyr::pull(eta_geno_order, Genotype),
+          dplyr::pull(pheno_j, Genotype)
+        )
+      )
+    }
+
+
+    # Run the BGLR model.
+    mod_bglr <- BGLR::BGLR(
+      y = dplyr::pull(pheno_j, Observed_NA),
+      ETA = eta_j,
+      nIter = iter,
+      burnIn = iter / 2,
+      saveAt = temp,
+      verbose = FALSE
+    )
+
+    # Extract the index of the test set genotype from the phenotypic data in
+    # order to extract the corresponding elements from the BGLR model ouptut.
+    tst_idx <- pheno_j %>%
+      dplyr::mutate(IDX = seq_len(n())) %>%
+      dplyr::filter(Set == "TST") %>%
+      dplyr::pull(IDX)
+
+    # Save the results in a new data frame.
+    yhat <- mod_bglr$yHat
+    sd_yhat <- mod_bglr$SD.yHat
+    res <- template_j
+    res %>%
+      dplyr::mutate(
+        y = pheno_j %>%
+          dplyr::slice(tst_idx) %>%
+          dplyr::pull(Original_Observed),
+        yhat = yhat[tst_idx],
+        yhat_variance = sd_yhat[tst_idx] ^ 2
+      )
+  })
+
+  tst_pred_df <- tst_pred_lst %>%
+    dplyr::bind_rows()
+
+}, mc.cores = use_cores, mc.preschedule = TRUE)
+
+
+
+scen_pred_lst %>%
   dplyr::bind_rows() %>%
   saveRDS(
     object = .,
