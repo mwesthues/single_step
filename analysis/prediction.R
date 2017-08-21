@@ -31,15 +31,15 @@ if (isTRUE(interactive())) {
   # Number of cores
   Sys.setenv("MOAB_PROCCOUNT" = "3")
   # Number of iterations in BGLR()
-  Sys.setenv("ITER" = "30000")
+  Sys.setenv("ITER" = "2000")
   # Algorithm to generate variance-covariance matrices.
   Sys.setenv("VCOV" = "RadenII")
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "CIA_10")
+  Sys.setenv("INTERVAL" = "FHN_1")
   # Number of test runs.
-  Sys.setenv("RUNS" = "1-2")
+  Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
   Sys.setenv("TMP" = "./tmp")
 }
@@ -336,7 +336,8 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       "Rnd_Level1",
       "Rnd_Level2",
       "Predictor",
-      "ETA_UUID"
+      "ETA_UUID",
+      "Interval"
     )
 
     trn_df <- dplyr::bind_rows(hold_out_df, geno_trn_df) %>%
