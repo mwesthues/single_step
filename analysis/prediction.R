@@ -401,13 +401,12 @@ pred_seq <- unq_pred_template %>%
 
 if (nchar(runs) != 0){
 
-  seq_sub <- runs %>%
+  pred_seq <- runs %>%
     base::strsplit(., split = "-") %>%
-    purrr::map(function(x) {seq(from = x[1], to = x[2], by = 1)}) %>%
-    purrr::flatten_dbl() %>%
-    as.integer()
-  pred_seq <- pred_seq[seq_sub]
-
+    purrr::flatten_chr() %>%
+    as.integer() %>%
+    max() %>%
+    seq_len()
 }
 
 
