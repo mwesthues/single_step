@@ -24,7 +24,8 @@ tmp*
 .Rproj.user
 .Rproj
 
-
+# ignore html files
+*.html
 
 ###### GitBook
 # Node rules:
