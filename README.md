@@ -54,7 +54,31 @@ issues with dependencies:
 
 ## UHOH (Hybrids)
 ### Agronomic
-[agronomic_data.Rmd](reports/agronomic_data.Rmd)
+For the maize inbred lines we focused on the following traits that were
+previously described in [Guo et al. (2016)](https://link.springer.com/article/10.1007/s00122-016-2780-5):
+
+*   `Cob weight` (CW)
+*   `Days to silking` (DS)
+*   `Ear diameter` (ED)
+*   `100-grain weight` (GW)
+*   `Kernel width` (KW)
+*   `Plant height` (PH)
+
+and explored the explored the distribution (including skewness) of each trait
+and the phenotypic correlation between traits ([script](analysis/maizego_agronomic_data.R)).
+
+In the case of maize hybrids we analyzed the traits
+
+*   `Dry matter yield` (DMY)
+*   `Dry matter content` (DMC)
+*   `Fat` (FAT)
+*   `Protein` (PRO)
+*   `Starch` (STA)
+*   `Sugar` (SUG)
+
+The preparation of the phenotypic data for maize hybrids can be reproduced
+[here](analysis/uhoh_data_preparation.R).
+
 
 ### Genomic (incl. imputation)
 
