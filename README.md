@@ -1,3 +1,18 @@
+# Overview
+The purpose of this project is to explore the utility of single-step prediction
+of phenotype performance in a set of maize inbred lines and maize hybrids,
+respectively.
+The methods used herein are based on the seminal papers by [Legarra et al. (2009)](http://www.sciencedirect.com/science/article/pii/S0022030209707933)
+and [Christensen and Lund (2010)](https://gsejournal.biomedcentral.com/articles/10.1186/1297-9686-42-2), with extensions introduced by
+[Fernando, Dekkers and Garrick (2014)](https://gsejournal.biomedcentral.com/articles/10.1186/1297-9686-46-50).
+
+
+## Data
+We analyze hybrid maize data from the public breeding program of the University
+of Hohenheim as well as [data on inbred lines](http://www.maizego.org/Resources.html) from the lab of doctor Jianbing Yan.
+
+
+## Procedure
 Run all scripts strictly in the following order in order to circumvent any
 issues with dependencies:
 
@@ -72,7 +87,7 @@ lines.
 Goal: Quantify the influence of SNP data on the predictive ability of the
 combination of genomic with transcriptomic data in single step prediction.
 
-1.   Reduce the SNP data to 149 inbred lines, which are also covered by mRNA 
+1.   Reduce the SNP data to 149 inbred lines, which are also covered by mRNA
      data.
 
 2.   Alter the fraction of genotypes covered by SNP data from 100% to 10% in
