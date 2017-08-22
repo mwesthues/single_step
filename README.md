@@ -15,7 +15,8 @@
 * [Predictions](#predictions)
 	* [Preparation](#preparation)
 		* [Previous work for this manuscript](#previous-work-for-this-manuscript)
-	* [Nested subsampling scheme](#nested-subsampling-scheme)
+		* [Nested subsampling scheme](#nested-subsampling-scheme)
+		* [Prediction template](#prediction-template)
 	* [Execution](#execution)
 	* [Visualization](#visualization)
 
@@ -166,7 +167,7 @@ structure in our material on predictive abilities.
 Therefore, we decided to replace the core sampling procedure by a nested random
 subsampling procedure.
 
-## Nested subsampling scheme
+### Nested subsampling scheme
 At first, a [population structure analysis](analysis/maizego_snp_analyses.R)
 was run on the inbred lines and only those that belonged to the clusters `1`
 and `4`, which were rather homogeneous, were assigned to scenario `A`.
@@ -203,12 +204,27 @@ This second randomization was nested within each randomization stored in
 Therefore, we ended up with 20 sets of predictions for each combination of
 `"Material" * "Extent" * "Scenario"` when `frac = 1` and `20 ** 2 = 400`
 sets of predictions for each combination of `"Material" * "Extent" *
-"Scnenario" * "Core_Fraction"` when `frac != 1`.
+"Scenario" * "Core_Fraction"` when `frac != 1`.
 
+### Prediction template
+In order to use the resources on the server as efficiently as possible,
+similar combinations of the various parameters considered (`Trait`,
+`Predictor`, `Material`, `Extent`, `Scenario`, `Rnd_Level1`, `Rnd_Level2`,
+`Core_Fraction`) were clustered together (coded as `Interval`) in a
+[prediction template](analysis/prediction_template.R).
+
+After running some speed tests for some of these combinations a
+[script](analysis/automate_moab.R) for the automatic generation of `msub`
+commands was built.
 
 ## Execution
+All [predictions](analysis/prediction.R) were run on the [bwunicluster](https://www.bwhpc-c5.de/wiki/index.php/Category:BwUniCluster)
+by entering the [msub commands](analysis/moab_commands.txt) into the terminal
+on the cluster.
+For information on how to use the `bwunicluster`, in case you have access to
+it, can be found [here](https://mwesthues.github.io/bwunicluster.html).
 
-[prediction.R](analysis/prediction.R)
+
 
 ## Visualization
 
