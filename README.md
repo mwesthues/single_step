@@ -15,6 +15,7 @@
 * [Predictions](#predictions)
 	* [Preparation](#preparation)
 		* [Previous work for this manuscript](#previous-work-for-this-manuscript)
+	* [Nested subsampling scheme](#nested-subsampling-scheme)
 	* [Execution](#execution)
 	* [Visualization](#visualization)
 
@@ -164,6 +165,46 @@ The issue with this approch is that we could not preclude effects of population
 structure in our material on predictive abilities.
 Therefore, we decided to replace the core sampling procedure by a nested random
 subsampling procedure.
+
+## Nested subsampling scheme
+At first, a [population structure analysis](analysis/maizego_snp_analyses.R)
+was run on the inbred lines and only those that belonged to the clusters `1`
+and `4`, which were rather homogeneous, were assigned to scenario `A`.
+We defined a second scenario `B` which simply comprised all available inbred
+lines and ran it to have predictive abilities for all genotypes in case
+population structure was no issue for this material.
+Click [here](reports/select_subpopulation.Rmd) for a more detailed report.
+
+To ensure that a potential bias due to population structure would be
+represented by an increased standard error of the predictive abilities we
+conceived a [nested resampling scheme](analysis/prepare_subsamples.R).
+A first level of sampling was applied to each combination of `Material` (*i.e.*
+"Hybrid" or "Inbred"), `Scenario` ("A" and "B" for inbred lines; "None" for
+hybrids), `Extent` ("Core" if every predictor was available for all genotypes
+and "Full for the entire set of genotypes") and `Core_Fraction`, representing
+the share of core-set genotypes for which data on all predictors were assumed
+to be available.
+The notion of `Core_Fraction` may sound contradictory to the concept of "Core"
+and "Full" sets of genotypes but note that for the variable `Core_Fraction` we
+artificially removed information on a predictor for some genotypes to implore
+the influence of genetic space-coverage through incomplete predictors on
+predictive ability.
+This random subsampling procedure was repeated 20 times and stored as
+`Rnd_Level2`.
+
+For all core-set inbred lines we applied a second, nested randomization scheme
+where `n * frac` genotypes were declared to have both data on the complete and
+the incomplete predictor whereas `n - n * frac` genotypes had only information
+on the complete predictor.
+Here `frac` denotes the fraction of all genotypes having information on both
+predictors.
+This second randomization was nested within each randomization stored in
+`Rnd_Level2` and applied 20 times per randomization in `Rnd_Level2`.
+Therefore, we ended up with 20 sets of predictions for each combination of
+`"Material" * "Extent" * "Scenario"` when `frac = 1` and `20 ** 2 = 400`
+sets of predictions for each combination of `"Material" * "Extent" *
+"Scnenario" * "Core_Fraction"` when `frac != 1`.
+
 
 ## Execution
 
