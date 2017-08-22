@@ -1,23 +1,18 @@
 # Table of Contents
 <!-- vim-markdown-toc GFM -->
 * [Overview](#overview)
-	* [Data Preparation](#data-preparation)
-	* [UHOH (Hybrids)](#uhoh-hybrids)
-		* [Agronomic](#agronomic)
-		* [Genomic (incl. imputation)](#genomic-incl-imputation)
-		* [Gene expression](#gene-expression)
-	* [Yan (Inbreds)](#yan-inbreds)
-		* [Agronomic](#agronomic-1)
-		* [Genomic](#genomic)
-			* [Quality filtering and imputation.](#quality-filtering-and-imputation)
-			* [Core set sampling](#core-set-sampling)
-			* [Population Structure](#population-structure)
+* [Data Preparation](#data-preparation)
+	* [Agronomic Data](#agronomic-data)
+	* [Genomic Data](#genomic-data)
+	* [Transcriptomic Data](#transcriptomic-data)
+	* [Population Structure](#population-structure)
 * [Predictions](#predictions)
 	* [Preparation](#preparation)
 		* [Previous work for this manuscript](#previous-work-for-this-manuscript)
 		* [Nested subsampling scheme](#nested-subsampling-scheme)
 		* [Prediction template](#prediction-template)
 	* [Execution](#execution)
+	* [Bootstrap](#bootstrap)
 	* [Visualization](#visualization)
 
 <!-- vim-markdown-toc -->
@@ -37,7 +32,7 @@ and [Christensen and Lund (2010)](https://gsejournal.biomedcentral.com/articles/
 
 
 
-## Data Preparation
+# Data Preparation
 We analyze hybrid maize data from the public breeding program of the University
 of Hohenheim as well as [data on inbred lines](http://www.maizego.org/Resources.html) from the lab of doctor Jianbing Yan.
 
@@ -52,8 +47,7 @@ found under `data/processed`.
 Run all scripts strictly in the following order in order to circumvent any
 issues with dependencies:
 
-## UHOH (Hybrids)
-### Agronomic
+## Agronomic Data
 For the maize inbred lines we focused on the following traits that were
 previously described in [Guo et al. (2016)](https://link.springer.com/article/10.1007/s00122-016-2780-5):
 
@@ -80,7 +74,11 @@ The preparation of the phenotypic data for maize hybrids can be reproduced
 [here](analysis/uhoh_data_preparation.R).
 
 
-### Genomic (incl. imputation)
+## Genomic Data
+The preparation of genomic marker data for [hybrids](analysis/snp_preparation.R)
+and [inbred lines](analysis/maizego_snp_imputation.R), respectively, involved
+the following five steps (for hybrid data these were applied separately to each
+of the two heterotic groups):
 
 1.   Remove loci with a callfrequency $\geq 0.95$.
 
@@ -94,67 +92,18 @@ The preparation of the phenotypic data for maize hybrids can be reproduced
 5.   Remove copies (i.e. loci in perfect LD with a previous one) of marker
      loci.
 
-[snp_preparation.R](analysis/snp_preparation.R)
 
-
-### Gene expression
-
-[transcriptomic_data.Rmd](reports/transcriptomic_data.Rmd)
-
-
-
-
-## Yan (Inbreds)
-Filter agronomic, genomic and transcriptomic data for tropical and subtropical
-lines.
-
-[maizego_tst_data_subsetting.R](analysis/maizego_tst_data_subsetting.R)
-
-
-
-### Agronomic
-1.   Distribution of agronomic data.
-
-2.   Skewness in agronomic data (permutation test).
-
-3.   Correlation among agronomic traits.
-
-[maizego_agronomic_data.R](analysis/maizego_agronomic_data.R)
-
-
-### Genomic
-#### Quality filtering and imputation.
-
-1.   Remove loci with a callfrequency $\geq 0.95$.
-
-2.   Remove loci with heterozygosity $\geq 0.05$.
-
-3.   Remove loci with minor allele frequency $\geq 0.05$.
-
-4.   Impute remaining missing values using BEAGLE using 25 iterations and 20
-     samples per iterations.
-
-5.   Remove copies (i.e. loci in perfect LD with a previous one) of marker
-     loci.
-
-[maizego_snp_imputation.R](analysis/maizego_snp_imputation.R)
+## Transcriptomic Data
+For both material types transcriptomic data were already sufficiently
+pre-processed.
+Their assembly, with respect to the set of genotypes used in this study, can
+be found under the two following links
+([hybrids](analysis/uhoh_data_preparation.R), [inbreds](analysis/maizego_gene_expression.R)).
 
 
 
 
-#### Core set sampling
-Goal: Quantify the influence of SNP data on the predictive ability of the
-combination of genomic with transcriptomic data in single step prediction.
-
-1.   Reduce the SNP data to 149 inbred lines, which are also covered by mRNA
-     data.
-
-2.   Alter the fraction of genotypes covered by SNP data from 100% to 10% in
-     increments of 10 percentage points while keeping the number of genotypes
-     covered by the transcriptomic data fixed.
-
-
-#### Population Structure
+## Population Structure
 
 1.   Principal component analysis highlighting genotypes with mRNA data only
      versus genotypes with mRNA and genomic information.
@@ -164,15 +113,10 @@ combination of genomic with transcriptomic data in single step prediction.
 [maizego_snp_analyses.R](analysis/maizego_snp_analyses.R)
 
 
-3.  PCA highlighting membership with a core set.
-
-[maizego_corehunter.R](analysis/maizego_corehunter.R)
-
 
 
 
 # Predictions
-
 ## Preparation
 ### Previous work for this manuscript
 In the first draft we wanted to evaluate the influence of the genetic
@@ -190,6 +134,8 @@ The issue with this approch is that we could not preclude effects of population
 structure in our material on predictive abilities.
 Therefore, we decided to replace the core sampling procedure by a nested random
 subsampling procedure.
+
+
 
 ### Nested subsampling scheme
 At first, a [population structure analysis](analysis/maizego_snp_analyses.R)
@@ -230,6 +176,8 @@ Therefore, we ended up with 20 sets of predictions for each combination of
 sets of predictions for each combination of `"Material" * "Extent" *
 "Scenario" * "Core_Fraction"` when `frac != 1`.
 
+
+
 ### Prediction template
 In order to use the resources on the server as efficiently as possible,
 similar combinations of the various parameters considered (`Trait`,
@@ -241,12 +189,18 @@ After running some speed tests for some of these combinations a
 [script](analysis/automate_moab.R) for the automatic generation of `msub`
 commands was built.
 
+
+
 ## Execution
 All [predictions](analysis/prediction.R) were run on the [bwunicluster](https://www.bwhpc-c5.de/wiki/index.php/Category:BwUniCluster)
 by entering the [msub commands](analysis/moab_commands.txt) into the terminal
 on the cluster.
 For information on how to use the `bwunicluster`, in case you have access to
 it, can be found [here](https://mwesthues.github.io/bwunicluster.html).
+
+
+
+## Bootstrap
 
 
 
