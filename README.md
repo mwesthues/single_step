@@ -13,6 +13,10 @@
 			* [Core set sampling](#core-set-sampling)
 			* [Population Structure](#population-structure)
 * [Predictions](#predictions)
+	* [Preparation](#preparation)
+		* [Previous work for this manuscript](#previous-work-for-this-manuscript)
+	* [Execution](#execution)
+	* [Visualization](#visualization)
 
 <!-- vim-markdown-toc -->
 
@@ -36,11 +40,11 @@ We analyze hybrid maize data from the public breeding program of the University
 of Hohenheim as well as [data on inbred lines](http://www.maizego.org/Resources.html) from the lab of doctor Jianbing Yan.
 
 The data on inbred lines were downloaded on 2017-01-31 from the [Baidu Cloud](https://pan.baidu.com/s/1eQH3hfW#list/path=%2F)
-set up by the Yan lab and are stored under [data/input/maizego](data/input/maizego).
+set up by the Yan lab and are stored under `data/input/maizego`.
 
 The Hohenheim data were generated as part of the publication
 [Omics-based Hybrid Prediction in Maize](https://link.springer.com/article/10.1007%2Fs00122-017-2934-0) by Westhues et al. (2017) and can be
-found under [data/processed](data/processed/).
+found under `data/processed`.
 
 
 Run all scripts strictly in the following order in order to circumvent any
@@ -141,9 +145,30 @@ combination of genomic with transcriptomic data in single step prediction.
 
 
 
-
-
 # Predictions
 
+## Preparation
+### Previous work for this manuscript
+In the first draft we wanted to evaluate the influence of the genetic
+constitutation of the set of genotypes that has only data on one out of two
+predictors by generating core samples  (https://github.com/mwesthues/single_step/commit/8f8b39198be7d5091954f84ec0c5834afd1c3cfa).
+We defined core samples as a subset of genotypes that is covered by two
+predictors whereas all other genotypes (*i.e.* the complement) are only covered
+by a single predictor.
+The first application involved assembling core sets of varying sizes by
+maximizing the average genetic distance among core set members using the
+Modifed Rogers (MR) distance as the criterion ([Thachuk et al. (2009)](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-243)).
+The size of the core set was varied in increments of ten percentage points and
+ranged from 10% to 90% of all inbred lines.
+The issue with this approch is that we could not preclude effects of population
+structure in our material on predictive abilities.
+Therefore, we decided to replace the core sampling procedure by a nested random
+subsampling procedure.
+
+## Execution
+
 [prediction.R](analysis/prediction.R)
+
+## Visualization
+
 
