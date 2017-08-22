@@ -104,13 +104,20 @@ be found under the two following links
 
 
 ## Population Structure
+Principal component analyses were run for the [hybrid](analysis/pca.R) and
+[inbred](analysis/maizego_snp_analyses.R) material.
 
-1.   Principal component analysis highlighting genotypes with mRNA data only
-     versus genotypes with mRNA and genomic information.
-
-2.   Admixture analysis.
-
-[maizego_snp_analyses.R](analysis/maizego_snp_analyses.R)
+The separation between the Dent and the Flint heterotic group for the hybrid
+material [looked as expected](analysis/pca.R) but for the inbred lines we
+found unexpected clustering of the lines, as determined via a [STRUCTURE](analysis/maizego_structure.R),
+analysis, albeit it with very low fractions of variance explained by the first
+five principal components.
+Click [here](reports/select_subpopulation.Rmd) for a more detailed report.
+Inbred lines that belonged to the clusters `1` and `4`, which were rather
+homogeneous, were assigned to scenario `A`.
+We defined a second scenario `B` which simply comprised all available inbred
+lines and ran it to have predictive abilities for all genotypes in case
+population structure was no issue for this material.
 
 
 
@@ -138,14 +145,6 @@ subsampling procedure.
 
 
 ### Nested subsampling scheme
-At first, a [population structure analysis](analysis/maizego_snp_analyses.R)
-was run on the inbred lines and only those that belonged to the clusters `1`
-and `4`, which were rather homogeneous, were assigned to scenario `A`.
-We defined a second scenario `B` which simply comprised all available inbred
-lines and ran it to have predictive abilities for all genotypes in case
-population structure was no issue for this material.
-Click [here](reports/select_subpopulation.Rmd) for a more detailed report.
-
 To ensure that a potential bias due to population structure would be
 represented by an increased standard error of the predictive abilities we
 conceived a [nested resampling scheme](analysis/prepare_subsamples.R).
