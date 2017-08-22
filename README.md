@@ -36,7 +36,7 @@ We analyze hybrid maize data from the public breeding program of the University
 of Hohenheim as well as [data on inbred lines](http://www.maizego.org/Resources.html) from the lab of doctor Jianbing Yan.
 
 The data on inbred lines were downloaded on 2017-01-31 from the [Baidu Cloud](https://pan.baidu.com/s/1eQH3hfW#list/path=%2F)
-set up by the Yan lab and are stored under [data/input/maizego](data/input/maizego/).
+set up by the Yan lab and are stored under [data/input/maizego](data/input/maizego).
 
 The Hohenheim data were generated as part of the publication
 [Omics-based Hybrid Prediction in Maize](https://link.springer.com/article/10.1007%2Fs00122-017-2934-0) by Westhues et al. (2017) and can be
