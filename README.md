@@ -1,3 +1,23 @@
+# Table of Contents
+<!-- vim-markdown-toc GFM -->
+* [Overview](#overview)
+	* [Data Preparation](#data-preparation)
+	* [UHOH (Hybrids)](#uhoh-hybrids)
+		* [Agronomic](#agronomic)
+		* [Genomic (incl. imputation)](#genomic-incl-imputation)
+		* [Gene expression](#gene-expression)
+	* [Yan (Inbreds)](#yan-inbreds)
+		* [Agronomic](#agronomic-1)
+		* [Genomic](#genomic)
+			* [Quality filtering and imputation.](#quality-filtering-and-imputation)
+			* [Core set sampling](#core-set-sampling)
+			* [Population Structure](#population-structure)
+* [Predictions](#predictions)
+
+<!-- vim-markdown-toc -->
+
+
+
 # Overview
 The purpose of this project is to explore the utility of single-step prediction
 of phenotype performance in a set of maize inbred lines and maize hybrids,
@@ -7,16 +27,25 @@ and [Christensen and Lund (2010)](https://gsejournal.biomedcentral.com/articles/
 [Fernando, Dekkers and Garrick (2014)](https://gsejournal.biomedcentral.com/articles/10.1186/1297-9686-46-50).
 
 
-## Data
+
+
+
+
+## Data Preparation
 We analyze hybrid maize data from the public breeding program of the University
 of Hohenheim as well as [data on inbred lines](http://www.maizego.org/Resources.html) from the lab of doctor Jianbing Yan.
 
+The data on inbred lines were downloaded on 2017-01-31 from the [Baidu Cloud](https://pan.baidu.com/s/1eQH3hfW#list/path=%2F)
+set up by the Yan lab and are stored under [data/input/maizego](data/input/maizego/).
 
-## Procedure
+The Hohenheim data were generated as part of the publication
+[Omics-based Hybrid Prediction in Maize](https://link.springer.com/article/10.1007%2Fs00122-017-2934-0) by Westhues et al. (2017) and can be
+found under [data/processed](data/processed/).
+
+
 Run all scripts strictly in the following order in order to circumvent any
 issues with dependencies:
 
-# Data preparation
 ## UHOH (Hybrids)
 ### Agronomic
 [agronomic_data.Rmd](reports/agronomic_data.Rmd)
