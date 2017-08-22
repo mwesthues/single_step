@@ -75,7 +75,7 @@ The preparation of the phenotypic data for maize hybrids can be reproduced
 
 
 ## Genomic Data
-The preparation of genomic marker data for [hybrids](analysis/snp_preparation.R)
+The preparation of genomic marker data for [hybrids](analysis/uhoh_snp_imputation.R)
 and [inbred lines](analysis/maizego_snp_imputation.R), respectively, involved
 the following five steps (for hybrid data these were applied separately to each
 of the two heterotic groups):

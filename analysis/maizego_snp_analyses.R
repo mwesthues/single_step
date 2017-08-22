@@ -1,11 +1,11 @@
 # Data and packages -------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "cowplot", 
+pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "cowplot",
                "ggthemes", "pophelper", "forcats")
 #devtools::install_github("mwesthues/sspredr")
 pacman::p_load_gh("mwesthues/sspredr")
 
-# For the second scenario, keep only names of genotypes, which are covered by 
+# For the second scenario, keep only names of genotypes, which are covered by
 # all data types (i.e. phenotypic, genotypic and transcriptomic).
 genotype_sets <- readRDS(
   "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
@@ -27,7 +27,7 @@ if (length(geno_a) != 1) {
 snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
   readRDS() %>%
   sspredr::ensure_snp_quality(
-    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05, 
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
     any_missing = FALSE, remove_duplicated = TRUE
   )
 
@@ -70,8 +70,8 @@ pc_df <- pc_mat %>%
 genos <- read_tsv(
   "./data/processed/maizego/popstruc.names",
   col_names = FALSE
-  ) %>% 
-  select(2) %>% 
+  ) %>%
+  select(2) %>%
   flatten_chr()
 
 
@@ -82,12 +82,17 @@ slist <- list.files(
   path = "./data/processed/maizego",
   pattern = "popstruc[0-9]",
   full.names = TRUE
-  ) %>% 
+  ) %>%
   readQ(
     files = .,
     indlabfromfile = TRUE,
     filetype = "structure"
   )
+all_geno_pc <- all_geno_pc$projections
+rownames(all_geno_pc) <- rownames(all_geno_snp)
+colnames(all_geno_pc) <- paste0("PC_", seq <- len(ncol(all_geno_pc)))
+all_geno_pc %>%
+  saveRDS(., file = "./data/derived/maizego/maizego_pca.RDS")
 
 # Select K=4
 # Assign a color to each cluster.
@@ -100,39 +105,39 @@ get_max_cluster <- function(x, genos) {
   # x: list with STRUCTURE objects
   # genos: vector with genotype names pertaining to the STRUCTURE objects
   #---
-  x %>%   
-    mutate(G = genos) %>% 
-    gather(key = "Cluster", value = "AncCoef", -G) %>% 
-    group_by(G) %>% 
-    summarize(main_cluster = which.max(AncCoef)) %>% 
-    mutate(main_cluster = main_cluster %>% as.character() %>% as.factor()) %>% 
+  x %>%
+    mutate(G = genos) %>%
+    gather(key = "Cluster", value = "AncCoef", -G) %>%
+    group_by(G) %>%
+    summarize(main_cluster = which.max(AncCoef)) %>%
+    mutate(main_cluster = main_cluster %>% as.character() %>% as.factor()) %>%
     ungroup()
 }
 
-cluster_df <- slist %>% 
-  map(get_max_cluster, genos = genos) %>% 
-  map(.f = ~right_join(., y = pc_df, by = "G")) %>% 
+cluster_df <- slist %>%
+  map(get_max_cluster, genos = genos) %>%
+  map(.f = ~right_join(., y = pc_df, by = "G")) %>%
   bind_rows(.id = "K")
 
 
 
 change_to_k <- function(x) {
-  x %>% 
-    gsub(x = ., replacement = "", pattern = "_f") %>% 
+  x %>%
+    gsub(x = ., replacement = "", pattern = "_f") %>%
     gsub(x = ., replacement = "", pattern = "popstruc")
 }
 
 
-g1 <- slist %>% 
-  set_names(., change_to_k(names(.))) %>% 
-  map(.f = ~mutate(., G = genos)) %>% 
-  keep(names(.) == k) %>% 
-  map(.f = ~mutate(., Central_Cluster = Cluster1 + Cluster4)) %>% 
+g1 <- slist %>%
+  set_names(., change_to_k(names(.))) %>%
+  map(.f = ~mutate(., G = genos)) %>%
+  keep(names(.) == k) %>%
+  map(.f = ~mutate(., Central_Cluster = Cluster1 + Cluster4)) %>%
   map(.f = ~gather(
     ., key = "Cluster", value = "AncCoef", -G, -Central_Cluster)
-    ) %>% 
-  bind_rows(.id = "K") %>% 
-  mutate(G = as.factor(G)) %>% 
+    ) %>%
+  bind_rows(.id = "K") %>%
+  mutate(G = as.factor(G)) %>%
   ggplot(aes(
     x = fct_reorder(G, x = Central_Cluster), y = AncCoef, fill = Cluster)
     ) +
@@ -144,8 +149,8 @@ g1 <- slist %>%
   )
 
 g2 <- cluster_df %>%
-  mutate(K = change_to_k(K)) %>% 
-  filter(K == k) %>% 
+  mutate(K = change_to_k(K)) %>%
+  filter(K == k) %>%
   ggplot(aes(x = PC1, y = PC2, color = main_cluster)) +
   geom_point(size = 1) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
@@ -163,11 +168,11 @@ plot_grid(
 
 
 # Select genotypes from the first and the fourth cluster, respectively, given
-# that they cluster together and look homogeneous. 
-selected_geno <- slist %>% 
-  set_names(., change_to_k(names(.))) %>% 
-  map(.f = ~mutate(., G = genos)) %>% 
-  keep(names(.) == k) %>% 
+# that they cluster together and look homogeneous.
+selected_geno <- slist %>%
+  set_names(., change_to_k(names(.))) %>%
+  map(.f = ~mutate(., G = genos)) %>%
+  keep(names(.) == k) %>%
   map(get_max_cluster, genos = genos) %>%
   .[[1]] %>%
   filter(main_cluster %in% c("1", "4")) %>%
@@ -177,10 +182,10 @@ saveRDS(selected_geno, "./data/derived/maizego/cluster_14_genotypes.RDS")
 
 
 
-sel_snps <- snp %>% 
-  .[rownames(snp) %in% selected_geno, ] %>% 
+sel_snps <- snp %>%
+  .[rownames(snp) %in% selected_geno, ] %>%
   sspredr::ensure_snp_quality(
-    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05, 
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
     any_missing = FALSE, remove_duplicated = TRUE
   )
 write.lfmm(sel_snps, "./data/derived/maizego/sel_snps.lfmm")
