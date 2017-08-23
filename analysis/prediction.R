@@ -37,7 +37,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "FHN_1")
+  Sys.setenv("INTERVAL" = "FHN_12")
   # Number of test runs.
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -494,11 +494,26 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       )
     } else if (material == "H") {
 
-      eta_geno_order <- eta_j %>%
-        purrr::map(`[[`, 1) %>%
-        purrr::map(rownames) %>%
-        purrr::set_names(nm = c("Dent", "Flint")) %>%
+      # In the case of multiple predictors we have "duplicates" of Dent and
+      # Flint names, respectively. We need to filter a unique set of names
+      # for each group in order to correctly align the order of genotypes in
+      # ETA objects and in tables of phenotypic information.
+      swap_logic <- purrr::compose(`!`, duplicated)
+      duplicated_filter <- eta_j %>%
+        purrr::map(.f = `[[`, "X") %>%
+        purrr::map(~rownames(.)) %>%
+        purrr::map(~tibble::as_data_frame(.)) %>%
         dplyr::bind_cols() %>%
+        t() %>%
+        swap_logic()
+
+      eta_geno_order <- eta_j %>%
+        .[duplicated_filter] %>%
+        purrr::map(.f = `[[`, "X") %>%
+        purrr::map(~rownames(.)) %>%
+        purrr::map(~tibble::as_data_frame(.)) %>%
+        dplyr::bind_cols() %>%
+        dplyr::rename(Dent = "value", Flint = "value1") %>%
         tidyr::unite(col = Genotype, Dent, Flint, sep = "_") %>%
         dplyr::mutate(Genotype = paste0("DF_", Genotype))
 
