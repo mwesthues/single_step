@@ -1,5 +1,4 @@
 # Goal: Collect all individual prediction results in a single data frame.
-.libPaths("~/R/x86_64-pc-linux-gnu-library/3.4/")
 if(!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse")
 

@@ -197,6 +197,7 @@ on the cluster.
 For information on how to use the `bwunicluster`, in case you have access to
 it, can be found [here](https://mwesthues.github.io/bwunicluster.html).
 
+After running the prediction, the results from all clusters were [concatenated](analysis/cat_predictions.R).
 
 
 ## Bootstrap
