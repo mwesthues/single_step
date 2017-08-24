@@ -2,12 +2,21 @@
 
 ## -- PACKAGES ----------------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "dtplyr", "data.table", "boot", "broom")
+pacman::p_load(
+  "dplyr", "tibble", "tidyr", "purrr", "dtplyr", "data.table", "boot", "broom"
+)
 
 
 ## -- INPUT PARAMETERS --------------------------------------------------------
 # Set the number of cores to use in parallel.
-use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
+if (interactive()) {
+
+  use_cores <- 2L
+
+} else {
+
+  use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
+}
 
 
 ## -- DATA --------------------------------------------------------------------
@@ -64,9 +73,9 @@ bootstrap_result <- dat[,
   list(list(boot::boot(
     .SD,
     statistic = boot_cor,
-    R = 3000,
+    R = 1e4,
     parallel = "multicore",
-    ncpus = 3L
+    ncpus = use_cores
     ))),
   by = boot_group_vars
  ]$V1
