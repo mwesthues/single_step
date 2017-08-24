@@ -1,73 +1,91 @@
-if (isTRUE(interactive())) {
-  .libPaths("~/R/x86_64-pc-linux-gnu-library/3.4/")
+# Goal: Bootstrap prediction results.
+
+## -- PACKAGES ----------------------------------------------------------------
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load("tidyverse", "dtplyr", "data.table", "boot", "broom")
+
+
+## -- INPUT PARAMETERS --------------------------------------------------------
+# Set the number of cores to use in parallel.
+use_cores <- as.integer(Sys.getenv("MOAB_PROCCOUNT"))
+
+
+## -- DATA --------------------------------------------------------------------
+dat <- "./data/processed/predictions/predictions.RDS" %>%
+  readRDS() %>%
+  dplyr::mutate(Combi = substr(Interval, start = 1, stop = 3)) %>%
+  data.table::as.data.table()
+
+
+## -- USER FUNCTIONS ----------------------------------------------------------
+# Compute the Pearson correlation coefficient for (y, yhat) using a data.table
+# object.
+# data.table bootstrap: https://stackoverflow.com/a/36731848/2323832
+boot_cor <- function(x, i) {
+
+  x[i, cor(y, yhat), ]
 }
 
 
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load("tidyverse", "broom")
 
-# load the data
-dat <- "./data/processed/predictions/predictions.RDS" %>%
-  readRDS() %>%
-  filter(complete.cases(.))
-
-
-boot_iter <- 2
-
-boot_pred <- dat %>%
-  dplyr::rename(y = "Observed") %>%
-  tidyr::unite(PredCombi, Pred1, Pred2, sep = "_") %>%
-  tidyr::nest(
-    -Extent,
-    -Material, 
-    -Scenario,
-    -PredCombi,
-    -Rnd_Level1,
-    -Rnd_Level2,
-    -Core_Fraction,
-    -Trait
-  ) %>%
-  dplyr::mutate(cors_boot = purrr::map(
-    data,
-    ~broom::bootstrap(., boot_iter) %>% do(broom::tidy(cor(.$y, .$yhat))))
-  ) %>%
-  tidyr::unnest(cors_boot) %>%
-  dplyr::group_by(
-    Extent,
-    Material,
-    Scenario,
-    PredCombi,
+## -- ANALYSIS ----------------------------------------------------------------
+# Get the names for all unique combinations that will be bootstrapped to
+# assign them to the list of resuls from the 'boot()' function.
+boot_group_nms <- dat %>%
+  dplyr::distinct(
+    Combi,
+    Trait,
     Core_Fraction,
-    Trait
+    Predictor
   ) %>%
-  dplyr::summarize(r = mean(x), se = sd(x))
+  dplyr::mutate(
+    Core_Fraction = dplyr::if_else(
+      is.na(Core_Fraction),
+      true = 1,
+      false = Core_Fraction
+    )
+  ) %>%
+  tidyr::unite(
+    col = Boot_Group,
+    Combi,
+    Trait,
+    Core_Fraction,
+    Predictor,
+    sep = "-"
+  ) %>%
+  dplyr::pull(Boot_Group)
 
-boot_pred <- pred_data %>%
-  nest(-Core_Set, -Core_run, -Loocv_run, -Trait) %>%
-  mutate(cors_boot = map(data, ~broom::bootstrap(., 100) %>%
-                       do(tidy(cor(.$y, .$yhat))))) %>%
-  unnest(cors_boot) %>%
-  group_by(Core_Set, Trait) %>%
-  summarize(r = mean(x), se = sd(x))
+# Use these variables to group the prediction results into distinct clusters.
+boot_group_vars <- c("Combi", "Trait", "Core_Fraction", "Predictor")
+
+# Run the bootstrap.
+set.seed(34094)
+bootstrap_result <- dat[,
+  list(list(boot::boot(
+    .SD,
+    statistic = boot_cor,
+    R = 3000,
+    parallel = "multicore",
+    ncpus = 3L
+    ))),
+  by = boot_group_vars
+ ]$V1
 
 
-saveRDS(boot_pred, "./data/derived/maizego/bootstrap_110_genotypes.RDS")
+# Name and tidy up the bootstrap results.
+tidy_boot_df <- bootstrap_result %>%
+  purrr::map(.f = ~broom::tidy(.)) %>%
+  purrr::set_names(nm = boot_group_nms) %>%
+  dplyr::bind_rows(.id = "Boot_Group") %>%
+  tibble::as_data_frame() %>%
+  tidyr::separate(
+    col = Boot_Group,
+    into = boot_group_vars,
+    sep = "-"
+  ) %>%
+  dplyr::rename(r = "statistic")
 
-
-# bootstrap plot
-boot_pred %>%
-  ungroup() %>%
-  mutate(upper = r + se, lower = r - se) %>%
-  ggplot(aes(Core_Set %>% as.character() %>% as.factor(), y = r)) +
-  geom_bar(stat = "identity") +
-  geom_errorbar(aes(ymax = upper, ymin = lower)) +
-  facet_wrap(~ Trait)
-
-
-pred_data %>%
-  group_by(Core_Set, Trait) %>%
-  summarize(r = cor(y, yhat)) %>%
-  ggplot(aes(Core_Set %>% as.character() %>% as.factor(), y = r)) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~ Trait)
-
+saveRDS(
+  tidy_boot_df,
+  file =  "./data/processed/predictions/bootstrapped_predictions.RDS"
+)
