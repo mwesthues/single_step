@@ -119,6 +119,12 @@ cluster_df <- slist %>%
   map(.f = ~right_join(., y = pc_df, by = "G")) %>%
   bind_rows(.id = "K")
 
+cluster_df %>%
+  dplyr::filter(K == "popstruc4_f") %>%
+  saveRDS(
+    object = .,
+    file = "./data/derived/maizego/cluster_df_4pcs.RDS"
+  )
 
 
 change_to_k <- function(x) {

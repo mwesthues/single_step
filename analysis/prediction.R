@@ -37,7 +37,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "FHN_12")
+  Sys.setenv("INTERVAL" = "CIC_3")
   # Number of test runs.
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -68,10 +68,38 @@ temp_loc <- "./data/derived/prediction_runs/prediction_template.RDS"
 original_prediction_template <- temp_loc %>%
   readRDS()
 
+# For scenario 'C' we have not created entries in the prediction template
+# because it is exactly the same as that for scenario 'B'.
+# In order to filter entries in the template anyway, we need to temporarily
+# replace the letter 'C' with the letter 'B'.
+if (grepl("CIC|FIC", x = pred_interval)) {
+  original_pred_interval <- pred_interval
+  substr(pred_interval, start = 3, stop = 3) <- "B"
+}
+
 prediction_template <- original_prediction_template %>%
   tibble::as_data_frame() %>%
   dplyr::filter(Interval == pred_interval) %>%
   dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID))
+
+
+if (grepl("CIC|FIC", x = original_pred_interval)) {
+
+  # Function to replace the letter 'B' at position 3 with the letter 'C'.
+  sub_b_with_c <- function(x) {
+    substr(x, start = 3, stop = 3) <- "C"
+    x
+  }
+
+  prediction_template %>%
+    dplyr::mutate(
+      Combi = sub_b_with_c(Combi),
+      Interval = sub_b_with_c(Interval)
+    )
+  pred_interval <- sub_b_with_c(pred_interval)
+}
+
+
 
 
 # -- LOAD ADDITIONAL INFO -------------------------------------------------------
@@ -110,15 +138,51 @@ eta_uuid <- prediction_template %>%
   dplyr::distinct(ETA_UUID) %>%
   dplyr::pull(ETA_UUID)
 
-eta_uuid %>%
+eta_lst <- eta_uuid %>%
   purrr::map(~paste0(eta_dir, ., ".RDS")) %>%
   purrr::map(~readRDS(.)) %>%
-  purrr::set_names(nm = eta_uuid) %>%
+  purrr::set_names(nm = eta_uuid)
+
+
+if (grepl("CIC|FIC", x = pred_interval)) {
+
+  # Load the data frame that specifies the main membership of genotypes to
+  # to four putative ancestral populations based on a STRUCTURE analysis.
+  # This is crucial for scenario C where we need to account for this structure
+  # by adding a fixed effect term to each ETA object.
+  structure_df <- "./data/derived/maizego/cluster_df_4pcs.RDS" %>%
+    readRDS() %>%
+    dplyr::select(G, main_cluster) %>%
+    dplyr::mutate_at(vars(main_cluster), funs(as.factor))
+
+  # Get the names of all genotypes that will be predicted in this particular
+  # prediction run.
+  # This is important to set up the fixed effect term for scenario C correctly.
+  full_geno <- eta_lst %>%
+    .[1] %>%
+    purrr::pluck(1, function(x) rownames(x[[1]][[1]])) %>%
+    tibble::as_data_frame() %>%
+    dplyr::rename(G = "value") %>%
+    dplyr::left_join(
+      y = structure_df,
+      by = "G"
+    )
+
+
+  # Create the fixed effect and add it to each ETA object in the list.
+  fixeff <- list(fixed = list(
+              ~factor(main_cluster),
+              data = full_geno,
+              model = "FIXED"
+              )
+            )
+
+  eta_lst <- eta_lst %>%
+    purrr::map(~purrr::prepend(., fixeff, before = 1))
+}
+
+eta_lst %>%
   list2env(., envir = globalenv())
-
-
-
-
 
 
 ## -- PHENOTYPIC DATA ----------------------------------------------------
@@ -478,6 +542,7 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
     if (material == "I") {
       get_eta_rownames <- function(x) rownames(x[[1]])
       eta_geno_order <- eta_j %>%
+        purrr::keep(names(.) != "fixed") %>%
         purrr::pluck(1, get_eta_rownames) %>%
         tibble::as_data_frame() %>%
         dplyr::rename(Genotype = "value")

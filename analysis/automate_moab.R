@@ -67,6 +67,22 @@ final_time <- pred_tmpl %>%
   dplyr::mutate(Iter = 30000)
 
 
+# The computational load for scenario C should be almost identical to that of
+# scenario B because they use the same set of genotypes.
+# Therefore, we simply copy the parameters from scenario B, recode them and
+# declare them as 'Scenario C'.
+scenario_c <- final_time %>%
+  dplyr::filter(Combi %in% c("CIA", "FIA")) %>%
+  dplyr::mutate(Combi = dplyr::case_when(
+    Combi == "CIA" ~ "CIC",
+    Combi == "FIA" ~ "FIC"
+  )) %>%
+  dplyr::mutate(Interval = dplyr::case_when(
+    grepl("CIA", x = Interval) ~ gsub("CIA", x = Interval, replacement = "CIC"),
+    grepl("FIA", x = Interval) ~ gsub("FIA", x = Interval, replacement = "FIC")
+  ))
+
+final_time <- dplyr::bind_rows(final_time, scenario_c)
 
 # Define the command line parameters.
 moab_msub <- rep("msub -v", times = nrow(final_time))
