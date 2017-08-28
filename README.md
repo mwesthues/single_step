@@ -201,9 +201,12 @@ After running the prediction, the results from all clusters were [concatenated](
 
 
 ## Bootstrap
-
+Separately for each combination of `Material`, `Extent`, `Scenario`, `Trait`,
+`Core_Fraction` and `Predictor`, a [bootstrap](analysis/bootstrap_predictions.R)
+of 10,000 runs was applied to data frame comprising observed and predicted
+phenotypic values.
 
 
 ## Visualization
-
+Predictive abilities were plotted using [this script](analysis/visualized_predictions.R).
 
