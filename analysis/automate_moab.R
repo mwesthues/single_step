@@ -72,14 +72,14 @@ final_time <- pred_tmpl %>%
 # Therefore, we simply copy the parameters from scenario B, recode them and
 # declare them as 'Scenario C'.
 scenario_c <- final_time %>%
-  dplyr::filter(Combi %in% c("CIA", "FIA")) %>%
+  dplyr::filter(Combi %in% c("CIB", "FIB")) %>%
   dplyr::mutate(Combi = dplyr::case_when(
-    Combi == "CIA" ~ "CIC",
-    Combi == "FIA" ~ "FIC"
+    Combi == "CIB" ~ "CIC",
+    Combi == "FIB" ~ "FIC"
   )) %>%
   dplyr::mutate(Interval = dplyr::case_when(
-    grepl("CIA", x = Interval) ~ gsub("CIA", x = Interval, replacement = "CIC"),
-    grepl("FIA", x = Interval) ~ gsub("FIA", x = Interval, replacement = "FIC")
+    grepl("CIB", x = Interval) ~ gsub("CIB", x = Interval, replacement = "CIC"),
+    grepl("FIB", x = Interval) ~ gsub("FIB", x = Interval, replacement = "FIC")
   ))
 
 final_time <- dplyr::bind_rows(final_time, scenario_c)
