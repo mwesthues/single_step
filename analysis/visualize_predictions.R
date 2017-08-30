@@ -9,7 +9,13 @@ pacman::p_load(
   )
 
 boot_df <- "./data/processed/predictions/bootstrapped_predictions.RDS" %>%
-  readRDS()
+  readRDS() %>%
+  dplyr::group_by(Combi, Trait, Core_Fraction, Predictor) %>%
+  dplyr::summarize(
+    avg_r = mean(r),
+    se = mean(std.error)
+  ) %>%
+  dplyr::ungroup()
 
 
 ## -- HYBRIDS -----------------------------------------------------------------
@@ -115,8 +121,8 @@ inbred_df <- boot_df %>%
 # Predefine the color scheme.
 # Use also the levels of predictors in the hybrid data set to ensure that,
 # regardless of the material, the same color is picked for the same predictor.
-a_colors <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6) %>% 
-  set_names(c("P", "G", "T", "PG", "PT", "GT")) %>% 
+a_colors <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6) %>%
+  set_names(c("P", "G", "T", "PG", "PT", "GT")) %>%
   .[names(.) %in% c("G", "T", "GT")]
 
 

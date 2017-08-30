@@ -11,7 +11,7 @@ pacman::p_load(
 # Set the number of cores to use in parallel.
 if (interactive()) {
 
-  use_cores <- 2L
+  use_cores <- 4L
 
 } else {
 
