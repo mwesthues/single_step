@@ -1,7 +1,7 @@
 # Data and packages -------------------------------------------------------
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load("tidyverse", "LEA", "stringr", "viridis", "cowplot",
-               "ggthemes", "pophelper", "forcats")
+               "ggthemes", "pophelper", "forcats", "svglite")
 #devtools::install_github("mwesthues/sspredr")
 pacman::p_load_gh("mwesthues/sspredr")
 
@@ -159,17 +159,30 @@ g2 <- cluster_df %>%
   filter(K == k) %>%
   ggplot(aes(x = PC1, y = PC2, color = main_cluster)) +
   geom_point(size = 1) +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
+  guides(color = guide_legend(
+    override.aes = list(size = 6),
+    title = "Cluster",
+    title.theme = element_text(size = 12, angle = 0)
+    )
+  ) +
   scale_color_brewer(palette = "Set1") +
-  theme_pander(base_size = 10) +
+  theme_pander(base_size = 12) +
   theme(
     legend.position = "top",
     strip.background = element_blank(),
     strip.placement = "outside"
   )
+ggsave(
+  filename = "./paper/tables_figures/inbred_pca.svg",
+  plot = g2,
+  device = "svg",
+  width = 4,
+  height = 4,
+  units = "in"
+  )
 
 plot_grid(
-  g1, g2, labels = c("A", "B"), ncol = 2
+  g1, g2, labels = c("A", "B"), nrow = 2
 )
 
 
