@@ -83,19 +83,15 @@ prediction_template <- original_prediction_template %>%
   dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID))
 
 
+# Function to replace the letter 'B' at position 3 with the letter 'C'.
+sub_b_with_c <- function(x) {
+  substr(x, start = 3, stop = 3) <- "C"
+  x
+}
+
+
 if (grepl("CIC|FIC", x = original_pred_interval)) {
 
-  # Function to replace the letter 'B' at position 3 with the letter 'C'.
-  sub_b_with_c <- function(x) {
-    substr(x, start = 3, stop = 3) <- "C"
-    x
-  }
-
-  prediction_template %>%
-    dplyr::mutate(
-      Combi = sub_b_with_c(Combi),
-      Interval = sub_b_with_c(Interval)
-    )
   pred_interval <- sub_b_with_c(pred_interval)
 }
 
@@ -631,17 +627,28 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
 }, mc.cores = use_cores, mc.preschedule = TRUE)
 
 
+scen_pred_df <- scen_pred_lst %>%
+  dplyr::bind_rows()
 
-scen_pred_lst %>%
-  dplyr::bind_rows() %>%
+if (grepl("CIC|FIC", x = original_pred_interval)) {
+
+  scen_pred_df <- scen_pred_df %>%
+  dplyr::mutate(
+    Interval = sub_b_with_c(Interval)
+  )
+}
+
+
+scen_pred_df %>%
   saveRDS(
-    object = .,
-    file = paste0(
-      "./data/derived/predictions/template_",
-      job_id,
-      ".RDS"
+  object = .,
+  file = paste0(
+    "./data/derived/predictions/template_",
+    job_id,
+    ".RDS"
     )
   )
+
 
 # Write a corresponding log file for the predictions.
 elapsed_time <- get_elapsed_time(start_time)
