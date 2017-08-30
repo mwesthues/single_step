@@ -45,7 +45,9 @@ boot_group_nms <- dat %>%
     Combi,
     Trait,
     Core_Fraction,
-    Predictor
+    Predictor,
+    Rnd_Level1,
+    Rnd_Level2
   ) %>%
   dplyr::mutate(
     Core_Fraction = dplyr::if_else(
@@ -54,18 +56,34 @@ boot_group_nms <- dat %>%
       false = Core_Fraction
     )
   ) %>%
+  dplyr::mutate(
+    Rnd_Level1 = dplyr::if_else(
+      is.na(Rnd_Level1),
+      true = 1,
+      false = Rnd_Level1
+      )
+  ) %>%
   tidyr::unite(
     col = Boot_Group,
     Combi,
     Trait,
     Core_Fraction,
     Predictor,
+    Rnd_Level1,
+    Rnd_Level2,
     sep = "-"
   ) %>%
   dplyr::pull(Boot_Group)
 
 # Use these variables to group the prediction results into distinct clusters.
-boot_group_vars <- c("Combi", "Trait", "Core_Fraction", "Predictor")
+boot_group_vars <- c(
+  "Combi",
+  "Trait",
+  "Core_Fraction",
+  "Predictor",
+  "Rnd_Level1",
+  "Rnd_Level2"
+  )
 
 # Run the bootstrap.
 set.seed(34094)
