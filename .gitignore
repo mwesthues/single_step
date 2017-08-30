@@ -11,6 +11,7 @@
 !*.sh
 !*.Rmd
 !*reports/single-step-hypred-report.html
+!*tabs_figs/compound_plot.svg
 
 # ... even if they are in subdirectories
 !*/
