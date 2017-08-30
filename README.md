@@ -110,8 +110,8 @@ Principal component analyses were run for the [hybrid](analysis/pca.R) and
 The separation between the Dent and the Flint heterotic group for the hybrid
 material [looked as expected](analysis/pca.R) but for the inbred lines we
 found unexpected clustering of the lines, as determined via a [STRUCTURE](analysis/maizego_structure.R),
-analysis, albeit it with very low fractions of variance explained by the first
-five principal components.
+analysis and a [PCA](analysis/maizego_snp_anlyses.R), albeit it with very low
+fractions of variance explained by the first five principal components.
 Click [here](reports/select_subpopulation.Rmd) for a more detailed report.
 Inbred lines that belonged to the clusters `1` and `4`, which were rather
 homogeneous, were assigned to scenario `A`.
@@ -202,9 +202,15 @@ After running the prediction, the results from all clusters were [concatenated](
 
 ## Bootstrap
 Separately for each combination of `Material`, `Extent`, `Scenario`, `Trait`,
-`Core_Fraction` and `Predictor`, a [bootstrap](analysis/bootstrap_predictions.R)
-of 10,000 runs was applied to data frame comprising observed and predicted
-phenotypic values.
+`Core_Fraction`, `Predictor`, `Rnd_Level1` and `Rnd_Level2`, a
+[bootstrap](analysis/bootstrap_predictions.R) of 10,000 runs was applied to
+a data frame comprising observed and predicted phenotypic values.
+This yielded 10,000 bootstrap predictive abilities for each of the
+aforementioned combinations together with a corresponding standard error.
+The final predictive ability was calculated by taking the arithmetic mean
+of bootstrapped predictive abilities over `Rnd_Level1` and `Rnd_Level2`.
+The corresponding standard error was calculated across the average bootstrapped
+standard error across `Rnd_Level1` and `Rnd_Level`.
 
 
 ## Visualization
