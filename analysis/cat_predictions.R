@@ -7,6 +7,7 @@ template_names <- list.files(pred_dir, pattern = "template*", full.names = TRUE)
 
 predictions <- template_names %>%
   purrr::map(readRDS) %>%
-  dplyr::bind_rows()
+  dplyr::bind_rows() %>%
+  dplyr::filter(!is.na(Interval))
 
 saveRDS(predictions, "./data/processed/predictions/predictions.RDS")
