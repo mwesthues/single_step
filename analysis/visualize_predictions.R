@@ -65,10 +65,16 @@ dodge <- position_dodge(width = 0.9)
 # Predefine the color scheme.
 mycols <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6)
 names(mycols) <- c("P", "G", "T", "PG", "PT", "GT")
+limits <- aes(
+  ymax = `Predictive Ability` + se,
+  ymin = `Predictive Ability` - se
+  )
 
 hybrid_plot <- hyb_df %>%
-  ggplot(aes(x = Trait, y = r, fill = Predictor)) +
+  dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
   geom_bar(stat = "identity", position = dodge, color = "black") +
+  geom_errorbar(limits, position = dodge, width = 0.25) +
   facet_grid(. ~ Combi) +
   scale_fill_manual(values = mycols) +
   ggthemes::theme_pander(base_size = 10)
@@ -125,11 +131,12 @@ a_colors <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6) %>%
   set_names(c("P", "G", "T", "PG", "PT", "GT")) %>%
   .[names(.) %in% c("G", "T", "GT")]
 
-
 inbred_plot <- inbred_df %>%
   dplyr::filter(Core_Fraction == "1") %>%
-  ggplot(aes(x = Trait, y = r, fill = Predictor)) +
+  dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
   geom_bar(stat = "identity", position = dodge) +
+  geom_errorbar(limits, position = dodge, width = 0.25) +
   facet_grid(. ~ Combi) +
   scale_fill_manual(values = a_colors) +
   theme_pander(base_size = 10)
@@ -148,10 +155,17 @@ ggsave(
 
 ## -- INBREDS CORE_FRACTION != 1 ----------------------------------------------
 core_plot <- inbred_df %>%
-  dplyr::filter(Predictor == "GT", Combi %in% c("CIA", "CIB")) %>%
+  dplyr::filter(Predictor == "GT", Combi %in% c("CIA", "CIB", "CIC")) %>%
   dplyr::mutate_at(vars(Predictor), funs(as.factor)) %>%
   dplyr::rename(`Core Fraction` = "Core_Fraction") %>%
-  ggplot(aes(x = `Core Fraction`, y = r, color = Trait, group = Trait)) +
+  dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  ggplot(aes(
+    x = `Core Fraction`,
+    y = `Predictive Ability`,
+    color = Trait,
+    group = Trait
+    )
+  ) +
   geom_line(stat = "identity", position = position_dodge(width = 0.3)) +
   facet_grid(~ Combi) +
   ggthemes::scale_color_tableau() +
