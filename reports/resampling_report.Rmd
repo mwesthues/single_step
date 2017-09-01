@@ -1,0 +1,583 @@
+---
+title: Selection of a subpopulation with little structure
+author: Matthias Westhues
+date: "`r Sys.Date()`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    theme: readable
+    fig_caption: yes
+highlight: tango
+documentclass: book
+bibliography: ["~/Dropbox/Paper/library.bib"]
+biblio-style: apalike
+link-citations: yes
+---
+
+```{r setup, message=FALSE, echo=FALSE, warning=FALSE}
+# Data and packages -------------------------------------------------------
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  "tidyverse",
+  "viridis",
+  "ggthemes",
+  "forcats",
+  "LEA",
+  "pophelper",
+  "cowplot",
+  "dtplyr",
+  "data.table",
+  "gsubfn"
+  )
+#devtools::install_github("mwesthues/sspredr")
+pacman::p_load_gh("mwesthues/sspredr")
+
+knitr::knit_hooks$set(inline = function(x) {
+  prettyNum(x, big.mark = ",", digits = 2)
+})
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(
+  fig.width = 8, fig.height = 6, warning = FALSE, echo = FALSE,
+  message = FALSE
+  )
+```
+
+# Overview
+The purpose of this project is to explore the utility of single-step prediction
+of phenotype performance in a set of maize inbred lines and maize hybrids,
+respectively.
+The methods used herein are based on the seminal papers by @Legarra2009 and
+@Christensen2010 with extensions introduced by @Fernando2014.
+
+
+
+# Data Preparation
+We analyze hybrid maize data from the public breeding program of the University
+of Hohenheim as well as [data on inbred lines](http://www.maizego.org/Resources.html) from the lab of doctor Jianbing Yan.
+The data on inbred lines were downloaded on 2017-01-31 from the [Baidu Cloud](https://pan.baidu.com/s/1eQH3hfW#list/path=%2F)
+set up by the Yan lab and are stored under `data/input/maizego`.
+The Hohenheim data were generated as part of the publication "Omics-based Hybrid
+Prediction in Maize" [@Westhues2017].
+
+
+## Agronomic Data
+For the maize inbred lines we focused on the following traits that were
+previously described in [Guo et al. (2016)](https://link.springer.com/article/10.1007/s00122-016-2780-5):
+
+*   `Cob weight` (CW)
+*   `Days to silking` (DS)
+*   `Ear diameter` (ED)
+*   `100-grain weight` (GW)
+*   `Kernel width` (KW)
+*   `Plant height` (PH)
+
+and explored the explored the distribution (including skewness) of each trait
+and the phenotypic correlation between traits.
+
+In the case of maize hybrids we analyzed the traits
+
+*   `Dry matter yield` (DMY)
+*   `Dry matter content` (DMC)
+*   `Fat` (FAT)
+*   `Protein` (PRO)
+*   `Starch` (STA)
+*   `Sugar` (SUG)
+
+
+
+## Genomic Data
+The preparation of genomic marker data for hybrids and inbred lines,
+respectively, involved the following five steps (for hybrid data these were
+applied separately to each of the two heterotic groups):
+
+1.   Remove loci with a callfrequency $\geq 0.95$.
+
+2.   Remove loci with heterozygosity $\geq 0.05$.
+
+3.   Remove loci with minor allele frequency $\geq 0.05$.
+
+4.   Impute remaining missing values using BEAGLE using 25 iterations and 20
+     samples per iterations.
+
+5.   Remove copies (i.e. loci in perfect LD with a previous one) of marker
+     loci.
+
+
+## Transcriptomic Data
+For both material types transcriptomic data were already sufficiently
+pre-processed.
+
+
+
+## Population Structure
+Principal component analyses were run for the [hybrid](analysis/pca.R) and
+[inbred](analysis/maizego_snp_analyses.R) material.
+
+The separation between the Dent and the Flint heterotic group for the hybrid
+material [looked as expected](analysis/pca.R) but for the inbred lines we
+found unexpected clustering of the lines, as determined via a [STRUCTURE](analysis/maizego_structure.R),
+analysis and a [PCA](analysis/maizego_snp_anlyses.R), albeit it with very low
+fractions of variance explained by the first five principal components.
+See \@ref(population-structure) for a more detailed report.
+Inbred lines that belonged to the clusters `1` and `4`, which were rather
+homogeneous, were assigned to scenario `A`.
+We defined a second scenario `B` which simply comprised all available inbred
+lines and ran it to have predictive abilities for all genotypes in case
+population structure was no issue for this material.
+
+
+
+
+
+# Predictions
+## Preparation
+### Previous work for this manuscript
+In the first draft we wanted to evaluate the influence of the genetic
+constitutation of the set of genotypes that has only data on one out of two
+predictors by generating core samples  (https://github.com/mwesthues/single_step/commit/8f8b39198be7d5091954f84ec0c5834afd1c3cfa).
+We defined core samples as a subset of genotypes that is covered by two
+predictors whereas all other genotypes (*i.e.* the complement) are only covered
+by a single predictor.
+The first application involved assembling core sets of varying sizes by
+maximizing the average genetic distance among core set members using the
+Modifed Rogers (MR) distance as the criterion ([Thachuk et al. (2009)](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-243)).
+The size of the core set was varied in increments of ten percentage points and
+ranged from 10% to 90% of all inbred lines.
+The issue with this approch is that we could not preclude effects of population
+structure in our material on predictive abilities.
+Therefore, we decided to replace the core sampling procedure by a nested random
+subsampling procedure.
+
+
+
+### Nested subsampling scheme
+To ensure that a potential bias due to population structure would be
+represented by an increased standard error of the predictive abilities we
+conceived a nested resampling scheme.
+A first level of sampling was applied to each combination of `Material` (*i.e.*
+"Hybrid" or "Inbred"), `Scenario` ("A" and "B" for inbred lines; "None" for
+hybrids), `Extent` ("Core" if every predictor was available for all genotypes
+and "Full for the entire set of genotypes") and `Core_Fraction`, representing
+the share of core-set genotypes for which data on all predictors were assumed
+to be available.
+The notion of `Core_Fraction` may sound contradictory to the concept of "Core"
+and "Full" sets of genotypes but note that for the variable `Core_Fraction` we
+artificially removed information on a predictor for some genotypes to implore
+the influence of genetic space-coverage through incomplete predictors on
+predictive ability.
+This random subsampling procedure was repeated 20 times and stored as
+`Rnd_Level2`.
+
+For all core-set inbred lines we applied a second, nested randomization scheme
+where `n * frac` genotypes were declared to have both data on the complete and
+the incomplete predictor whereas `n - n * frac` genotypes had only information
+on the complete predictor.
+Here `frac` denotes the fraction of all genotypes having information on both
+predictors.
+This second randomization was nested within each randomization stored in
+`Rnd_Level2` and applied 20 times per randomization in `Rnd_Level2`.
+Therefore, we ended up with 20 sets of predictions for each combination of
+`"Material" * "Extent" * "Scenario"` when `frac = 1` and `20 ** 2 = 400`
+sets of predictions for each combination of `"Material" * "Extent" *
+"Scenario" * "Core_Fraction"` when `frac != 1`.
+
+
+
+### Prediction template
+In order to use the resources on the server as efficiently as possible,
+similar combinations of the various parameters considered (`Trait`,
+`Predictor`, `Material`, `Extent`, `Scenario`, `Rnd_Level1`, `Rnd_Level2`,
+`Core_Fraction`) were clustered together (coded as `Interval`) in a
+prediction template.
+
+After running some speed tests for some of these combinations a
+script for the automatic generation of `msub` commands was built.
+
+
+
+## Execution
+All predictions were run on the [bwunicluster](https://www.bwhpc-c5.de/wiki/index.php/Category:BwUniCluster)
+by entering the msub commands into the terminal on the cluster.
+For information on how to use the `bwunicluster`, in case you have access to
+it, can be found [here](https://mwesthues.github.io/bwunicluster.html).
+
+After running the prediction, the results from all clusters were concatenated.
+
+
+## Bootstrap
+Separately for each combination of `Material`, `Extent`, `Scenario`, `Trait`,
+`Core_Fraction`, `Predictor`, `Rnd_Level1` and `Rnd_Level2`, a
+bootstrap of 10,000 runs was applied to a data frame comprising observed and
+predicted phenotypic values.
+This yielded 10,000 bootstrap predictive abilities for each of the
+aforementioned combinations together with a corresponding standard error.
+The final predictive ability was calculated by taking the arithmetic mean
+of bootstrapped predictive abilities over `Rnd_Level1` and `Rnd_Level2`.
+The corresponding standard error was calculated across the average bootstrapped
+standard error across `Rnd_Level1` and `Rnd_Level`.
+
+
+## Visualization
+```{r prediction-data, cache=FALSE, results='hide'}
+boot_df <- "./data/processed/predictions/bootstrapped_predictions.RDS" %>%
+  readRDS() %>%
+  dplyr::group_by(Combi, Trait, Core_Fraction, Predictor) %>%
+  dplyr::summarize(
+    avg_r = mean(r),
+    se = mean(std.error)
+  ) %>%
+  dplyr::ungroup()
+
+
+## -- HYBRIDS -----------------------------------------------------------------
+# Specify a unified predictor order.
+pred_order <- c("P", "G", "T", "PG", "PT", "GT")
+
+# Specify a unique trait order.
+trait_order <- c("DMY", "DMC", "ADL", "FAT", "PRO", "STA", "SUG")
+
+
+hyb_df <- boot_df %>%
+  dplyr::filter(Combi %in% c("CHN", "FHN")) %>%
+  dplyr::mutate(Trait = forcats::fct_recode(
+    Trait,
+    "DMY" = "GTM",
+    "DMC" = "GTS",
+    "FAT" = "FETT",
+    "PRO" = "RPR",
+    "SUG" = "XZ"
+  )) %>%
+  dplyr::mutate(Combi = forcats::fct_recode(
+    Combi,
+    "Core" = "CHN",
+    "Full" = "FHN"
+  )) %>%
+  dplyr::mutate(Trait = forcats::fct_relevel(Trait, trait_order)) %>%
+  dplyr::mutate(
+    Predictor = gsubfn::gsubfn(
+      pattern = "\\S+",
+      replacement = list(
+        "mrna" = "T",
+        "ped" = "P",
+        "snp" = "G",
+        "ped_snp" = "PG",
+        "ped_mrna" = "PT",
+        "snp_mrna" = "GT"
+      ),
+      x = Predictor
+    ),
+    Predictor = forcats::fct_relevel(Predictor, pred_order)
+  )
+
+# Because the bars and errorbars have different widths
+# we need to specify how wide the objects we are dodging are
+dodge <- position_dodge(width = 0.9)
+
+# Predefine the color scheme.
+mycols <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6)
+names(mycols) <- c("P", "G", "T", "PG", "PT", "GT")
+limits <- aes(
+  ymax = `Predictive Ability` + se,
+  ymin = `Predictive Ability` - se
+  )
+
+
+## -- INBREDS CORE_FRACTION == 1 ----------------------------------------------
+inbred_df <- boot_df %>%
+  dplyr::filter(!Combi %in% c("CHN", "FHN")) %>%
+  dplyr::mutate(
+    Predictor = gsubfn::gsubfn(
+      pattern = "\\S+",
+      replacement = list(
+        "snp" = "G",
+        "mrna" = "T",
+        "snp_mrna" = "GT"
+      ),
+      x = Predictor
+    ),
+    Trait = gsubfn::gsubfn(
+      pattern = "\\S+",
+      replacement = list(
+        "Plantheight" = "PH",
+        "Eardiameter" = "ED",
+        "100grainweight" = "GW",
+        "cobweight" = "CW",
+        "Kernelwidth" = "KW",
+        "Silkingtime" = "DS"
+      ),
+      x = Trait
+    )
+  ) %>%
+  dplyr::mutate(Combi = forcats::fct_recode(
+    Combi,
+    "Core" = "CHN",
+    "Full" = "FHN"
+  ))
+
+# Predefine the color scheme.
+# Use also the levels of predictors in the hybrid data set to ensure that,
+# regardless of the material, the same color is picked for the same predictor.
+a_colors <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6) %>%
+  set_names(c("P", "G", "T", "PG", "PT", "GT")) %>%
+  .[names(.) %in% c("G", "T", "GT")]
+```
+
+
+
+
+```{r hybrid-plot, cache=FALSE, fig.cap="Hybrid Plot"}
+hyb_df %>%
+  dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
+  geom_bar(stat = "identity", position = dodge, color = "black") +
+  geom_errorbar(limits, position = dodge, width = 0.25) +
+  facet_grid(. ~ Combi) +
+  scale_fill_manual(values = mycols) +
+  ggthemes::theme_pander(base_size = 10)
+```
+
+
+```{r inbred-plot, cache=FALSE, fig.cap="Inbred Plot"}
+inbred_df %>%
+  dplyr::filter(Core_Fraction == "1") %>%
+  dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
+  geom_bar(stat = "identity", position = dodge) +
+  geom_errorbar(limits, position = dodge, width = 0.25) +
+  facet_grid(Combi ~ .) +
+  scale_fill_manual(values = a_colors) +
+  theme_pander(base_size = 10)
+```
+
+```{r core-inbred-plot, cache=FALSE, fig.cap="Core Plot"}
+inbred_df %>%
+  dplyr::filter(Predictor == "GT", Combi %in% c("CIA", "CIB", "CIC")) %>%
+  dplyr::mutate_at(vars(Predictor), funs(as.factor)) %>%
+  dplyr::rename(`Core Fraction` = "Core_Fraction") %>%
+  dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  ggplot(aes(
+    x = `Core Fraction`,
+    y = `Predictive Ability`,
+    color = Trait,
+    group = Trait
+    )
+  ) +
+  geom_line(stat = "identity", position = position_dodge(width = 0.3)) +
+  facet_grid(~ Combi) +
+  ggthemes::scale_color_tableau() +
+  ggthemes::theme_pander(base_size = 10) +
+  theme(legend.position = "right") +
+  guides(color = guide_legend(override.aes = list(size = 3)))
+```
+
+
+
+# Appendix {-}
+## Population Structure {-}
+Based on our last discussion we concluded that the pre-selection of a subset
+of individuals might be necessary to mitigate the impact of population structure
+on predictive ability.
+
+```{r pca-structure, cache=TRUE, results='hide'}
+# For the second scenario, keep only names of genotypes, which are covered by
+# all data types (i.e. phenotypic, genotypic and transcriptomic).
+common_genotypes <- readRDS(
+  "./data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS"
+)
+common_genotypes <- common_genotypes %>%
+  purrr::reduce(intersect)
+
+snp <- "./data/processed/maizego/imputed_snp_mat.RDS" %>%
+  readRDS() %>%
+  #.[rownames(.) %in% common_genotypes, ] %>%
+  sspredr::ensure_snp_quality(
+    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
+    any_missing = FALSE, remove_duplicated = TRUE
+  )
+
+
+# PCA ---------------------------------------------------------------------
+write.lfmm(snp, "./data/derived/maizego/snp.lfmm")
+
+# Determine the structure of the data using genotypic data.
+snp_pc <- LEA::pca(input.file = "./data/derived/maizego/snp.lfmm",
+                   scale = TRUE)
+
+pc_mat <- snp_pc$projections
+rownames(pc_mat) <- rownames(snp)
+colnames(pc_mat) <- paste0("PC_", seq_len(ncol(pc_mat)))
+
+pc_df <- pc_mat %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "G") %>%
+  tidyr::gather(key = PC, value = Score, -G) %>%
+  tibble::as_data_frame() %>%
+  dplyr::filter(PC %in% paste0("PC_", seq_len(2))) %>%
+  dplyr::mutate(
+    PC = gsub("PC_", replacement = "PC", x = PC)
+  ) %>%
+  tidyr::spread(key = PC, value = Score)
+
+
+# PCA ---------------------------------------------------------------------
+genos <- readr::read_tsv(
+  "./data/processed/maizego/popstruc.names",
+  col_names = FALSE
+  ) %>%
+  dplyr::select(2) %>%
+  purrr::flatten_chr()
+
+# Select K=4
+# For each individual, return the cluster with the largest coefficient.
+# Assign a color to each cluster.
+# Plot the PCA results with colors corresponding to the cluster with the largest
+# coefficient for that individual.
+
+get_max_cluster <- function(x) {
+  x %>%
+    dplyr::mutate(G = genos) %>%
+    tidyr::gather(key = "Cluster", value = "AncCoef", -G) %>%
+    dplyr::group_by(G) %>%
+    dplyr::summarize(main_cluster = which.max(AncCoef)) %>%
+    dplyr::mutate(main_cluster = main_cluster %>%
+      as.character() %>%
+      as.factor()
+    ) %>%
+    dplyr::ungroup()
+}
+
+
+# STRUCTURE FILES ---------------------------------------------------------
+slist <- list.files(
+  path = "./data/processed/maizego",
+  pattern = "popstruc[0-9]",
+  full.names = TRUE
+  ) %>%
+  pophelper::readQ(
+    files = .,
+    indlabfromfile = TRUE,
+    filetype = "structure"
+  )
+
+cluster_df <- slist %>%
+  purrr::map(get_max_cluster) %>%
+  purrr::map(.f = ~dplyr::right_join(., y = pc_df, by = "G")) %>%
+  dplyr::bind_rows(.id = "K")
+
+change_to_k <- function(x) {
+  x %>%
+    gsub(x = ., replacement = "", pattern = "_f") %>%
+    gsub(x = ., replacement = "", pattern = "popstruc")
+}
+```
+
+
+First, I ran STRUCTURE [@Pritchard2000] to estimate the ancestry coefficients
+for each of the `r nrow(snp)` genotypes from the subset 'tropical/subtropical'
+of the [maize diversity panel](http://www.maizego.org/Resources.html).
+In total, I have examined 8 putative ancestral populations (K=2 to K=9) and,
+based on combinations of bar plots and PCA plots
+(Fig. \@ref(fig:pca-structure-plot)), as well as the estimated probability of
+the data for each K, I concluded that K=4 represents the population structure
+best (Fig. \@ref(fig:pca-structure-plot)).
+
+
+
+
+
+
+
+```{r pca-structure-plot, fig.height=12, fig.cap="Population structure of a set of 211 inbred lines from the tropical/subtropical groups of the maize diversity panel. ($\\textbf{A}$) Structure coefficients assuming K=4 ancestral populations. ($\\textbf{B}$) Principal Component Analysis. Individual points are colored according to the cluster with which they have the highest overlap."}
+k <- 4
+g1 <- slist %>%
+  purrr::set_names(., change_to_k(names(.))) %>%
+  purrr::map(.f = ~dplyr::mutate(., G = genos)) %>%
+  purrr::keep(names(.) == k) %>%
+  purrr::map(.f = ~dplyr::mutate(., Central_Cluster = Cluster1 + Cluster4)) %>%
+  purrr::map(.f = ~tidyr::gather(
+    ., key = "Cluster", value = "AncCoef", -G, -Central_Cluster)
+    ) %>%
+  dplyr::bind_rows(.id = "K") %>%
+  dplyr::mutate(G = as.factor(G)) %>%
+  ggplot(aes(
+    x = fct_reorder(G, x = Central_Cluster), y = AncCoef, fill = Cluster)
+    ) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_pander(base_size = 15) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks = element_blank(),
+    legend.title = element_blank(),
+    legend.position = "top"
+  ) +
+  guides(fill = guide_legend(ncol = 2)) +
+  xlab("Genotype") +
+  ylab("Ancestry Coefficient")
+
+g2 <- cluster_df %>%
+  dplyr::mutate(K = change_to_k(K)) %>%
+  dplyr::filter(K == k) %>%
+  ggplot(aes(x = PC1, y = PC2, color = main_cluster)) +
+  geom_point(size = 1) +
+  guides(color = guide_legend(
+    override.aes = list(size = 3),
+    title = "Cluster"
+    )) +
+  scale_color_brewer(palette = "Set1") +
+  theme_pander(base_size = 15) +
+  theme(
+    legend.position = "top",
+    strip.background = element_blank(),
+    strip.placement = "outside"
+  )
+
+cowplot::plot_grid(
+  g1, g2, labels = c("A", "B"), nrow = 2
+)
+```
+
+
+
+
+The set of selected individuals (Fig. \@ref(fig:pca-plot)) roughly corresponds
+to clusters 1 and 4 in Fig. \@ref(fig:pca-structure-plot) and excludes
+individuals in the tails of the PCA plot.
+
+
+
+
+```{r pca-plot, fig.cap="Selecting individuals based on PCA"}
+selected_df <- slist %>%
+  purrr::set_names(., change_to_k(names(.))) %>%
+  purrr::map(.f = ~dplyr::mutate(., G = genos)) %>%
+  purrr::keep(names(.) == k) %>%
+  .[[1]] %>%
+  dplyr::left_join(y = pc_df, by = "G") %>%
+  dplyr::mutate(main_cluster = dplyr::case_when(
+    PC1 >= -30 & PC1 <= 10 & PC2 >= -25 & PC2 <= 40 ~ "yes",
+    PC1 != 0 ~ "no"
+    ))
+
+selected_df %>%
+  dplyr::mutate(main_cluster = as.factor(main_cluster))  %>%
+  ggplot(aes(x = PC1, y = PC2, color = main_cluster)) +
+  geom_point(size = 1) +
+  guides(color = guide_legend(
+    override.aes = list(size = 3),
+    title = "Selected"
+    )) +
+  scale_color_brewer(palette = "Set1") +
+  theme_pander(base_size = 15) +
+  theme(
+    legend.position = "top",
+    strip.background = element_blank(),
+    strip.placement = "outside"
+  )
+```
+
+
+
+
+# References
