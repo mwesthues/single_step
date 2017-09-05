@@ -194,44 +194,48 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
     )
 
     # Load TRN and TST genotypes.
-    geno_trn_df <- hybrid_scenario_df %>%
-      dplyr::distinct(Hybrid_UUID, .keep_all = FALSE) %>%
-      dplyr::pull(Hybrid_UUID) %>%
-      purrr::map(
-        ~paste0("./data/derived/predictor_subsets/hybrid_", ., ".RDS")
-      ) %>%
-      purrr::map(~readRDS(.)) %>%
-      dplyr::bind_rows() %>%
-      tibble::as_data_frame() %>%
-      dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID)) %>%
-      dplyr::inner_join(
-        y = hybrid_scenario_df %>% dplyr::select(-TST_Geno, -TRN_Geno),
-        by = c(
-          "Predictor",
-          "ETA_UUID",
-          "Combi",
-          "Core_Fraction",
-          "Rnd_Level1",
-          "Hybrid_UUID"
-        )
-      )
+    pre_eta <- "./data/derived/predictor_subsets/hybrid_pre_eta_df.RDS" %>%
+      readRDS() %>%
+      dplyr::mutate(ETA_UUID = paste0("eta_", UUID))
 
-    hyb_scen_geno_df <- full_geno_df %>%
-      dplyr::right_join(
-        y = template_i,
-        by = "Combi"
+    geno_frame <- pre_eta %>%
+      dplyr::inner_join(
+        y = hybrid_scenario_df,
+        by = c("Predictor", "ETA_UUID")
       ) %>%
-      dplyr::select(-TRN_Geno, -TST_Geno) %>%
-      dplyr::rename(TRN_Geno = "G") %>%
-      dplyr::distinct(TRN_Geno) %>%
-      data.table::as.data.table() %>%
-      data.table::setkey()
+      dplyr::mutate(Set = "TRN") %>%
+      dplyr::select(
+        Combi,
+        Trait,
+        Core_Fraction,
+        Rnd_Level1,
+        Predictor,
+        Interval,
+        Set,
+        ETA_UUID,
+        G,
+        Hybrid_UUID
+      )
 
     # Separately for each combination of 'TST_Geno', 'Combi', 'Trait',
     # 'Core_Fraction', 'Rnd_Level1', 'Predictor' and 'ETA_UUID'...
-    # i) extract the training set
-    # ii) define the hold-out set as its complement
-    # iii) concatenate training set and hold-out set.
+    # i) extract the test set set
+    # ii) define the training set (T0 hybrids)
+    # iii) concatenate training set and test set.
+    hybrids <- pre_eta %>%
+      dplyr::distinct(G) %>%
+      dplyr::pull(G)
+
+    geno_trn_df <- hybrids %>%
+      gsub("DF_", x = ., replacement = "") %>%
+      create_t0_trn(., split_char = "_") %>%
+      purrr::set_names(nm = hybrids) %>%
+      purrr::map(~tibble::as_data_frame(.)) %>%
+      purrr::map(~dplyr::rename(., TRN_Geno = "value")) %>%
+      dplyr::bind_rows(.id = "TST_Geno") %>%
+      dplyr::mutate(TRN_Geno = paste0("DF_", TRN_Geno)) %>%
+      dplyr::inner_join(y = geno_frame, by = c("TST_Geno" = "G"))
+
     geno_df <- geno_trn_df %>%
       data.table::data.table() %>%
       split(.,
