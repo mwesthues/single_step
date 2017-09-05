@@ -37,7 +37,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "FHN_1")
+  Sys.setenv("INTERVAL" = "FIA_1")
   # Number of test runs.
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -222,7 +222,7 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
     # i) extract the test set set
     # ii) define the training set (T0 hybrids)
     # iii) concatenate training set and test set.
-    hybrids <- pre_eta %>%
+    hybrids <- geno_frame %>%
       dplyr::distinct(G) %>%
       dplyr::pull(G)
 
@@ -235,6 +235,17 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       dplyr::bind_rows(.id = "TST_Geno") %>%
       dplyr::mutate(TRN_Geno = paste0("DF_", TRN_Geno)) %>%
       dplyr::inner_join(y = geno_frame, by = c("TST_Geno" = "G"))
+
+    hyb_scen_geno_df <- full_geno_df %>%
+      dplyr::right_join(
+        y = template_i,
+        by = "Combi"
+      ) %>%
+      dplyr::select(-TRN_Geno, -TST_Geno) %>%
+      dplyr::rename(TRN_Geno = "G") %>%
+      dplyr::distinct(TRN_Geno) %>%
+      data.table::as.data.table() %>%
+      data.table::setkey()
 
     geno_df <- geno_trn_df %>%
       data.table::data.table() %>%
