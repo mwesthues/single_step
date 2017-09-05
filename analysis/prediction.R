@@ -313,30 +313,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       ) %>%
       dplyr::mutate(Set = "TRN")
 
-    # Generate hold-old genotypes, which are genotypes that are present but were
-    # not selected for a given scenario.
-    hold_out_df <- full_geno_df %>%
-      dplyr::right_join(
-        y = template_i,
-        by = "Combi"
-      ) %>%
-      dplyr::anti_join(
-        y = geno_trn_df,
-        by = c(
-          "G" = "TRN_Geno",
-          "Combi",
-          "Trait",
-          "Core_Fraction",
-          "Rnd_Level1",
-          "Predictor",
-          "ETA_UUID",
-          "TST_Geno"
-        )
-      ) %>%
-      dplyr::select(-TRN_Geno) %>%
-      dplyr::rename(TRN_Geno = "G") %>%
-      dplyr::mutate(Set = "Hold_Out")
-
     inbred_key <- c(
       "Combi",
       "Trait",
@@ -347,7 +323,7 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       "Interval"
     )
 
-    trn_df <- dplyr::bind_rows(hold_out_df, geno_trn_df) %>%
+    trn_df <- geno_trn_df %>%
       dplyr::select(-TST_Geno) %>%
       data.table::as.data.table() %>%
       data.table::setkeyv(., cols = inbred_key)
