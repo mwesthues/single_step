@@ -24,7 +24,6 @@ common_key <- c(
   "Predictor",
   "Core_Fraction",
   "Rnd_Level1",
-  "Rnd_Level2",
   "TST_Geno",
   "TRN_Geno"
 )
@@ -75,27 +74,18 @@ data.table::setkeyv(inbred_df, cols = common_key)
 
 
 ### Material == "Hybrid"
-keycols = c("Material", "Extent", "Scenario", "TST_Geno")
-hyb_lvl2_df <- readRDS(paste0(main_dir, "hybrid_lvl2_df.RDS")) %>%
-  data.table::as.data.table()
-data.table::setkeyv(hyb_lvl2_df, cols = keycols)
-
-hybrid_pre_eta_df <- readRDS(paste0(main_dir, "hybrid_pre_eta_df.RDS")) %>%
+keycols = c("Material", "Extent", "Scenario", "G")
+hybrid_df <- readRDS(paste0(main_dir, "hybrid_pre_eta_df.RDS")) %>%
   dplyr::select(-Pred1, -Pred2) %>%
   data.table::as.data.table() %>%
   data.table::setkeyv(cols = keycols)
 
-hybrid_df <- merge(
-  x = hyb_lvl2_df,
-  y = hybrid_pre_eta_df,
-  all = TRUE,
-  allow.cartesian = TRUE
-)
+
 
 # Concatenate the initials of 'Extent' (E), 'Material' (M) and 'Scenario' (S)
 # for alleviated referencing of combinations and add some dummy variables for
 # consistency with data from other combinations.
-cols_to_del <- c("Extent", "Material", "Scenario", "E", "M", "S")
+cols_to_del <- c("Extent", "Material", "Scenario", "E", "M", "S", "G")
 hybrid_df[
   ,
   c("E", "M", "S") := lapply(.SD, FUN = abbreviate_combi),
@@ -107,14 +97,15 @@ hybrid_df[
   ][
   ,
   `:=` (Core_Fraction = NA_real_,
-        Rnd_Level1 = NA_real_
+        TRN_Geno = NA_character_,
+        TST_Geno = NA_character_,
+        Rnd_Level1 = 1
         ),
   ][
   ,
   (cols_to_del) := NULL,
   ]
 data.table::setkeyv(hybrid_df, cols = common_key)
-
 
 
 ### Material == "Inbred" && Core_Fraction != 1
@@ -154,17 +145,8 @@ data.table::setkeyv(core_df, cols = common_key)
 ## -- COMBINE UNIQUE SCENARIOS
 # Keep only scenarios not including training or test set hybrids, respectively.
 hybrid_scen_df <- hybrid_df %>%
-  .[
-  ,
-  `:=` (TST_Geno = NA_character_,
-        TRN_Geno = NA_character_
-        ),
-  ] %>%
   data.table::setkey(., NULL) %>%
   unique()
-
-#rm(hybrid_df)
-#gc();gc();gc();gc();gc();gc()
 
 core_scen_df <- core_df %>%
   data.table::setkey(., NULL) %>%
@@ -241,7 +223,7 @@ if (length(list.files(main_dir, pattern = "hybrid_.{36}\\.RDS")) == 0) {
   hybrid_df[
     ,
     Hybrid_UUID := uuid::UUIDgenerate(),
-    by = .(UUID, Combi, Predictor, Rnd_Level2)
+    by = .(UUID, Combi, Predictor)
     ]
 
   data.table::setnames(
@@ -256,10 +238,6 @@ if (length(list.files(main_dir, pattern = "hybrid_.{36}\\.RDS")) == 0) {
     by = "Hybrid_UUID",
     drop = TRUE
   )
-
-  rm(hybrid_df)
-  gc();gc();gc();gc();gc();gc();gc()
-
 
   lapply(seq_along(hybrid_lst), FUN = function(i) {
     name_i <- names(hybrid_lst)[i]
@@ -345,9 +323,7 @@ node_time_per_day <- 24 * 60 * 16
 # Time per job in minutes
 job_minutes <- c(
   "CIA" = 18,
-  "CIB" = 25,
   "FIA" = 25,
-  "FIB" = 35,
   "CHN" = 105,
   "FHN" = 3200
 )
@@ -358,7 +334,6 @@ template_lst <- full_scen_df %>%
     Predictor,
     Core_Fraction,
     Rnd_Level1,
-    Rnd_Level2,
     Trait
   ) %>%
   split(list(.$Combi)) %>%
@@ -367,7 +342,7 @@ template_lst <- full_scen_df %>%
 
 
 # Fractions of the day times number of minutes per node and day
-template_node_time <- c(0.5, 1, 1, 1, 1, 2.5) * node_time_per_day
+template_node_time <- c(0.5, 1, 1, 2.5) * node_time_per_day
 names(template_node_time) <- names(job_minutes)
 
 pre_map_lst <- list(
@@ -377,7 +352,7 @@ pre_map_lst <- list(
     tolerance = rep(1.3, times = length(template_lst))
 )
 
-prediction_template <- pmap(. = pre_map_lst, .f = cut_data) %>%
+prediction_template <- pmap(.l = pre_map_lst, .f = cut_data) %>%
   purrr::set_names(., nm = names(job_minutes)) %>%
   dplyr::bind_rows() %>%
   dplyr::mutate(Interval = paste(Combi, Interval, sep = "_"))

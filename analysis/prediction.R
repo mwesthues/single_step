@@ -37,7 +37,7 @@ if (isTRUE(interactive())) {
   Sys.setenv("PI" = "0.5")
   Sys.setenv("PRIOR_PI_COUNT" = "10")
   # Which interval of data shall be analyzed?
-  Sys.setenv("INTERVAL" = "CIC_3")
+  Sys.setenv("INTERVAL" = "FHN_1")
   # Number of test runs.
   Sys.setenv("RUNS" = "1-3")
   # Output directory for temporary BGLR files
@@ -68,33 +68,10 @@ temp_loc <- "./data/derived/prediction_runs/prediction_template.RDS"
 original_prediction_template <- temp_loc %>%
   readRDS()
 
-# For scenario 'C' we have not created entries in the prediction template
-# because it is exactly the same as that for scenario 'B'.
-# In order to filter entries in the template anyway, we need to temporarily
-# replace the letter 'C' with the letter 'B'.
-if (grepl("CIC|FIC", x = pred_interval)) {
-  original_pred_interval <- pred_interval
-  substr(pred_interval, start = 3, stop = 3) <- "B"
-}
-
 prediction_template <- original_prediction_template %>%
   tibble::as_data_frame() %>%
   dplyr::filter(Interval == pred_interval) %>%
   dplyr::mutate(ETA_UUID = paste0("eta_", ETA_UUID))
-
-
-# Function to replace the letter 'B' at position 3 with the letter 'C'.
-sub_b_with_c <- function(x) {
-  substr(x, start = 3, stop = 3) <- "C"
-  x
-}
-
-
-if (grepl("CIC|FIC", x = original_pred_interval)) {
-
-  pred_interval <- sub_b_with_c(pred_interval)
-}
-
 
 
 
@@ -138,44 +115,6 @@ eta_lst <- eta_uuid %>%
   purrr::map(~paste0(eta_dir, ., ".RDS")) %>%
   purrr::map(~readRDS(.)) %>%
   purrr::set_names(nm = eta_uuid)
-
-
-if (grepl("CIC|FIC", x = pred_interval)) {
-
-  # Load the data frame that specifies the main membership of genotypes to
-  # to four putative ancestral populations based on a STRUCTURE analysis.
-  # This is crucial for scenario C where we need to account for this structure
-  # by adding a fixed effect term to each ETA object.
-  structure_df <- "./data/derived/maizego/cluster_df_4pcs.RDS" %>%
-    readRDS() %>%
-    dplyr::select(G, main_cluster) %>%
-    dplyr::mutate_at(vars(main_cluster), funs(as.factor))
-
-  # Get the names of all genotypes that will be predicted in this particular
-  # prediction run.
-  # This is important to set up the fixed effect term for scenario C correctly.
-  full_geno <- eta_lst %>%
-    .[1] %>%
-    purrr::pluck(1, function(x) rownames(x[[1]][[1]])) %>%
-    tibble::as_data_frame() %>%
-    dplyr::rename(G = "value") %>%
-    dplyr::left_join(
-      y = structure_df,
-      by = "G"
-    )
-
-
-  # Create the fixed effect and add it to each ETA object in the list.
-  fixeff <- list(fixed = list(
-              ~factor(main_cluster),
-              data = full_geno,
-              model = "FIXED"
-              )
-            )
-
-  eta_lst <- eta_lst %>%
-    purrr::map(~purrr::prepend(., fixeff, before = 1))
-}
 
 eta_lst %>%
   list2env(., envir = globalenv())
@@ -246,7 +185,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       by = c(
         "Core_Fraction",
         "Rnd_Level1",
-        "Rnd_Level2",
         "Predictor",
         "ETA_UUID",
         "Combi",
@@ -269,7 +207,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       dplyr::inner_join(
         y = hybrid_scenario_df %>% dplyr::select(-TST_Geno, -TRN_Geno),
         by = c(
-          "Rnd_Level2",
           "Predictor",
           "ETA_UUID",
           "Combi",
@@ -291,7 +228,7 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       data.table::setkey()
 
     # Separately for each combination of 'TST_Geno', 'Combi', 'Trait',
-    # 'Core_Fraction', 'Rnd_Level1', 'Rnd_Level2', 'Predictor' and 'ETA_UUID'...
+    # 'Core_Fraction', 'Rnd_Level1', 'Predictor' and 'ETA_UUID'...
     # i) extract the training set
     # ii) define the hold-out set as its complement
     # iii) concatenate training set and hold-out set.
@@ -304,7 +241,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
           "Trait",
           "Core_Fraction",
           "Rnd_Level1",
-          "Rnd_Level2",
           "Predictor",
           "ETA_UUID"
         )
@@ -315,7 +251,7 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
         hold_out_trn <- data.table::copy(hyb_scen_geno_df[!x, on = "TRN_Geno"])
         tst_geno <- x[, (unique(TST_Geno)), ]
         unq_x_combi <- unique(
-          x[, .(Rnd_Level2, Predictor, ETA_UUID, Combi, Core_Fraction, Rnd_Level1,
+          x[, .(Predictor, ETA_UUID, Combi, Core_Fraction, Rnd_Level1,
                 Hybrid_UUID, Trait, Interval), ]
         )
         var_tbl <- unq_x_combi[rep(seq_len(.N), times = nrow(hold_out_trn)), ]
@@ -349,15 +285,13 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       ) %>%
       dplyr::rename(TRN_Geno = "G") %>%
       dplyr::mutate(
-        TST_Geno = NA_character_,
-        Rnd_Level2 = as.character(Rnd_Level2)
+        TST_Geno = NA_character_
       ) %>%
       dplyr::inner_join(
         y = template_i %>% dplyr::select(-TST_Geno, -TRN_Geno),
         by = c(
           "Core_Fraction",
           "Rnd_Level1",
-          "Rnd_Level2",
           "Predictor",
           "Combi"
         )
@@ -379,7 +313,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
           "Trait",
           "Core_Fraction",
           "Rnd_Level1",
-          "Rnd_Level2",
           "Predictor",
           "ETA_UUID",
           "TST_Geno"
@@ -394,7 +327,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       "Trait",
       "Core_Fraction",
       "Rnd_Level1",
-      "Rnd_Level2",
       "Predictor",
       "ETA_UUID",
       "Interval"
@@ -435,7 +367,7 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       dplyr::distinct(G) %>%
       dplyr::pull(G)
 
-    # TRN_Geno, TST_Geno, Combi, Trait, Core_Fraction, Rnd_Level1, Rnd_Level2,
+    # TRN_Geno, TST_Geno, Combi, Trait, Core_Fraction, Rnd_Level1,
     # Predictor, ETA_UUID
     geno_df <- tst_geno %>%
       purrr::map(function(x) {
@@ -460,7 +392,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
       Trait,
       Core_Fraction,
       Rnd_Level1,
-      Rnd_Level2,
       Predictor,
       ETA_UUID,
       Interval
@@ -506,7 +437,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
           "Trait",
           "Core_Fraction",
           "Rnd_Level1",
-          "Rnd_Level2",
           "Predictor",
           "ETA_UUID"
         )
@@ -538,7 +468,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
     if (material == "I") {
       get_eta_rownames <- function(x) rownames(x[[1]])
       eta_geno_order <- eta_j %>%
-        purrr::keep(names(.) != "fixed") %>%
         purrr::pluck(1, get_eta_rownames) %>%
         tibble::as_data_frame() %>%
         dplyr::rename(Genotype = "value")
@@ -629,15 +558,6 @@ scen_pred_lst <- parallel::mclapply(scenario_seq, FUN = function(i) {
 
 scen_pred_df <- scen_pred_lst %>%
   dplyr::bind_rows()
-
-if (grepl("CIC|FIC", x = original_pred_interval)) {
-
-  scen_pred_df <- scen_pred_df %>%
-  dplyr::mutate(
-    Interval = sub_b_with_c(Interval)
-  )
-}
-
 
 scen_pred_df %>%
   saveRDS(

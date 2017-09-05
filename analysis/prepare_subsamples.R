@@ -130,12 +130,12 @@ saveRDS(geno_df, "./data/derived/predictor_subsets/geno_df.RDS")
 
 
 
-## -- LEVEL 1 AND LEVEL 2 CONCATENATION --------------------------------------
+## -- LEVEL 1 SCENARIO SPECIFICATION ------------------------------------------
 # Specify all possible scenarios that need to be considered. This is crucial
 # for augmenting all subsequent data frames with information on which
 # genotypes are part of the training or test set (or none of the two) for each
-# combination of 'Material', 'Extent', 'Scenario', 'Rnd_Level1' and
-# 'Rnd_Level2', respectively.
+# combination of 'Material', 'Extent', 'Scenario' and 'Rnd_Level1',
+# respectively.
 # This is crucial because ETA objects will differ based on which predictor in
 # 'Pred1' and 'Pred2', respectively, are involved.
 scen_spec1 <- expand.grid(
@@ -143,7 +143,7 @@ scen_spec1 <- expand.grid(
   Material = "Inbred",
   Pred1 = "snp",
   Pred2 = "mrna",
-  Scenario = c("A", "B"),
+  Scenario = "A",
   Core_Fraction = seq(from = 0.1, to = 0.9, by = 0.1),
   stringsAsFactors = FALSE
 )
@@ -153,7 +153,7 @@ scen_spec2 <- expand.grid(
   Material = "Inbred",
   Pred1 = c("snp", "mrna"),
   Pred2 = "",
-  Scenario = c("A", "B"),
+  Scenario = "A",
   Core_Fraction = 1,
   stringsAsFactors = FALSE
 )
@@ -163,7 +163,7 @@ scen_spec3 <- expand.grid(
   Material = "Inbred",
   Pred1 = "snp",
   Pred2 = "",
-  Scenario = c("A", "B"),
+  Scenario = "A",
   Core_Fraction = 1,
   stringsAsFactors = FALSE
 )
@@ -173,7 +173,7 @@ scen_spec4 <- expand.grid(
   Material = "Inbred",
   Pred1 = "snp",
   Pred2 = "mrna",
-  Scenario = c("A", "B"),
+  Scenario = "A",
   Core_Fraction = 1,
   stringsAsFactors = FALSE
 )
@@ -234,73 +234,6 @@ saveRDS(scen_df, file = "./data/derived/predictor_subsets/scen_df.RDS")
 
 
 
-## -- LEVEL 2 SAMPLING (HYBRIDS) -----------------------------------------------
-# For each 'Scenario' sample 70% of the available genotypes at random and
-# assign them to the training set.
-# In a second step, separately for each scenario and value of 'Rnd_Level2',
-# pick any genotype, assign it to the test set and assign all other unrelated
-# genotypes to the training set.
-# Do this for every genotype in turn.
-hybrid_file_nm <- "./data/derived/predictor_subsets/hybrid_lvl2_df.RDS"
-if (!file.exists(hybrid_file_nm)) {
-  hyb_lvl2_df <- geno_df %>%
-    dplyr::filter(Material == "Hybrid") %>%
-    dplyr::select(G, Extent) %>%
-    dplyr::mutate(
-      geno = gsub("DF_", x = G, replacement = ""),
-      frac = 0.7,
-      iter = 20,
-      material = "Hybrid",
-      split_char = "_"
-    ) %>%
-    dplyr::select(-G) %>%
-    split(list(.$Extent)) %>%
-    purrr::map(.f = ~dplyr::select(., -Extent)) %>%
-    purrr::map(~as.list(.)) %>%
-    purrr::modify_depth(.depth = 2, .f = ~unique(.)) %>%
-    purrr::map(~purrr::invoke(.f = sample_loo_sets, .x = .)) %>%
-    dplyr::bind_rows(.id = "Extent") %>%
-    dplyr::select(-ind) %>%
-    dplyr::rename(Rnd_Level2 = "Iter") %>%
-    dplyr::mutate_at(
-      .vars = vars(TST_Geno, TRN_Geno),
-      .funs = funs(paste0("DF_", .))
-    ) %>%
-    dplyr::mutate(
-      Material = "Hybrid",
-      Scenario = "None"
-    )
-
-  hyb_lvl2_df %>%
-    saveRDS(file = hybrid_file_nm)
-} else {
-  hyb_lvl2_df <- readRDS(hybrid_file_nm)
-  print("The hybrid file already exists! Loading it instead.")
-}
-
-
-
-## -- LEVEL 2 SAMPLING (INBREDS) -----------------------------------------------
-inbred_file_nm <- "./data/derived/predictor_subsets/inbred_lvl2_df.RDS"
-if (!file.exists(inbred_file_nm)) {
-  inbred_lvl2_df <- rerun(
-    .n = 20,
-    geno_df %>%
-      dplyr::filter(Material == "Inbred") %>%
-      dplyr::group_by(Extent, Scenario) %>%
-      dplyr::sample_frac(size = 0.7) %>%
-      dplyr::ungroup()
-    ) %>%
-    dplyr::bind_rows(.id = "Rnd_Level2")
-
-  inbred_lvl2_df %>%
-    saveRDS(file = inbred_file_nm)
-} else {
-  inbred_lvl2_df <- readRDS(inbred_file_nm)
-  print("The inbred file already exists! Loading it instead.")
-}
-
-
 
 
 ## -- LEVEL 1 SAMPLING ----------------------------------------------------
@@ -319,36 +252,24 @@ core_file_nm <- "./data/derived/predictor_subsets/core_inbred_lvl_df.RDS"
 if (!file.exists(core_file_nm)) {
   # Create the level 2 randomization for the core inbred lines, separately for
   # each scenario and 20 runs.
-  core_lvl2_df <- purrr::rerun(
-    .n = 20,
-    geno_df %>%
-      dplyr::filter(Extent == "Core", Material == "Inbred") %>%
-      dplyr::group_by(Scenario) %>%
-      dplyr::sample_frac(size = 0.7) %>%
-      dplyr::ungroup()
-    ) %>%
-    dplyr::bind_rows(.id = "Rnd_Level2")
-
   # Merge data with the second level randomization to sample from these
   # genotypes.
-  two_lvl_i <- expand.grid(
+  core_df <- expand.grid(
      Extent = "Core",
      Material = "Inbred",
-     Scenario = c("A", "B"),
+     Scenario = "A",
      Core_Fraction = seq(from = 0.1, to = 0.9, by = 0.1),
-     Rnd_Level1 = seq_len(20),
+     Rnd_Level1 = seq_len(100),
      stringsAsFactors = FALSE
     ) %>%
     tibble::as_data_frame() %>%
-    dplyr::right_join(
+    dplyr::left_join(
       x = .,
-      y = core_lvl2_df,
+      y = geno_df,
       by = c("Extent", "Material", "Scenario")
-    )
-
-  core_df <- two_lvl_i %>%
+    ) %>%
     split(
-      list(.$Scenario, .$Rnd_Level1, .$Rnd_Level2, .$Core_Fraction),
+      list(.$Scenario, .$Rnd_Level1, .$Core_Fraction),
       sep = "_",
       drop = TRUE
     ) %>%
@@ -371,14 +292,15 @@ if (!file.exists(core_file_nm)) {
 
 ## -- THREE MAJOR SCENARIOS ---------------------------------------------------
 ### 1) Inbred, Core_Fraction == 1
-inbred_aug <- inbred_lvl2_df %>%
+inbred_aug <- geno_df %>%
+  dplyr::filter(Material == "Inbred") %>%
   dplyr::full_join(
     y = scen_df %>% dplyr::filter(Material == "Inbred", Core_Fraction == 1),
     by = c("Extent", "Material", "Scenario")
   ) %>%
   dplyr::filter(complete.cases(.)) %>%
   dplyr::mutate(Rnd_Level1 = 1) %>%
-  dplyr::mutate_at(vars(Rnd_Level1, Rnd_Level2), .funs = as.numeric)
+  dplyr::mutate_at(vars(Rnd_Level1), .funs = as.numeric)
 
 inbred_aug_nm <- "./data/derived/predictor_subsets/inbred_trn_df.RDS"
 if (!file.exists(inbred_aug_nm)) {
@@ -433,7 +355,6 @@ if (!file.exists(core_pre_eta_nm)) {
       Scenario,
       Core_Fraction,
       Rnd_Level1,
-      Rnd_Level2,
       Pred1,
       Pred2
     ) %>%
@@ -452,7 +373,8 @@ if (!file.exists(core_pre_eta_nm)) {
 
 
 ### 3) Hybrid
-hybrid_aug <- hyb_lvl2_df %>%
+hybrid_aug <- geno_df %>%
+  dplyr::filter(Material == "Hybrid") %>%
   dplyr::full_join(
     y = scen_df %>% dplyr::filter(Material == "Hybrid"),
     by = c("Extent", "Material", "Scenario")
@@ -475,8 +397,7 @@ if (!file.exists(hybrid_pre_eta_nm)) {
     dplyr::filter(complete.cases(.)) %>%
     dplyr::group_by(Material, Extent, Scenario, Predictor) %>%
     dplyr::mutate(UUID = uuid::UUIDgenerate()) %>%
-    dplyr::ungroup() %>%
-    dplyr::rename(TST_Geno = "G")
+    dplyr::ungroup()
 
   saveRDS(
     hybrid_pre_eta_df,
@@ -534,8 +455,8 @@ lapply(hyb_scenario_seq, FUN = function(uuid) {
   current_hyb_df <- hybrid_pre_eta_df %>%
     dplyr::inner_join(
       y = current_scenario,
-      by = c("Extent", "Predictor", "Material")
-  )
+      by = c("Extent", "Predictor", "Material", "Scenario")
+    )
   hybrid_names <- dplyr::pull(current_hyb_df, G)
   hybrid_parents <- current_hyb_df %>%
     tidyr::separate(
@@ -571,11 +492,6 @@ lapply(hyb_scenario_seq, FUN = function(uuid) {
     snp_hybrid_parents <- hybrid_parents
   }
 
-  #if (exists("hybrid_parents")) {
-  #  print(paste("'hybrid_parents' exists for ", i))
-  #} else if (!exists("hybrid_parents")) {
-  #  print(paste("'hybrid_parents' does not exist! for", i))
-  #}
   # In the case of hybrid data, we still need to split all predictor matrices
   # into Flint and Dent components first.
   # 1. modify_if
@@ -702,20 +618,10 @@ lapply(hyb_scenario_seq, FUN = function(uuid) {
   )
 })
 
-rm(list = ls())
-gc()
-
 
 
 
 ## -- INBRED ETA SETUP ------------------------------------------------------
-pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
-inbred_pre_eta_nm <- "./data/derived/predictor_subsets/inbred_pre_eta_df.RDS"
-inbred_pre_eta_df <- readRDS(inbred_pre_eta_nm)
-
-# Specify which BGLR algorithm shall be used.
-pred_model <- "BRR"
-
 # Generate a sequence of all possible scenarios for easy looping.
 # Additionally, generate a unique ID for each combination of parameters for
 # which a separate ETA object will be created.
@@ -863,9 +769,6 @@ lapply(inb_scenario_seq, FUN = function(uuid) {
   )
 })
 
-rm(list = ls())
-gc()
-
 
 
 
@@ -873,15 +776,9 @@ gc()
 
 
 ## -- INBRED CORE_SET != 1 ETA SETUP ------------------------------------------
-pred_lst <- readRDS("./data/derived/predictor_subsets/pred_lst.RDS")
-geno_df <- readRDS("./data/derived/predictor_subsets/geno_df.RDS")
-core_pre_eta_nm <- "./data/derived/predictor_subsets/core_pre_eta_df.RDS"
 core_pre_eta_df <- core_pre_eta_nm %>%
   readRDS() %>%
   tidyr::unite(Predictor, c("Pred1", "Pred2"), remove = TRUE)
-
-# Specify which BGLR algorithm shall be used.
-pred_model <- "BRR"
 
 # Generate a sequence of all possible scenarios for easy looping.
 # Additionally, generate a unique ID for each combination of parameters for
@@ -902,7 +799,6 @@ parallel::mclapply(core_scenario_seq, FUN = function(uuid) {
       Scenario,
       Core_Fraction,
       Rnd_Level1,
-      Rnd_Level2,
       Predictor
     )
   pred_combi <- dplyr::pull(current_scenario, Predictor)
@@ -925,7 +821,6 @@ parallel::mclapply(core_scenario_seq, FUN = function(uuid) {
         "Scenario",
         "Core_Fraction",
         "Rnd_Level1",
-        "Rnd_Level2",
         "Predictor"
       )
   ) %>%
@@ -1037,4 +932,3 @@ parallel::mclapply(core_scenario_seq, FUN = function(uuid) {
   )
 }, mc.cores = 3, mc.preschedule = FALSE, mc.silent = TRUE)
 
-rm(list = ls())

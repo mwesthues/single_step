@@ -7,8 +7,8 @@ pacman::p_load("tidyverse", "dtplyr", "data.table")
 # Estimates are based on the variable `template_node_times` in the script
 # `./analysis/prediction_template.R`.
 cluster_time <- tibble::data_frame(
-  Combi = c("CIA", "CIB", "FIA", "FIB", "CHN", "FHN"),
-  Day_Fraction = c(0.5, rep(1, times = 4), 2.5)
+  Combi = c("CIA", "FIA", "CHN", "FHN"),
+  Day_Fraction = c(0.5, rep(1, times = 2), 2.5)
 )
 
 # Load the prediction template to get all clusters.
@@ -66,23 +66,6 @@ final_time <- pred_tmpl %>%
   dplyr::ungroup() %>%
   dplyr::mutate(Iter = 30000)
 
-
-# The computational load for scenario C should be almost identical to that of
-# scenario B because they use the same set of genotypes.
-# Therefore, we simply copy the parameters from scenario B, recode them and
-# declare them as 'Scenario C'.
-scenario_c <- final_time %>%
-  dplyr::filter(Combi %in% c("CIB", "FIB")) %>%
-  dplyr::mutate(Combi = dplyr::case_when(
-    Combi == "CIB" ~ "CIC",
-    Combi == "FIB" ~ "FIC"
-  )) %>%
-  dplyr::mutate(Interval = dplyr::case_when(
-    grepl("CIB", x = Interval) ~ gsub("CIB", x = Interval, replacement = "CIC"),
-    grepl("FIB", x = Interval) ~ gsub("FIB", x = Interval, replacement = "FIC")
-  ))
-
-final_time <- dplyr::bind_rows(final_time, scenario_c)
 
 # Define the command line parameters.
 moab_msub <- rep("msub -v", times = nrow(final_time))
