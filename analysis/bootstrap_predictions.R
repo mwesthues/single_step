@@ -11,7 +11,7 @@ pacman::p_load(
 # Set the number of cores to use in parallel.
 if (interactive()) {
 
-  use_cores <- 4L
+  use_cores <- 3L
 
 } else {
 
@@ -46,8 +46,7 @@ boot_group_nms <- dat %>%
     Trait,
     Core_Fraction,
     Predictor,
-    Rnd_Level1,
-    Rnd_Level2
+    Rnd_Level1
   ) %>%
   dplyr::mutate(
     Core_Fraction = dplyr::if_else(
@@ -70,7 +69,6 @@ boot_group_nms <- dat %>%
     Core_Fraction,
     Predictor,
     Rnd_Level1,
-    Rnd_Level2,
     sep = "-"
   ) %>%
   dplyr::pull(Boot_Group)
@@ -81,8 +79,7 @@ boot_group_vars <- c(
   "Trait",
   "Core_Fraction",
   "Predictor",
-  "Rnd_Level1",
-  "Rnd_Level2"
+  "Rnd_Level1"
   )
 
 # Run the bootstrap.
