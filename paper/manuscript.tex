@@ -123,7 +123,7 @@ Initially, a two-step procedure was the most intuitive choice for accomplishing
 this goal~\cite{VanRaden2009}.
 The first step consists of conventionally estimating breeding values based on
 pedigree relationships and the phenotypes of relatives.
-Individuals with accurate breeding values out of the first step (that is a
+Individuals with accurate breeding values out of the first step (that is, a
 high number of offspring), enter the second step in which conventional breeding
 values are regressed onto SNP genotypes.
 The estimated model coefficients can then be used to predict genomic breeding 
@@ -132,7 +132,7 @@ However, as the breeding values from step one enter the genomic prediction
 model as phenotypes, one has to be careful about the residual error
 distribution of such a model.
 For instance, the range of the prediction errors will no longer be identically
-distributed, that is they should be weighted differently or estimated 
+distributed, \textit{i.e.}, they should be weighted differently or estimated 
 individually~\cite{Aguilar2010}.
 One popular approach to account for this problem is deregressing the breeding
 values and weighting the residuals according to the prediction error variances
@@ -175,7 +175,7 @@ ability.
 
 \section{Materials and Methods}
 \Genetics2level{Maize hybrids}
-To address the objectives 1 and 2, a maize hybrid data set, subsequently
+To address objectives 1 and 2, a maize hybrid data set, subsequently
 denoted as \textit{Exp1}, was used.
 The material comprised 1,521 hybrids produced in 16 factorial mating designs
 between 142 Dent and 103 Flint parent lines~\cite{Westhues2017}. 
@@ -206,9 +206,9 @@ for putative effects arising from the presence of multiple factorials
 
 
 \Genetics2level{Maize diversity panel}
-To address objectives 2 and 3 a maize inbred line data set, subsequently
+To address objectives 2 and 3, a maize inbred line data set, subsequently
 referred to as \textit{Exp2}, was used~\cite{Yang2014}.
-Exp2 originally comprised 513 maize lines representing the global maize
+\textit{Exp2} originally comprised 513 maize lines representing the global maize
 diversity  and was reduced to the set of tropical and subtropical lines
 ($n = 211$) given that it is the largest of the four pre-classified
 subgroups~\cite{Yang2014}.
@@ -264,7 +264,7 @@ Sugar              & SUG          & Hybrid    \\ \bottomrule
 
 
 \Genetics2level{Population structure}
-Population structure in Exp2 was examined by running a STRUCTURE
+Population structure in \textit{Exp2} was examined by running a STRUCTURE
 \cite{Pritchard2000} analysis with the number of putative ancestral
 populations $K$ ranging from 2 to 9.
 Based on the estimated probability of the data for each $K$, we chose $K=4$
@@ -280,6 +280,8 @@ To avoid inflated predictive abilities, which can arise from large differences
 in the average performance of the different subpopulations
 \cite{Windhausen2012}, we reduced the panel of inbred lines to those primarily
 belonging to either cluster 1 or cluster 4 in Fig.~\ref{fig:inbred-pca}.
+This reduction yielded 164 genotypes, 110 of which were covered by both, genomic
+and transcriptomic data.
 
 
 \begin{figure}[H]
@@ -349,8 +351,7 @@ each of the $L$ heterotic groups and $\mathbf{g}_{l}$ now pertains to the
 general combining ability effects of the parental inbred lines (either Dent or 
 Flint, as expressed by $l$).
 For the maize diversity panel inbred lines from \textit{Exp2}, we fit random 
-genotype effects $\mathbf{g}_{l}$ (\textit{i.e.}, breeding values) of the 
-lines for the $o$-th predictor.
+genotype effects $\mathbf{g}_{l}$ (\textit{i.e.}, breeding values).
 For both experiments, genetic effects $\mathbf{g}_{l}$ are associated with 
 the vector of phenotypic performance $\mathbf{y}$ through a corresponding 
 design matrix $\mathbf{Z}_{l}$.
@@ -415,7 +416,7 @@ The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{K}_{11} - \mathbf{K
 \cite{Legarra2009}.
 
 The structure of the residual imputation/prediction error is known and can 
-therefore be modelled.
+therefore be modeled.
 The covariates not covered by the incomplete predictor can be predicted using 
 the expectation of a multivariate normal random vector given correlated 
 observations, which are related to the Best Linear Predictor.
@@ -573,15 +574,16 @@ predictive and observed values 1,000 times using the \emph{R} package
 \Genetics2level{Core sampling}
 In order to evaluate the influence of the fraction of genotypes that is not
 covered by the incomplete predictor on predictive ability we generated core
-sets of nine different sizes from Exp2 (Fig.~\ref{fig:compound-plot}~a).
+sets of nine different sizes from \textit{Exp2}
+(Fig.~\ref{fig:compound-plot}~a).
 The base of each of these core sets was the superset of genotypes that were
 covered by both, genomic and trancriptomic data.
 A core set was created by artificially declaring a pre-specified fraction 
-$x \in {10\%, 20\%, \dots, 90\%}$ of genotypes as lacking of transcriptomic 
+$x = {10\%, 20\%, \dots, 90\%}$ of genotypes as lacking of transcriptomic 
 information.
 For each value of $x$ we created 100 core sets $s \in {1, 2, 3, \dots, 100}$ by
-repeatedly sampling genotypes, whose trancsriptomic information was then 
-declared as missing, at random (Fig.~\ref{fig:compound-plot}~b).
+repeatedly sampling genotypes, whose trancsriptomic information was declared
+as missing, at random (Fig.~\ref{fig:compound-plot}~b).
 The artificially removed transriptomic information on these genotypes was then
 imputed.
 
@@ -590,15 +592,15 @@ imputed.
   \includegraphics[width=1\textwidth]{./tables_figures/compound_plot.pdf}
   \caption{
   (\textbf{a}) Scheme for the amount of genotypes covered by predictors.
-  The two extended bars represent the entire set of genotypes in either Exp1 or
-  Exp2.
+  The two extended bars represent the entire set of genotypes in either
+  \textit{Exp1} or \textit{Exp2}.
   All genotypes are covered by at least one predictor, which is called the
   `complete' predictor and depicted as a white bar.
   The second bar depicts that only a fraction of genotypes is covered by both,
   the `complete' and the `incomplete' predictor (dark gray) and that the
   difference between the predictors will be imputed.
   The four bars to the right outline the principle of generating core sets for
-  Exp2.
+  \textit{Exp2}.
   For nine different values of $x$, which represents the fraction of genotypes
   covered by the `incomplete' predictor, core sets are build.
   (\textbf{b}) Subsampling within core sets.
@@ -718,8 +720,8 @@ predictor (Fig.~\ref{fig:inbred-pca}).
   Predictive abilities are based on transcriptomic effects derived from a
   single step prediction model involving transcriptomic (T) and genomic (G)
   data, respectively.
-  Results are shown for the core set of 110 inbred lines from Exp2 for which
-  both, G and T are available for any genotype and six agronomic traits.
+  Results are shown for the core set of 110 inbred lines from \textit{Exp2} for
+  which both, G and T are available for any genotype and six agronomic traits.
   The fraction of genotypes (\textit{i.e.} `Core Fraction') for which
   T was available is given on the x-axis.
   Dotted lines indicate that $T > G$, dashed lines indicate that $T \approx G$
