@@ -548,6 +548,11 @@ We judged the performance of each model by looking at its predictive ability,
 which is calculated as $\rho(\mathbf{y}, \mathbf{\hat{y}})$, where 
 $\mathbf{\hat{y}}$ is the vector of predicted values from each LOOCV run.
 
+Standard errors for the predictive abilities were calculated by bootstrapping
+predictive and observed values 1,000 times using the \emph{R} package 
+\emph{boot}~\cite{Canty2017}.
+
+
 
 \Genetics2level{Core sampling}
 In order to evaluate the influence of the fraction of genotypes that is not
