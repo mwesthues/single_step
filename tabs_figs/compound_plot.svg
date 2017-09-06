@@ -11,7 +11,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="727.82056"
+   width="737.84009"
    height="271.64594"
    id="svg2"
    version="1.1"
@@ -6615,15 +6615,15 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.4662117"
+     inkscape:zoom="0.78"
      inkscape:cx="585.61978"
-     inkscape:cy="54.260469"
+     inkscape:cy="54.260454"
      inkscape:document-units="px"
      inkscape:current-layer="layer1-6"
      showgrid="false"
-     inkscape:window-width="1920"
-     inkscape:window-height="1176"
-     inkscape:window-x="1920"
+     inkscape:window-width="1200"
+     inkscape:window-height="1896"
+     inkscape:window-x="0"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
      fit-margin-top="0"
@@ -7063,7 +7063,7 @@
            id="tspan6260-7-3"
            sodipodi:role="line">s<tspan
    style="font-size:27.51515579px;baseline-shift:sub"
-   id="tspan5053">20</tspan></tspan></text>
+   id="tspan4701">100</tspan></tspan></text>
     </g>
     <g
        transform="matrix(0,-0.42807154,0.42807154,0,18.192602,292.77569)"
