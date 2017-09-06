@@ -134,10 +134,10 @@ a_colors <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6) %>%
 inbred_plot <- inbred_df %>%
   dplyr::filter(Core_Fraction == "1") %>%
   dplyr::rename(`Predictive Ability` = "avg_r") %>%
-  ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
+  ggplot(aes(x = Combi, y = `Predictive Ability`, fill = Predictor)) +
   geom_bar(stat = "identity", position = dodge) +
   geom_errorbar(limits, position = dodge, width = 0.25) +
-  facet_grid(. ~ Combi) +
+  facet_grid(Trait ~ .) +
   scale_fill_manual(values = a_colors) +
   theme_pander(base_size = 10)
 
@@ -154,9 +154,35 @@ ggsave(
 
 
 ## -- INBREDS CORE_FRACTION != 1 ----------------------------------------------
-core_plot <- inbred_df %>%
-  dplyr::filter(Predictor == "GT", Combi %in% c("CIA", "CIB", "CIC")) %>%
+line_type_df <- inbred_df %>%
+  dplyr::filter(Predictor != "GT", Combi == "CIA") %>%
   dplyr::mutate_at(vars(Predictor), funs(as.factor)) %>%
+  dplyr::select(-se) %>%
+  tidyr::spread(key = Predictor, value = avg_r) %>%
+  dplyr::rename(Transcriptome = "T") %>%
+  dplyr::rename(Genome = "G") %>%
+  dplyr::mutate(Diff = Genome - Transcriptome) %>%
+  dplyr::mutate(BetterPredictor = dplyr::case_when(
+    Diff > 0.01 ~ "G",
+    Diff < -0.01 ~ "T",
+    TRUE ~ "None"
+    )
+  ) %>%
+  dplyr::mutate(LineType = dplyr::case_when(
+    BetterPredictor == "G" ~ "a",
+    BetterPredictor == "T" ~ "e",
+    BetterPredictor == "None" ~ "k"
+    )
+  ) %>%
+  dplyr::select(-Combi, -Core_Fraction)
+
+
+core_df <- inbred_df %>%
+  dplyr::filter(Predictor == "GT", Combi == "CIA") %>%
+  dplyr::mutate_at(vars(Predictor), funs(as.factor)) %>%
+  dplyr::inner_join(y = line_type_df, by = "Trait")
+
+core_plot <- core_df %>%
   dplyr::rename(`Core Fraction` = "Core_Fraction") %>%
   dplyr::rename(`Predictive Ability` = "avg_r") %>%
   ggplot(aes(
@@ -166,12 +192,12 @@ core_plot <- inbred_df %>%
     group = Trait
     )
   ) +
-  geom_line(stat = "identity", position = position_dodge(width = 0.3)) +
-  facet_grid(~ Combi) +
+  geom_line(aes(linetype = LineType), size = 1.2) +
   ggthemes::scale_color_tableau() +
   ggthemes::theme_pander(base_size = 10) +
-  theme(legend.position = "right") +
-  guides(color = guide_legend(override.aes = list(size = 3)))
+  theme(legend.position = "top") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  scale_linetype(guide = "none")
 
 ggsave(
   plot = core_plot,
