@@ -274,12 +274,28 @@ genomic feature matrix using the \emph{pca} function from the R-pacakge LEA
 Least-squares estimates of ancestry proportions were estimated based on sparse 
 nonnegative matrix factorization algorithms~\cite{Frichot2014} using the 
 \emph{snmf} function in \textit{LEA}.
-Genotypes in the PCA plot (Fig.~\ref{fig:pca}) were colorized based on their
+Genotypes in the PCA plot (Fig.~\ref{fig:inbred-pca}) were colorized based on their
 primary assignment to any of the four putative ancestral populations.
 To avoid inflated predictive abilities, which can arise from large differences
 in the average performance of the different subpopulations
 \cite{Windhausen2012}, we reduced the panel of inbred lines to those primarily
-belonging to either cluster 1 or cluster 4 in Fig.~\ref{fig:pca}.
+belonging to either cluster 1 or cluster 4 in Fig.~\ref{fig:inbred-pca}.
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics{./tables_figures/inbred_pca.pdf}
+  \caption{
+  Principal component analysis of 211 genotypes from the set
+  `tropical/subtropical' of the maize diversity panel inbred lines.
+  The four clusters are based on $K=4$ putative ancestral populations in a
+  STRUCTURE analysis of the corresponding genomic feature matrix.
+  Genotypes are colored based on their primary assignment to any of these four
+  clusters.
+}
+\label{fig:inbred-pca}
+\end{figure}
+
 
 
 \Genetics2level{Prediction}
@@ -569,15 +585,31 @@ declared as missing, at random (Fig.~\ref{fig:compound-plot}~b).
 The artificially removed transriptomic information on these genotypes was then
 imputed.
 
-
-
-
-
-
-
-
-
-
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=1\textwidth]{./tables_figures/compound_plot.pdf}
+  \caption{
+  (\textbf{a}) Scheme for the amount of genotypes covered by predictors.
+  The two extended bars represent the entire set of genotypes in either Exp1 or
+  Exp2.
+  All genotypes are covered by at least one predictor, which is called the
+  `complete' predictor and depicted as a white bar.
+  The second bar depicts that only a fraction of genotypes is covered by both,
+  the `complete' and the `incomplete' predictor (dark gray) and that the
+  difference between the predictors will be imputed.
+  The four bars to the right outline the principle of generating core sets for
+  Exp2.
+  For nine different values of $x$, which represents the fraction of genotypes
+  covered by the `incomplete' predictor, core sets are build.
+  (\textbf{b}) Subsampling within core sets.
+  Each of the black symbols represents a different genotype.
+  For each value of $x$, 100 subsets $s$ are generated where $x\%$ of genotypes
+  are randomly declared to be covered by both, the `complete' and the
+  `incomplete' predictor whereas the remaining $100\% - x\%$ of genotypes
+  declared to be covered only by the `complete' predictor.
+  }
+\label{fig:compound-plot}
+\end{figure}
 
 
 
@@ -601,30 +633,19 @@ Where T was a worse predictor for the reduced set of 149 lines than G,
 predictive abilities of GT for the full set of 211 lines were also worse than 
 those based on G alone.
 
-% Script: ./analysis/maizego_core_fraction_plot_predictive_abilities.R
 \begin{figure}[H]
   \centering
-  \includegraphics{./tables_figures/inbred_line_combi_plot.pdf}
+  \includegraphics{./tables_figures/pred_ability_inbred.pdf}
   \caption{
-  Predictive abilities and average coefficient of variation for
-  tropical/subtropical inbred lines from the maize diversity panel and six 
-  agronomic traits.
+  Predictive abilities and SE for tropical/subtropical inbred lines from the 
+  maize diversity panel and six agronomic traits.
   As predictors, genomic (G) data, transcriptomic (T) data and their 
   combination (GT) were used.
-  (\textbf{A}) The `Core' panel includes a subset of 149 lines covered by
-  genomic and transcriptomic information whereas the `Full' panel comprises all
-  211 genotypes. In the `Full' set of genotypes, transcriptomic records were
-  imputed for 62 lines.
-  (\textbf{B}) Influence of structural missingness in the coverage of genotypes 
-  with transcriptomic information on single step-based predictive abilities 
-  using a `Core' set of 149 inbred lines.
-  Transcriptomic records were deleted for 17 to 19 genotypes that were
-  primarily associated with a particular subgroup in the material, as defined
-  by an admixture analysis and a PCA (Fig.~\ref{fig:PopStructure}).
-  (\textbf{C}) Influence of core set sampling on predictive abilities using
-  nine different sub set sizes where `Core Fraction' indicates the fraction
-  of 149 inbred lines that is covered by both, genomic and transcriptomic
-  data.
+  The `Core' panel includes a subset of 110 lines covered by genomic and
+  transcriptomic information whereas the `Full' panel comprises all 164
+  genotypes.
+  In the `Full' set of genotypes, transcriptomic records were imputed for 54
+  lines.
   }
 \label{fig:InbredResults}
 \end{figure}
@@ -654,13 +675,12 @@ Predictive abilities resulting from combinations of pedigree with genomic (PG)
 information were better than P alone for all traits and PT improved upon P in
 the core set for four traits.
 
-% Script: ./analysis/uhoh_plot_predictive_abilities.R
 \begin{figure}[H]
 \centering
-  \includegraphics{./tables_figures/hybrid_predictive_ability.pdf}
+  \includegraphics{./tables_figures/pred_ability_hybrid.pdf}
   \caption{
-    Predictive abilities and average coefficients of variation for the set of 
-    maize hybrids and six agronomic traits.
+    Predictive abilities and average, bootstrapped standard errors for the set
+    of maize hybrids and six agronomic traits.
     As predictors, pedigree (P), genomic (G), transcriptomic (T) data and 
     combinations thereof we used.
     The `Full' set of genotypes comprises 1,521 hybrid progeny based on 245
@@ -687,30 +707,29 @@ of genotypes that maximize the average genetic distance between genotypes of
 the full set.
 The nine core sets differ in that each covers a different number of genotypes,
 ranging from only 10\% to 90\% of all genotypes covered by the incomplete
-predictor (Fig.~\ref{fig:CoreSetPCA}).
-
-
+predictor (Fig.~\ref{fig:inbred-pca}).
 
 \begin{figure}[H]
-\centering
-\includegraphics{./tables_figures/maizego_core_sampling_pca.pdf}
-\caption{
-  Coverage of the genetic space by nine different core sets. 
-  Genotypes are distributed according to their scores based on the first two
-  principal components (PC).
-  The total genetic space was spanned by 149 genotypes from the maize diversity 
-  panel for which both, genomic and transcriptomic data, were available.
-  Genotypes that were members of the core set (orange triangles) were declared 
-  as being covered by both predictors whereas members of the complement (blue,
-  filled circles) were declared as only being covered by genomic information.
-  Assignments of genotypes to the core set was done by selecting a subset of
-  genotypes that maximized the average genetic distance in the core set based 
-  on the Modified Rogers distance between all genotypes.
-  Core set sizes ranged from 10\% to 90\% of the 149 available genotypes and
-  are given as decimals above each facet of the plot.
-}
-\label{fig:CoreSetPCA}
+  \centering
+  \includegraphics{./tables_figures/pred_ability_inbred_core_fraction.pdf}
+  \caption{
+  Influence of the fraction of genotypes covered by the incomplete predictor
+  on predictive abilities.
+  Predictive abilities are based on transcriptomic effects derived from a
+  single step prediction model involving transcriptomic (T) and genomic (G)
+  data, respectively.
+  Results are shown for the core set of 110 inbred lines from Exp2 for which
+  both, G and T are available for any genotype and six agronomic traits.
+  The fraction of genotypes (\textit{i.e.} `Core Fraction') for which
+  T was available is given on the x-axis.
+  Dotted lines indicate that $T > G$, dashed lines indicate that $T \approx G$
+  and solid lines indicate that $G > T$ when running predictions using single
+  predictors on the same data set.
+  }
+\label{fig:InbredResults}
 \end{figure}
+
+
 
 
 Predictive abilities obtained with the different core sets varied widely within
@@ -736,23 +755,6 @@ more extreme scenario where we select core sets based on population structure.
 Hereto, we ran an admixture analysis on the same set of 149 inbred lines 
 assuming $K=3$ ancestral populations (Fig.~\ref{fig:PopStructure}).
 
-\begin{figure}[H]
-\centering
-\includegraphics{./tables_figures/maizego_admixture_k3_pca.pdf}
-\caption{
-  Population structure of 149 maize inbred lines from the maize diversity panel
-  covered by genomic and transcriptomic data.
-  (\textbf{A}) Ancestry coefficients from an admixture analysis when 
-  considering $K=3$ ancestral populations.
-  (\textbf{B}) Principal component analysis with genotypes colored according to 
-  the most likely ancestral population (\textit{i.e.}, share $\geq 0.5$) as 
-  indicated by the admixture analysis.
-  Genotypes for which none of the three ancestry coefficients reached a value
-  of 0.5 were classified as ``mixed''.
-}
-\label{fig:PopStructure}
-\end{figure}
-
 
 Of the 149 genotypes, 17 belonged to more than 50\% to the first ancestral
 population (A1), 109 belonged to more than 50\% to the second ancestral
@@ -773,28 +775,6 @@ Regarding the hybrid material, a PCA carried out separately for the two groups
 of parental inbred lines showed that the entire genetic space in each group 
 was covered well by genotypes that had both, transcriptomic and genomic data 
 (Fig.~\ref{fig:PCA}).
-
-\begin{figure}[H]
-\centering
-\includegraphics{./tables_figures/diversity_dent_flint_pca.pdf}
-\caption{
-  Principal component (PC) analysis i) of the 211 tropical/subtropical lines 
-  from the maize diversity panel, ii) of the 142 Dent parent lines of the 1,521
-  maize hybrids and iii) of the 103 Flint parent lines of the maize hybrids.
-  All inbred lines, which are covered by genomic and transcriptomic features
-  are depicted as orange triangles whereas genotypes for which only genomic
-  information are available are depicted as blue dots.
-}
-\label{fig:PCA}
-\end{figure}
-
-
-
-
-
-
-
-
 
 
 
