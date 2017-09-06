@@ -538,23 +538,15 @@ Let $D$ and $F$ denote the set of parental inbred lines from the Dent and the
 Flint group, respectively.
 Further, let $H \cap [D \times F]$ denote the set of hybrids from crosses 
 between $D$ and $F$.
-The training set ($H_{TRN}$) for the hybrid to be predicted ($H_{ij}$) --- 
-where $i \in D_{TRN}$ and $j \in F_{TRN}$ --- was assembled as 
-$H_{TRN} = [H \cap (D_{TRN}^{C} \times F_{TRN}^{C})]$ with
-$D_{TRN}^{C} = D \setminus D_{TRN}$ and $F_{TRN}^{C} = F \setminus F_{TRN}$.
+Let $H_{i \times j}$ denote the test set hybrid to be predicted.
+We can then define the parents of the training set hybrids as
+$D_{i} = D \setminus \{i\}$ and $F_{j} = F \setminus \{j\}$, respectively.
+The training set is then defined as 
+$H_{TRN}(x \times j) = H \cap (D_{i} \times F_{j})$.
 
 We judged the performance of each model by looking at its predictive ability,
 which is calculated as $\rho(\mathbf{y}, \mathbf{\hat{y}})$, where 
 $\mathbf{\hat{y}}$ is the vector of predicted values from each LOOCV run.
-Our confidence in the performance of each model was evalutaed by computing the
-coefficient of variation for the predicted values:
-
-\begin{equation} \label{eq:CV}
-CV = \sqrt{\frac{\sum_{i = 1}^{n} \sigma^{2}_{\hat{y}(i)} / n}{\sum_{i=1}^{n}\hat{y}_{i} / n}},
-\end{equation}
-
-where $n$ denotes the number of genotypes (\textit{i.e.}, inbred lines or 
-hybrids).
 
 
 \Genetics2level{Core sampling}
