@@ -812,7 +812,7 @@ transcriptomic data as predictors.
 
 
 \Genetics2level{Superiority of single step models}
-\subsection{Inbred lines}
+\subsection{Exp2}
 When using a single step approach based on complete genomic and incomplete
 transcriptomic information, gains in predictive ability for the inbred lines
 were at best just slightly higher than when using complete genomic information
@@ -821,7 +821,7 @@ One of the reasons might be that the subset of genotypes that was covered by
 transcriptomic data was not a good representation of the full genetic space of
 all available genotypes.
 Another possibility is that the number of additional phenotypes in the full
-set compared to the core set ($\Delta(n) = 62$) was not large enough to provide
+set compared to the core set ($\Delta(n) = 54$) was not large enough to provide
 considerably more useful information.
 The latter was the case for \citeNP{Ashraf2016}, who imputed genotypes for about 
 10,000 wheat lines using pedigree information and observed greater accuracy of
@@ -829,12 +829,12 @@ the single step method over genomic BLUP for all four evaluated traits.
 Predictive abilities reported for the maize diversity panel in this study were
 slightly different from those reported by \citeNP{Guo2016}, for three
 possible reasons:
-1) We reduced the dataset to the 211 tropical/subtropical lines and excluded 
-all other genotypes from our analyses whereas \citeNP{Guo2016} used genotypes 
-from four different subpopulations, modeled as a fixed effect, and used only a 
-subset of 157 genotypes from the set of tropical/subtropical lines.
+1) We reduced the dataset to 164 tropical/subtropical lines with little evident
+population structure and excluded all other genotypes from our analyses whereas
+\citeNP{Guo2016} used genotypes from four different subpopulations, modeled as a
+fixed effect.
 2) We applied quality checks for the predictor data after generating the subset
-of 211 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
+of 164 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
 genotypes.
 3) While \citeNP{Guo2016} used five-fold cross-validation with 500 repetitions,
 we employed a leave-one-out cross-validation scheme (LOOCV).
@@ -842,7 +842,7 @@ Notwithstanding, the relative differences between predictive abilities for G
 and T, respectively, were similar in both studies.
 
 
-\subsection{Maize hybrids}
+\subsection{Exp1}
 Hybrid breeding --- with noteworthy commercial applications in pig
 \cite{Xiang2016,Tusell2016} and maize breeding~\cite{TheRoyalSociety2009} --- 
 is a particularly challenging application field for prediction tools 
@@ -858,7 +858,7 @@ progeny.
 of successfully selecting the best observed genotypes based on the best 
 predicted candidates is a strongly convex function of the predictive ability.
 Thus, even the minor gains when using transcriptomic and genomic data in a
-single step might justify additional investments in RNA-seq at least of a
+single step might justify additional investments in RNA-seq at least for a
 subset of genotypes that represents the genetic space of the breeding 
 material well.
 For the hybrid data, the predictive abilities of genomic information
@@ -869,11 +869,6 @@ this result.
 Predictive abilities obtained when using pedigree data could be 
 improved considerably when, depending on the agronomic trait, combined with 
 either transcriptomic or genomic information.
-Evaluations of core sets for the parental inbred lines of the maize hybrids were 
-outside the scope of this study, but results on the inbred lines have shown that 
-homogeneous coverage of the genetic space by the incomplete predictor can 
-considerably leverage the predictive ability in single step prediction compared 
-to using only the complete predictor.
 
 
 \Genetics2level{Coverage of the genetic space}
@@ -887,25 +882,15 @@ for all genotypes by borrowing the superior performance of an auxiliary
 predictor on only a subset of genotypes, thereby reducing predictor costs.
 Hence, we were interested in determining which individuals should be 
 complemented with information on another predictor.
-When using core sets of varying sizes, which were established with the
-constraint of maximizing the average genetic distance among their members, we
-noticed strong fluctuations in predictive abilities when moving from small core
-sets to large core sets.
-For traits that were better predicted by transcriptomic than by genomic
-information in the core set, predictive abilities typically peaked around
-core set size of 0.5/0.6, then dropped sharply at 0.7 and started to increase
-again with a size of 0.9.
-A principal component analysis showed that, at a core set size of 0.7, 
-genotypes assigned to the A3 ancestral population (Fig.~\ref{fig:PopStructure})
-were largely elements of the core set whereas genotypes with a large share at 
-the A1 ancestral population were predominantly excluded from the core set.
-At a core set size of 90\% of the original size, the majority of the A1
-genotypes were finally covered by the core set as well.
-This result suggests a negative bias in the imputation of genotypes from the A1
-population and could explain the drop in predictive ability at a core set size
-of 0.7, which is in agreement with the reduced predictive abilities observed
-when stripping A1 genotypes from their transcriptomic information
-(Fig.~\ref{fig:InbredResults}B).
+By randomly and repeatedly declaring trancsriptomic information missing from
+genotypes in \textit{Exp2} we examined how reliably single step prediction works
+depending on the fraction of genotypes covered by both, the complete and the
+incomplete predictor.
+We observed that about $20--30\%$ of genotypes needed to be covered by both
+predictors to match the performance achieved with the complete predictor
+individually.
+Beyond this fraction of covered genotypes the trend in predictive ability
+changes was stable.
 
 
 
@@ -913,9 +898,13 @@ when stripping A1 genotypes from their transcriptomic information
 We have successfully applied single step prediction to a hybrid plant data set 
 while imputing with a quantitative downstream `omics' predictor.
 By declaring different subsets of individuals as covered by one or two 
-predictors, respectively, we could show the importance of homogeneous coverage
-of the genetic space by genotypes covered by both predictors on predictive
-ability.
+predictors, respectively, we could elucidate the influence of differences
+between two predictors on predictive ability when used in a single step
+approach.
+When the discrepancy in predictive ability between the complete and the
+incomplete predictor was skewed profoundly in favor of the incomplete predictor,
+such as for pedigree and transcriptomic data, single step prediction was shown
+be highly successful.
 Extensions to more than two predictors were outside the scope of this study
 but, with mounting interest in systems genetics, should be considered in the
 future.
