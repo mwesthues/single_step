@@ -174,41 +174,10 @@ ability.
 
 
 \section{Materials and Methods}
-\Genetics2level{Maize hybrids}
-To address objectives 1 and 2, a maize hybrid data set, subsequently
-denoted as \textit{Exp1}, was used.
-The material comprised 1,521 hybrids produced in 16 factorial mating designs
-between 142 Dent and 103 Flint parent lines~\cite{Westhues2017}. 
-Best linear unbiased estimates (BLUEs) were computed across all factorials and 
-three or more agro-ecologically diverse locations across Germany for six 
-agronomically important traits by accounting for year, location, field 
-replication, block and genotype effects as well as their interactions
-(Table~\ref{table:TraitKey}).
-All 245 parent lines have pedigree records back to the generation of their 
-grandparents or deeper~\cite{Westhues2017} and were genotyped using the Illumina 
-BeadChip MaizeSNP50~\cite{Ganal2011}.
-After filtering for minor allele frequency ($\geq 5$\%), heterozygosity rate
-($\leq 5$\%) and call frequency ($\geq 95$\%), missing genotypes were imputed 
-using the Beagle software~\cite{Browning2009}.
-The final number of polymorphic marker loci was 7,013 for the Dent and 6,212 for 
-the Flint lines, respectively.
-Gene expression data for seedlings seven days after sowing were obtained for a 
-subset of 60 parental Dent and 43 parental Flint lines, that are parents of 685
-hybrid progeny.
-These data were obtained through two-color hybridizations using a custom 2K 
-microarray (GPL22267)~\cite{Westhues2017}.
-After applying established normalization procedures~\cite{Smyth2003,Ritchie2007},
-BLUEs for gene expression were computed for 1,323 transcripts while adjusting
-for putative effects arising from the presence of multiple factorials
-(\textit{cf.} \citeNP{Westhues2017}) using the R-package
-\textit{limma}~\cite{Ritchie2015a}.
-
-
-
-\Genetics2level{Maize diversity panel}
+\Genetics2level{Exp1}
 To address objectives 2 and 3, a maize inbred line data set, subsequently
-referred to as \textit{Exp2}, was used~\cite{Yang2014}.
-\textit{Exp2} originally comprised 513 maize lines representing the global maize
+referred to as \textit{Exp1}, was used~\cite{Yang2014}.
+\textit{Exp1} originally comprised 513 maize lines representing the global maize
 diversity  and was reduced to the set of tropical and subtropical lines
 ($n = 211$) given that it is the largest of the four pre-classified
 subgroups~\cite{Yang2014}.
@@ -238,6 +207,38 @@ A subset of 28,850 annotated genes was available for 149 out of the 211
 genotypes and was kept for further analyses~\cite{Li2013}.
 
 
+\Genetics2level{Exp2}
+To address objectives 1 and 2, a maize hybrid data set, subsequently
+denoted as \textit{Exp2}, was used.
+The material comprised 1,521 hybrids produced in 16 factorial mating designs
+between 142 Dent and 103 Flint parent lines~\cite{Westhues2017}. 
+Best linear unbiased estimates (BLUEs) were computed across all factorials and 
+three or more agro-ecologically diverse locations across Germany for six 
+agronomically important traits by accounting for year, location, field 
+replication, block and genotype effects as well as their interactions
+(Table~\ref{table:TraitKey}).
+All 245 parent lines have pedigree records back to the generation of their 
+grandparents or deeper~\cite{Westhues2017} and were genotyped using the Illumina 
+BeadChip MaizeSNP50~\cite{Ganal2011}.
+After filtering for minor allele frequency ($\geq 5$\%), heterozygosity rate
+($\leq 5$\%) and call frequency ($\geq 95$\%), missing genotypes were imputed 
+using the Beagle software~\cite{Browning2009}.
+The final number of polymorphic marker loci was 7,013 for the Dent and 6,212 for 
+the Flint lines, respectively.
+Gene expression data for seedlings seven days after sowing were obtained for a 
+subset of 60 parental Dent and 43 parental Flint lines, that are parents of 685
+hybrid progeny.
+These data were obtained through two-color hybridizations using a custom 2K 
+microarray (GPL22267)~\cite{Westhues2017}.
+After applying established normalization procedures~\cite{Smyth2003,Ritchie2007},
+BLUEs for gene expression were computed for 1,323 transcripts while adjusting
+for putative effects arising from the presence of multiple factorials
+(\textit{cf.} \citeNP{Westhues2017}) using the R-package
+\textit{limma}~\cite{Ritchie2015a}.
+
+
+
+
 % Please add the following required packages to your document preamble:
 % \usepackage{booktabs}
 \begin{table}[]
@@ -264,7 +265,7 @@ Sugar              & SUG          & Hybrid    \\ \bottomrule
 
 
 \Genetics2level{Population structure}
-Population structure in \textit{Exp2} was examined by running a STRUCTURE
+Population structure in \textit{Exp1} was examined by running a STRUCTURE
 \cite{Pritchard2000} analysis with the number of putative ancestral
 populations $K$ ranging from 2 to 9.
 Based on the estimated probability of the data for each $K$, we chose $K=4$
@@ -313,10 +314,10 @@ The corresponding feature matrix of the $l$-th group of inbred lines
 ($\mathbf{W}_{l}$) has dimensions $n_{l} \times p$ where $n_{l}$ pertains to 
 the number of genotypes in the $l$-th group and $p$ pertains to the number of 
 features.
-Note that $l$ is only defined for \textit{Exp1} where a distinction between 
+Note that $l$ is only defined for \textit{Exp2} where a distinction between 
 the two heterotic groups is necessary whereas $l$ can be ignored for all 
 models pertaining to the inbred lines of the maize diversity panel in 
-\textit{Exp2}.
+\textit{Exp1}.
 To avoid mentioning special cases, we will use the general notation with 
 the index $l$ throughout this section, though.
 For the diversity panel maize lines, $n_{l}$ corresponds to the number of 
@@ -346,11 +347,11 @@ The general model for breeding values was:
 where $\mathbf{y}$ is the vector of observed inbred line or hybrid performance,
 respectively, $\mu$ is the fixed model intercept, and $\mathbf{e}$ is the 
 residual error.
-For the hybrid data from \textit{Exp1}, we fit separate additive effects for 
+For the hybrid data from \textit{Exp2}, we fit separate additive effects for 
 each of the $L$ heterotic groups and $\mathbf{g}_{l}$ now pertains to the 
 general combining ability effects of the parental inbred lines (either Dent or 
 Flint, as expressed by $l$).
-For the maize diversity panel inbred lines from \textit{Exp2}, we fit random 
+For the maize diversity panel inbred lines from \textit{Exp1}, we fit random 
 genotype effects $\mathbf{g}_{l}$ (\textit{i.e.}, breeding values).
 For both experiments, genetic effects $\mathbf{g}_{l}$ are associated with 
 the vector of phenotypic performance $\mathbf{y}$ through a corresponding 
@@ -364,7 +365,7 @@ material after a previous investigation into the predictive ability of various
 \cite{Westhues2017}.
 All prediction models were implemented using the R-packages \textit{BGLR}
 \cite{Perez2014} and \textit{sspredr}
-\url{https://github.com/mwesthues/sspredr}. 
+\url{https://github.com/mwesthues/sspredr}.
 
 
 \subsection{Single step prediction}
@@ -574,7 +575,7 @@ predictive and observed values 1,000 times using the \emph{R} package
 \Genetics2level{Core sampling}
 In order to evaluate the influence of the fraction of genotypes that is not
 covered by the incomplete predictor on predictive ability we generated core
-sets of nine different sizes from \textit{Exp2}
+sets of nine different sizes from \textit{Exp1}
 (Fig.~\ref{fig:compound-plot}~a).
 The base of each of these core sets was the superset of genotypes that were
 covered by both, genomic and trancriptomic data.
@@ -593,14 +594,14 @@ imputed.
   \caption{
   (\textbf{a}) Scheme for the amount of genotypes covered by predictors.
   The two extended bars represent the entire set of genotypes in either
-  \textit{Exp1} or \textit{Exp2}.
+  \textit{Exp2} or \textit{Exp1}.
   All genotypes are covered by at least one predictor, which is called the
   `complete' predictor and depicted as a white bar.
   The second bar depicts that only a fraction of genotypes is covered by both,
   the `complete' and the `incomplete' predictor (dark gray) and that the
   difference between the predictors will be imputed.
   The four bars to the right outline the principle of generating core sets for
-  \textit{Exp2}.
+  \textit{Exp1}.
   For nine different values of $x$, which represents the fraction of genotypes
   covered by the `incomplete' predictor, core sets are build.
   (\textbf{b}) Subsampling within core sets.
@@ -616,7 +617,7 @@ imputed.
 
 
 \section*{Results}
-\Genetics2level{Inbred lines}
+\Genetics2level{Exp1}
 At the level of the 110 genotypes for which both, genomic (G) and 
 transcriptomic (T) information, were available, the use of T yielded higher
 predictive abilities than the use of G for two out of six traits
@@ -654,7 +655,7 @@ those based on G alone.
 
 
 
-\Genetics2level{Hybrids}
+\Genetics2level{Exp2}
 The maize hybrid data set contains information on seven agronomic traits and
 three predictors, namely pedigree data (P), genomic information (G), 
 transcriptomic information (T), and combinations thereof.
@@ -721,7 +722,7 @@ predictor (Fig.~\ref{fig:inbred-pca}).
   Predictive abilities are based on transcriptomic effects derived from a
   single step prediction model involving transcriptomic (T) and genomic (G)
   data, respectively.
-  Results are shown for the core set of 110 inbred lines from \textit{Exp2} for
+  Results are shown for the core set of 110 inbred lines from \textit{Exp1} for
   which both, G and T are available for any genotype and six agronomic traits.
   The fraction of genotypes (\textit{i.e.} `Core Fraction') for which
   T was available is given on the x-axis.
@@ -812,7 +813,7 @@ transcriptomic data as predictors.
 
 
 \Genetics2level{Superiority of single step models}
-\subsection{Exp2}
+\subsection{Exp1}
 When using a single step approach based on complete genomic and incomplete
 transcriptomic information, gains in predictive ability for the inbred lines
 were at best just slightly higher than when using complete genomic information
@@ -842,7 +843,7 @@ Notwithstanding, the relative differences between predictive abilities for G
 and T, respectively, were similar in both studies.
 
 
-\subsection{Exp1}
+\subsection{Exp2}
 Hybrid breeding --- with noteworthy commercial applications in pig
 \cite{Xiang2016,Tusell2016} and maize breeding~\cite{TheRoyalSociety2009} --- 
 is a particularly challenging application field for prediction tools 
@@ -883,7 +884,7 @@ predictor on only a subset of genotypes, thereby reducing predictor costs.
 Hence, we were interested in determining which individuals should be 
 complemented with information on another predictor.
 By randomly and repeatedly declaring trancsriptomic information missing from
-genotypes in \textit{Exp2} we examined how reliably single step prediction works
+genotypes in \textit{Exp1} we examined how reliably single step prediction works
 depending on the fraction of genotypes covered by both, the complete and the
 incomplete predictor.
 We observed that about $20--30\%$ of genotypes needed to be covered by both
