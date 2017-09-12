@@ -72,6 +72,10 @@ limits <- aes(
 
 hybrid_plot <- hyb_df %>%
   dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  dplyr::mutate(Combi = forcats::fct_recode(
+    Combi,
+    "Reduced" = "Core"
+  )) %>%
   ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
   geom_bar(stat = "identity", position = dodge, color = "black") +
   geom_errorbar(limits, position = dodge, width = 0.25) +

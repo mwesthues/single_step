@@ -192,7 +192,7 @@ MaizeSNP50 BeadChip-data were available for the entire set of lines from the
 diversity panel.
 Additionally, RNA sequencing was performed for 368 lines on young seedlings 15 
 days after sowing.
-By exploting identify by descent (IBD) between 49,728 SNPs on the BeadChip 
+By exploiting identity by descent (IBD) between 49,728 SNPs on the BeadChip 
 overlapping with the RNA-seq data, 556,809 high quality SNPs could be inferred 
 for these lines~\cite{Fu2013,Li2013}.
 For the remaining 145 maize lines without RNA-seq data, high density markers
@@ -202,7 +202,7 @@ The same SNP quality checks as for the parental inbred lines of the hybrids
 were applied to the 211 inbred lines from the tropical/subtropical subset,
 yielding 37,760 SNPs.
 Gene expression data were normalized using a normal quantile transformation to
-satisfy modelling assumptions~\cite{Fu2013}.
+satisfy modeling assumptions~\cite{Fu2013}.
 A subset of 28,850 annotated genes was available for 149 out of the 211
 genotypes and was kept for further analyses~\cite{Li2013}.
 
@@ -226,8 +226,7 @@ using the Beagle software~\cite{Browning2009}.
 The final number of polymorphic marker loci was 7,013 for the Dent and 6,212 for 
 the Flint lines, respectively.
 Gene expression data for seedlings seven days after sowing were obtained for a 
-subset of 60 parental Dent and 43 parental Flint lines, that are parents of 685
-hybrid progeny.
+subset of 60 Dent and 43 Flint lines, that are parents of 685 hybrid progeny.
 These data were obtained through two-color hybridizations using a custom 2K 
 microarray (GPL22267)~\cite{Westhues2017}.
 After applying established normalization procedures~\cite{Smyth2003,Ritchie2007},
@@ -270,11 +269,11 @@ Population structure in \textit{Exp1} was examined by running a STRUCTURE
 populations $K$ ranging from 2 to 9.
 Based on the estimated probability of the data for each $K$, we chose $K=4$
 and ran a principal component analysis (PCA) on the scaled and centered
-genomic feature matrix using the \emph{pca} function from the R-pacakge LEA
-\cite{Frichot2015}.
+genomic feature matrix using the \emph{pca} function from the \emph{R}-package
+\emph{LEA} \cite{Frichot2015}.
 Least-squares estimates of ancestry proportions were estimated based on sparse 
 nonnegative matrix factorization algorithms~\cite{Frichot2014} using the 
-\emph{snmf} function in \textit{LEA}.
+\emph{snmf} function in \emph{LEA}.
 Genotypes in the PCA plot (Fig.~\ref{fig:inbred-pca}) were colorized based on their
 primary assignment to any of the four putative ancestral populations.
 To avoid inflated predictive abilities, which can arise from large differences
@@ -318,8 +317,6 @@ Note that $l$ is only defined for \textit{Exp2} where a distinction between
 the two heterotic groups is necessary whereas $l$ can be ignored for all 
 models pertaining to the inbred lines of the maize diversity panel in 
 \textit{Exp1}.
-To avoid mentioning special cases, we will use the general notation with 
-the index $l$ throughout this section, though.
 For the diversity panel maize lines, $n_{l}$ corresponds to the number of 
 genotypes whereas, in the case of the hybrid data, $n_{l}$ corresponds to the 
 number of parent lines in the $l$-th heterotic group.
@@ -451,7 +448,7 @@ with
 where $\hat{\mathbf{W}}_{1} = \mathbf{K}_{12} \mathbf{K}_{22}^{-1} \mathbf{W}_{2}$.
 
 Following the notation in \citeNP{Fernando2014} the phenotypes can be untangled 
-like this:
+as:
 
 \begin{align} \label{eq:entangled-augmented-single-step-model}
 \begin{bmatrix}
@@ -546,8 +543,8 @@ The predicted agronomic performance is:
 For the validation of our predictions, we employed leave-one-out
 cross-validation (LOOCV) routines.
 In the case of the diversity panel maize inbred lines, LOOCV was performed by 
-using a single genotype as a hold-out sample, which will subsequently be 
-predicted, while using all other inbred lines for model training.
+using a single genotype as a hold-out sample, which will be predicted by using
+all other inbred lines for model training.
 This process is repeated until all inbred lines have been used once for testing
 and $n - 1$ times for model training.
 
@@ -644,7 +641,7 @@ those based on G alone.
   maize diversity panel and six agronomic traits.
   As predictors, genomic (G) data, transcriptomic (T) data and their 
   combination (GT) were used.
-  The `Core' panel includes a subset of 110 lines covered by genomic and
+  The `Reduced' panel includes a subset of 110 lines covered by genomic and
   transcriptomic information whereas the `Full' panel comprises all 164
   genotypes.
   In the `Full' set of genotypes, transcriptomic records were imputed for 54
@@ -662,7 +659,7 @@ transcriptomic information (T), and combinations thereof.
 Pedigree records and genomic information were available for the 245 parent 
 lines of all 1,521 hybrids and we denote these data as the `Full' set whereas
 transcriptomic data were available for 103 parent lines of 685 hybrids, which
-we denote as `Core'.
+we denote as `Reduced'.
 In the `core' set, transcriptomic data were the best single predictor for ADL,
 PRO and particulaly for DMY where the predictive ability obtained with T
 was 0.08 points higher than for G as the second best predictor for this trait
@@ -688,8 +685,8 @@ the `full' set for four traits.
     As predictors, pedigree (P), genomic (G), transcriptomic (T) data and 
     combinations thereof we used.
     The `Full' set of genotypes comprises 1,521 hybrid progeny based on 245
-    parental inbred lines, whereas the `Core' set comprises 685 hybrid progeny
-    based on 103 parental inbred lines.
+    parental inbred lines, whereas the `Reduced' set comprises 685 hybrid
+    progeny based on 103 parental inbred lines.
   }
 \label{fig:HybridResults}
 \end{figure}
