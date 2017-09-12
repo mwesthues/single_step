@@ -213,7 +213,7 @@ denoted as \textit{Exp2}, was used.
 The material comprised 1,521 hybrids produced in 16 factorial mating designs
 between 142 Dent and 103 Flint parent lines~\cite{Westhues2017}. 
 Best linear unbiased estimates (BLUEs) were computed across all factorials and 
-three or more agro-ecologically diverse locations across Germany for six 
+three or more agro-ecologically diverse locations across Germany for seven
 agronomically important traits by accounting for year, location, field 
 replication, block and genotype effects as well as their interactions
 (Table~\ref{table:TraitKey}).
@@ -255,6 +255,7 @@ Kernel width       & KW           & Diversity \\
 Plant height       & PH           & Diversity \\
 Dry matter yield   & DMY          & Hybrid    \\
 Dry matter content & DMC          & Hybrid    \\
+Lignin             & ADL          & Hybrid    \\
 Fat                & FAT          & Hybrid    \\
 Protein            & PRO          & Hybrid    \\
 Starch             & STA          & Hybrid    \\
@@ -290,7 +291,7 @@ and transcriptomic data.
   \caption{
   Principal component analysis of 211 genotypes from the set
   `tropical/subtropical' of the maize diversity panel inbred lines.
-  The four clusters are based on $K=4$ putative ancestral populations in a
+  The four clusters are based on $K=4$ putative ancestral populations from a
   STRUCTURE analysis of the corresponding genomic feature matrix.
   Genotypes are colored based on their primary assignment to any of these four
   clusters.
@@ -594,9 +595,9 @@ imputed.
   \textit{Exp2} or \textit{Exp1}.
   All genotypes are covered by at least one predictor, which is called the
   `complete' predictor and depicted as a white bar.
-  The second bar depicts that only a fraction of genotypes is covered by both,
+  The second bar shows that only a fraction of genotypes is covered by both,
   the `complete' and the `incomplete' predictor (dark gray) and that the
-  difference between the predictors will be imputed.
+  difference between the predictors will be imputed (light gray fraction).
   The four bars to the right outline the principle of generating core sets for
   \textit{Exp1}.
   For nine different values of $x$, which represents the fraction of genotypes
@@ -606,7 +607,7 @@ imputed.
   For each value of $x$, 100 subsets $s$ are generated where $x\%$ of genotypes
   are randomly declared to be covered by both, the `complete' and the
   `incomplete' predictor whereas the remaining $100\% - x\%$ of genotypes
-  declared to be covered only by the `complete' predictor.
+  are declared to be covered only by the `complete' predictor.
   }
 \label{fig:compound-plot}
 \end{figure}
@@ -637,8 +638,9 @@ those based on G alone.
   \centering
   \includegraphics{./tables_figures/pred_ability_inbred.pdf}
   \caption{
-  Predictive abilities and SE for tropical/subtropical inbred lines from the 
-  maize diversity panel and six agronomic traits.
+  Predictive abilities and average, bootstrapped standard errors for
+  tropical/subtropical inbred lines from the maize diversity panel and six
+  agronomic traits.
   As predictors, genomic (G) data, transcriptomic (T) data and their 
   combination (GT) were used.
   The `Reduced' panel includes a subset of 110 lines covered by genomic and
@@ -660,18 +662,18 @@ Pedigree records and genomic information were available for the 245 parent
 lines of all 1,521 hybrids and we denote these data as the `Full' set whereas
 transcriptomic data were available for 103 parent lines of 685 hybrids, which
 we denote as `Reduced'.
-In the `core' set, transcriptomic data were the best single predictor for ADL,
-PRO and particulaly for DMY where the predictive ability obtained with T
+In the `Reduced' set, transcriptomic data were the best single predictor for
+ADL, PRO and particulaly for DMY where the predictive ability obtained with T
 was 0.08 points higher than for G as the second best predictor for this trait
 (Fig.~\ref{fig:HybridResults}).
-In the core set, P had the highest predictive ability for STA and DMC\@.
-For the FAT and SUG, G was the superior predictor inside the core set.
+In the reduced set, P had the highest predictive ability for STA and DMC\@.
+For FAT and SUG, G was the superior predictor inside the reduced set.
 In the full set of 1,521 hybrids, predictive abilities obtained with G rose 
 markedly for all traits with the exception of FAT\@.
 The combination of genomic and transriptomic information (GT) in a single-step
 model yielded a small improvement over G alone for the traits DMY and PRO\@.
 Except for PRO, compared to using only G, trait prediction did not benefit from 
-the single step approach when T was not superior to G in the core set.
+the single step approach when T was not superior to G in the reduced set.
 Predictive abilities resulting from combinations of pedigree with genomic (PG)
 information were better than P alone for all traits and PT improved upon P in
 the `full' set for four traits.
@@ -681,7 +683,7 @@ the `full' set for four traits.
   \includegraphics{./tables_figures/pred_ability_hybrid.pdf}
   \caption{
     Predictive abilities and average, bootstrapped standard errors for the set
-    of maize hybrids and six agronomic traits.
+    of maize hybrids and seven agronomic traits.
     As predictors, pedigree (P), genomic (G), transcriptomic (T) data and 
     combinations thereof we used.
     The `Full' set of genotypes comprises 1,521 hybrid progeny based on 245
@@ -734,7 +736,7 @@ predictor (Fig.~\ref{fig:inbred-pca}).
 Predictive abilities obtained with the different core sets varied widely within
 most traits (Fig.~\ref{fig:InbredResults}).
 For most traits, an initial increase in predictive abilities when moving
-from a core set size of 0.1 to 0.2/0.3 was observed, regardless of whether G
+from a core set size of 10\% to 20\%/30\% was observed, regardless of whether G
 or T individually was the superior predictor.
 For the traits CW, GW and PH, which were better predicted via G than via T in
 the reduced set of lines, predictive abilities were higher when only a small
@@ -819,8 +821,8 @@ One of the reasons might be that the subset of genotypes that was covered by
 transcriptomic data was not a good representation of the full genetic space of
 all available genotypes.
 Another possibility is that the number of additional phenotypes in the full
-set compared to the core set ($\Delta(n) = 54$) was not large enough to provide
-considerably more useful information.
+set compared to the reduced set ($\Delta(n) = 54$) was not large enough to
+provide considerably more useful information.
 The latter was the case for \citeNP{Ashraf2016}, who imputed genotypes for about 
 10,000 wheat lines using pedigree information and observed greater accuracy of
 the single step method over genomic BLUP for all four evaluated traits.
@@ -855,18 +857,21 @@ progeny.
 \citeNP{Westhues2017} have shown that, in hybrid breeding, the probability 
 of successfully selecting the best observed genotypes based on the best 
 predicted candidates is a strongly convex function of the predictive ability.
-Thus, even the minor gains when using transcriptomic and genomic data in a
-single step might justify additional investments in RNA-seq at least for a
+Thus, even minor gains, when using transcriptomic and genomic data in a
+single step, might justify additional investments in RNA-seq at least for a
 subset of genotypes that represents the genetic space of the breeding 
 material well.
 For the hybrid data, the predictive abilities of genomic information
 for the whole set of available parent lines rose considerably for several
 agronomic traits.
 Hence, the inclusion of trancsriptomic data could not further improve upon
-this result.
+genomic information alone.
 Predictive abilities obtained when using pedigree data could be 
 improved considerably when, depending on the agronomic trait, combined with 
 either transcriptomic or genomic information.
+This suggests that single step prediction should always be considered when the
+incomplete predictor offers an appreciably higher predictive ability compared
+to the complete predictor.
 
 
 \Genetics2level{Coverage of the genetic space}
@@ -878,13 +883,13 @@ programs are typically considerably smaller.
 Single step prediction offers the promise of leveraging the predictive ability
 for all genotypes by borrowing the superior performance of an auxiliary
 predictor on only a subset of genotypes, thereby reducing predictor costs.
-Hence, we were interested in determining which individuals should be 
+Hence, we were interested in determining to what extent individuals should be 
 complemented with information on another predictor.
 By randomly and repeatedly declaring trancsriptomic information missing from
 genotypes in \textit{Exp1} we examined how reliably single step prediction works
 depending on the fraction of genotypes covered by both, the complete and the
 incomplete predictor.
-We observed that about $20--30\%$ of genotypes needed to be covered by both
+We observed that about $20-30\%$ of genotypes needed to be covered by both
 predictors to match the performance achieved with the complete predictor
 individually.
 Beyond this fraction of covered genotypes the trend in predictive ability
@@ -893,7 +898,7 @@ changes was stable.
 
 
 \section*{Conclusions}
-We have successfully applied single step prediction to a hybrid plant data set 
+We successfully applied single step prediction to a hybrid plant data set 
 while imputing with a quantitative downstream `omics' predictor.
 By declaring different subsets of individuals as covered by one or two 
 predictors, respectively, we could elucidate the influence of differences
@@ -902,7 +907,7 @@ approach.
 When the discrepancy in predictive ability between the complete and the
 incomplete predictor was skewed profoundly in favor of the incomplete predictor,
 such as for pedigree and transcriptomic data, single step prediction was shown
-be highly successful.
+to be highly beneficial.
 Extensions to more than two predictors were outside the scope of this study
 but, with mounting interest in systems genetics, should be considered in the
 future.
