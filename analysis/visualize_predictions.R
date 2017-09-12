@@ -138,6 +138,11 @@ a_colors <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6) %>%
 inbred_plot <- inbred_df %>%
   dplyr::filter(Core_Fraction == "1") %>%
   dplyr::rename(`Predictive Ability` = "avg_r") %>%
+  dplyr::mutate(Combi = forcats::fct_recode(
+    Combi,
+    "Reduced" = "CIA",
+    "Full" = "FIA"
+  )) %>%
   ggplot(aes(x = Combi, y = `Predictive Ability`, fill = Predictor)) +
   geom_bar(stat = "identity", position = dodge) +
   geom_errorbar(limits, position = dodge, width = 0.25) +
