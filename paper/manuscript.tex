@@ -387,8 +387,8 @@ Hence, the breeding values in a prediction model are given by:
 where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model.
 
 Consider now the situation in which one predictor is complete in the sense that
-it contains information on the whole population whereas a second predictor is
-incomplete and covers only a subset of the population.
+the whole population is equipped with features for that predictor whereas only
+a subset of that population has information on a second predictor.
 We can take a similar route as in \citeNP{Fernando2014} and impute covariates 
 of the incomplete predictor by using covariates of the complete predictor.
 Let the subscript $1$ denote individuals covered only by the complete
@@ -400,8 +400,9 @@ into a component $\mathbf{g}_{1}$ (\textit{i.e.,} breeding values of animals
 covered only by the complete predictor) and a component 
 $\mathbf{g}_{2} = \mathbf{W}_{2}\boldsymbol{\alpha}$ (\textit{i.e.,} breeding 
 values of animals covered by both predictors).
-The vector $\mathbf{g}_1$ can be written as the sum of the conditional 
-expectation given $\mathbf{g}_2$ and a residual error term:
+Under multivariate normality, the vector $\mathbf{g}_1$ can be written as the
+sum of the conditional expectation given $\mathbf{g}_2$ and a residual error
+term:
 \begin{align} \label{eq:mrna1}
 	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
 	&= \mathbf{K_{12}}\mathbf{K_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{K_{12}}\mathbf{K_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
@@ -416,9 +417,6 @@ The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{K}_{11} - \mathbf{K
 
 The structure of the residual imputation/prediction error is known and can 
 therefore be modeled.
-The covariates not covered by the incomplete predictor can be predicted using 
-the expectation of a multivariate normal random vector given correlated 
-observations, which are related to the Best Linear Predictor.
 
 The general model for the single step procedure can then be written as 
 
@@ -514,7 +512,7 @@ Our final model looks like this:
 \end{align}
 
 
-Breeding values can be estimated as:
+Breeding values or general combining abilities can be estimated as:
 
 \begin{equation} \label{eq:breeding-values}
 \hat{\mathbf{g}} = 
