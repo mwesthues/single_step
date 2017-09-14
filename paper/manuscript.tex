@@ -14,6 +14,7 @@
 \usepackage{booktabs} % book-quality tables
 \usepackage{multicol} % list corresponding authors in two separate columns
 \usepackage{hyperref} % web links
+\usepackage{tensor} % tensor matrices
 
 %% Probably unnecessary packages.
 \usepackage[T1]{fontenc}
@@ -410,46 +411,65 @@ of the incomplete predictor by using covariates of the complete predictor.
 Let the subscript $1$ denote individuals covered only by the complete
 predictor whereas individuals covered by both, the complete and the
 incomplete predictor, are indicated by the subscript $2$.
+Let the index $C$ denote matrices and vectors pertaining to the complete
+predictor and let the index $I$ denote matrices and vectors pertaining to the
+incomplete predictor, respectively.
+
 Let us further denote the matrix of centered covariates of the incomplete
 predictor as
 \begin{equation} \label{eq:incomplete-covariates}
-\mathbf{W} =
+\tensor[_{I}]{\mathbf{W}}{} =
 \begin{bmatrix}
-  \mathbf{Z}_{1}\mathbf{\hat{W}}_{1} \\
-  \mathbf{W}_{2}
+  \mathbf{Z}_{1} \; \tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} \\
+  \tensor[_I]{\mathbf{W}}{_{2}}
  \end{bmatrix},
 \end{equation}
-where observed feature covariates are stored in $\mathbf{W}_{2}$ while feature
+where observed feature covariates are stored in $\tensor[_I]{\mathbf{W}}{_{2}}$ while feature
 covariates for genotypes not covered by the incomplete predictor
-($\mathbf{\hat{W}}_{1} = \mathbf{K}_{12} \mathbf{K}^{-1}_{22} \mathbf{W}_{2}$)
+($\tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} = \tensor[_C]{\mathbf{K}}{_{12}} \; \tensor[_C]{\mathbf{K}}{_{22}^{-1}} \; \tensor[_I]{\mathbf{W}}{_{2}}$)
 need to be imputed.
 In this case we need to partition the vector of genetic values $\mathbf{g}$
 into a component $\mathbf{g}_{1}$ (\textit{i.e.,} genetic values of genotypes
 covered only by the complete predictor) and a component
-$\mathbf{g}_{2} = \mathbf{W}_{2}\boldsymbol{\alpha}$ (\textit{i.e.,} genetic
-values of genotypes covered by both predictors where $\boldsymbol{\alpha}$
+$\mathbf{g}_{2} = \tensor[_{I}]{\mathbf{W}}{_{2}} \; 
+\tensor[_{I}]{\boldsymbol{\alpha}}{}$ (\textit{i.e.,} genetic
+values of genotypes covered by both predictors where $\tensor[_{I}]{\boldsymbol{\alpha}}{}$
 pertains to the random feature effects of the incomplete predictor).
 Under multivariate normality, the vector $\mathbf{g}_1$ can be written as the
 sum of the conditional expectation given $\mathbf{g}_2$ and a residual error
 term:
 \begin{align} \label{eq:mrna1}
 	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
-	&= \mathbf{K}_{12}\mathbf{K}^{-1}_{22}\mathbf{W}_{2}
-	\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{K}_{12}
-	\mathbf{K}^{-1}_{2}
-	\boldsymbol{\hat{\alpha}}) \\
+	&= \tensor[_{C}]{\mathbf{K}}{_{12}} \; \tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \; \tensor[_{I}]{\mathbf{W}}{_{2}} \;
+	\tensor[_{I}]{\boldsymbol{\hat{\alpha}}} + (\mathbf{g_1} - \tensor[_{C}]{\mathbf{K}}{_{12}} \;
+	\tensor[_{C}]{\mathbf{K}}{_{2}^{-1}} \;
+	\tensor[_{I}]{\boldsymbol{\hat{\alpha}}}{}) \\
 	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon},
 \end{align}
 
-where $\mathbf{K}_{ij}$ are partitions of $\mathbf{K}$ that correspond to 
-$\mathbf{g}_{1}$ and $\mathbf{g}_{2}$, respectively~\cite{Fernando2014} and
-where $\mathbf{\hat{g}}_{1}$ pertains to the imputed genetic values of genotypes
+where $\tensor[_{C}]{\mathbf{K}}{_{ij}}$ are partitions of
+$\tensor[_{C}]{\mathbf{K}}{}$ that correspond to $\mathbf{g}_{1}$ and
+$\mathbf{g}_{2}$, respectively~\cite{Fernando2014} and where
+$\mathbf{\hat{g}}_{1}$ pertains to the imputed genetic values of genotypes
 not equipped with the incomplete predictor.
 
-The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{K}_{11} -
-\mathbf{K}_{12}\mathbf{K}^{-1}_{22}\mathbf{K}_{21} =
-(\mathbf{K}^{11})^{-1}$
-\cite{Legarra2009}.
+The covariance matrix of $\boldsymbol{\epsilon}$ is
+$\tensor[_{C}]{\mathbf{K}}{_{11}} -
+\tensor[_{C}]{\mathbf{K}}{_{12}} \;
+\tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
+\tensor[_{C}]{\mathbf{K}}{_{21}} =
+(\tensor[_{C}]{\mathbf{K}}{^{11}})^{-1}$
+\cite{Legarra2009}
+
+and the covariance of $\mathbf{\hat{g}}_{1}$ is
+$\tensor[_{C}]{\mathbf{K}}{_{12}} \;
+\tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
+\tensor[_{I}]{\mathbf{W}}{_{2}} \;
+\tensor[_{I}]{\mathbf{W}}{_{2}^{\top}} \;
+\tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
+\tensor[_{C}]{\mathbf{K}}{_{21}}\sigma^{2}_{\alpha}$
+\cite{Fernando2014}.
+
 
 The structure of the residual imputation/prediction error is known and can 
 therefore be modeled.
@@ -458,7 +478,7 @@ The general model for the single step procedure can then be written as
 
 \begin{equation} \label{eq:single-step-model}
 \mathbf{y} =
-\mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U} \boldsymbol{\epsilon} + \mathbf{e},
+\mathbf{Xb} + \tensor[_{I}]{\mathbf{W}}{} \; \tensor[_{I}]{\boldsymbol{\alpha}} + \mathbf{U} \boldsymbol{\epsilon} + \mathbf{e},
 \end{equation}
 
 with
@@ -510,9 +530,10 @@ as:
   \boldsymbol{0} & \mathbf{Z}_2
  \end{bmatrix}
 \begin{bmatrix}
-  \mathbf{K}_{12}\mathbf{K}^{-1}_{22}\mathbf{W}_2
-  \boldsymbol{\alpha} + \boldsymbol{\epsilon}  \\
-  \mathbf{W}_2\boldsymbol{\alpha} \\
+  \tensor[_{C}]{\mathbf{K}}{_{12}} \; \tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
+  \tensor[_{I}]{\mathbf{W}}{_{2}} \;
+  \tensor[_{I}]{\boldsymbol{\alpha}} + \boldsymbol{\epsilon}  \\
+  \tensor[_{I}]{\mathbf{W}}{_{2}} \; \tensor[_{I}]{\boldsymbol{\alpha}} \\
  \end{bmatrix}
   + \mathbf{e} \\
     & =
@@ -526,8 +547,8 @@ as:
   \boldsymbol{0} & \mathbf{Z}_2
  \end{bmatrix}
 \begin{bmatrix}
-  \mathbf{\hat{W}}_{1}\boldsymbol{\alpha} + \boldsymbol{\epsilon} \\
-  \mathbf{W}_2\boldsymbol{\alpha} \\
+  \tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} \; \tensor[_{I}]{\boldsymbol{\alpha}} + \boldsymbol{\epsilon} \\
+  \tensor[_{I}]{\mathbf{W}}{_{2}} \; \tensor[_{I}]{\boldsymbol{\alpha}} \\
  \end{bmatrix}
   + \mathbf{e} \\
 \end{align}
@@ -542,7 +563,8 @@ Our final model is now:
 
 \begin{align} \label{eq:final-model}
 \mathbf{y} &= \mathbf{Xb} +
-\mathbf{Z}\mathbf{W} \boldsymbol{\alpha} +
+\mathbf{Z} \; \tensor[_{I}]{\mathbf{W}}{} \;
+\tensor[_{I}]{\boldsymbol{\alpha}} +
 \mathbf{Z}\mathbf{U} \boldsymbol{\epsilon} +
 \mathbf{e}.
 \end{align}
@@ -556,9 +578,12 @@ predictor.
 For the hybrids the final model is therefore simply
 \begin{align} \label{eq:final-model}
 \mathbf{y} &= \mathbf{Xb} +
-\mathbf{Z}_{D}\mathbf{W}_{D} \boldsymbol{\alpha}_{D} + 
-\mathbf{Z}_{D}\mathbf{U}_{D} \boldsymbol{\epsilon}_{D} +
-\mathbf{Z}_{F}\mathbf{W}_{F} \boldsymbol{\alpha}_{F} + 
+\mathbf{Z}_{D} \;
+\tensor[_{I}]{\mathbf{W}}{_{D}} \; \tensor[_{I}]{\boldsymbol{\alpha}}{_{D}} +
+\mathbf{Z}_{D} \mathbf{U}_{D} \boldsymbol{\epsilon}_{D} +
+\mathbf{Z}_{F} \;
+\tensor[_{I}]{\mathbf{W}}{_{F}} \;
+\tensor[_{I}]{\boldsymbol{\alpha}}{_{F}} +
 \mathbf{Z}_{F}\mathbf{U}_{F} \boldsymbol{\epsilon}_{F} +
 \mathbf{e}.
 \end{align}
@@ -568,13 +593,13 @@ Breeding values or, separately for each heterotic group, general combining
 abilities can be estimated as:
 
 \begin{equation} \label{eq:breeding-values}
-\hat{\mathbf{g}} = 
+\hat{\mathbf{g}} =
  \begin{bmatrix}
-  \hat{\mathbf{W}_1} \\
-  \mathbf{W}_2 
+  \tensor[_{I}]{\hat{\mathbf{W}}}{_{1}} \\
+  \tensor[_{I}]{\mathbf{W}}{_{2}}
  \end{bmatrix}
- \hat{\boldsymbol{\alpha}}
- + 
+ \tensor[_{I}]{\hat{\boldsymbol{\alpha}}}{}
+ +
  \begin{bmatrix}
   \mathbf{Z}_1 \\
   0
