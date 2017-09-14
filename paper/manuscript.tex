@@ -713,9 +713,9 @@ those based on G alone.
 
 
 \Genetics2level{Exp2}
-The maize hybrid data set contains information on seven agronomic traits and
-three predictors, namely pedigree data (P), genomic information (G), 
-transcriptomic information (T), and combinations thereof.
+The maize hybrid data set encompasses seven agronomic traits and three
+predictors, namely pedigree data (P), genomic information (G), transcriptomic
+information (T), and combinations thereof.
 Pedigree records and genomic information were available for the 245 parent 
 lines of all 1,521 hybrids and we denote these data as the `Full' set whereas
 transcriptomic data were available for 103 parent lines of 685 hybrids, which
@@ -726,7 +726,7 @@ was 0.08 points higher than for G as the second best predictor for this trait
 (Fig.~\ref{fig:HybridResults}).
 In the reduced set, P had the highest predictive ability for STA and DMC\@.
 For FAT and SUG, G was the superior predictor inside the reduced set.
-In the full set of 1,521 hybrids, predictive abilities obtained with G rose 
+In the full set of 1,521 hybrids, predictive abilities obtained with G increased
 markedly for all traits with the exception of FAT\@.
 The combination of genomic and transriptomic information (GT) in a single-step
 model yielded a small improvement over G alone for the traits DMY and PRO\@.
@@ -787,12 +787,12 @@ predictor (Fig.~\ref{fig:inbred-pca}).
   and solid lines indicate that $G > T$ when running predictions using single
   predictors on the same data set.
   }
-\label{fig:InbredResults}
+\label{fig:core-results}
 \end{figure}
 
 
 Predictive abilities obtained with the different core sets varied widely within
-most traits (Fig.~\ref{fig:InbredResults}).
+most traits (Fig.~\ref{fig:core-results}).
 For most traits, an initial increase in predictive abilities when moving
 from a core set size of 10\% to 20\%/30\% was observed, regardless of whether G
 or T individually was the superior predictor.
@@ -821,8 +821,7 @@ extensions to hybrid populations~\cite{Christensen2014,Christensen2015}.
 An attactive property of SS-BLUP models is their computational advantage over 
 marker-effect single step Bayesian regression models (SSBR) when the number of 
 genotypes is smaller than the number of features of the incomplete predictor.
-Nevertheless, SS-BLUP suffers from a variety of issues, which we will present
-briefly:
+Nevertheless, SS-BLUP suffers from a variety of issues.
 First, the combination of the numerator with the genomic relationship matrix
 requires commensurability of the two matrices, which necessitates some form of
 scaling and weighting of $\mathbf{A}$ and $\mathbf{G}$

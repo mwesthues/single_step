@@ -76,7 +76,7 @@ imputed_hybrid_plot <- dat %>%
 
 ggsave(
   plot = imputed_hybrid_plot,
-  filename = "./tabs_figs/pred_ability_hybrid.pdf",
+  filename = "./tabs_figs/imputed_pred_ability_hybrid.pdf",
   width = 7,
   height = 4,
   units = "in"
