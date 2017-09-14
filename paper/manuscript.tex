@@ -337,12 +337,12 @@ trait predictions, namely pedigree data (P), genomic data (G) and
 transcriptompic data (T).
 The corresponding feature matrix of the inbred lines ($\mathbf{M}$) has
 dimensions $n \times p$ where $n$ pertains to the number of genotypes.
-Note that, for the sake of clarity, we do not distinguish between models for
-Exp1 and Exp2 at this point.
-In the case of Exp2 the term `genotype' refers strictly to the parent lines.
-In generating kernels for each predictor, all features in $\mathbf{M}$ were
-centered and standardized to unit variance.
-Then, each kernel can be defined as
+For the sake of clarity, we do not distinguish between models for Exp1 and Exp2
+at this point.
+It should be noted, however, that in the case of Exp2 the term `genotype' refers
+strictly to the parent lines.
+For the complete predictor we generated kernels by centering and standardizing
+all features in $\mathbf{M}$ to unit variance:
 
 \begin{equation} \label{eq:GenomicRelationship}
   \mathbf{K} = \frac{1}{M} \mathbf{M} \mathbf{M}^{\top},
@@ -381,7 +381,7 @@ All prediction models were implemented using the R-packages \textit{BGLR}
 
 \subsection{Single step prediction}
 If the genetic values are fully captured by the features in $\mathbf{M}$,
-Eq.~\ref{eq:KBLUPModel} can then be expressed as
+Eq.~\ref{eq:KBLUPModel} can be expressed as
 
 \begin{align} \label{eq:KBLUPModelSimplified}
 	\mathbf{y} &= \mu + \mathbf{Z} \mathbf{g} + \boldsymbol{e} \\
@@ -390,9 +390,9 @@ Eq.~\ref{eq:KBLUPModel} can then be expressed as
 
 \cite{Fernando2014} because the ridge regression model is equivalent to the
 BLUP model~\cite{Ruppert2003}.
-In Eq.~\ref{eq:KBLUPModelSimplified}, $\mathbf{M}$ is a matrix of feature
-covariates and $\boldsymbol{\alpha}$ is the vector of random, partial-regression
-coefficients of the feature covariates.
+In the previous equation, $\mathbf{M}$ is a matrix of feature covariates and
+$\boldsymbol{\alpha}$ is the vector of random, partial-regression coefficients
+of the feature covariates.
 
 
 Hence, the breeding values in a prediction model are given by:
@@ -400,8 +400,7 @@ Hence, the breeding values in a prediction model are given by:
 	\mathbf{\hat{g}} = \mathbf{M}\boldsymbol{\hat{\alpha}},
 \end{equation}
 
-where $\boldsymbol{\hat{\alpha}}$ is the solution to the ridge regression model
-(Eq.~\ref{eq:KBLUPModel}).
+where $\boldsymbol{\hat{\alpha}}$ is the solution to the ridge regression model.
 
 Consider now the situation in which one predictor is complete in the sense that
 the whole population is equipped with features for that predictor whereas only
@@ -411,15 +410,23 @@ of the incomplete predictor by using covariates of the complete predictor.
 Let the subscript $1$ denote individuals covered only by the complete
 predictor whereas individuals covered by both, the complete and the
 incomplete predictor, are indicated by the subscript $2$.
-Further, we center the covariates of the incomplete predictor and denote it as
-$\mathbf{W}$.
-Correspondingly, $\mathbf{K}$ corresponds to the kernel for the complete
-predictor.
+Let us further denote the matrix of centered covariates of the incomplete
+predictor as
+\begin{equation} \label{eq:incomplete-covariates}
+\mathbf{W} =
+\begin{bmatrix}
+  \mathbf{\hat{W}}_{1} \\
+  \mathbf{W}_{2}
+ \end{bmatrix},
+\end{equation}
+where observed feature covariates are stored in $\mathbf{W}_{2}$ while marker
+covariates for genotypes not covered by the incomplete predictor
+($\mathbf{\hat{W}}_{1}$) need to be imputed.
 In this case we need to partition the vector of genetic values $\mathbf{g}$
 into a component $\mathbf{g}_{1}$ (\textit{i.e.,} genetic values of genotypes
 covered only by the complete predictor) and a component
 $\mathbf{g}_{2} = \mathbf{W}_{2}\boldsymbol{\alpha}$ (\textit{i.e.,} genetic
-values of genotypes covered by both predictors, where $\boldsymbol{\alpha}$
+values of genotypes covered by both predictors where $\boldsymbol{\alpha}$
 pertains to the random feature effects of the incomplete predictor).
 Under multivariate normality, the vector $\mathbf{g}_1$ can be written as the
 sum of the conditional expectation given $\mathbf{g}_2$ and a residual error
@@ -435,8 +442,8 @@ term:
 
 where $\mathbf{K}_{ij}$ are partitions of $\mathbf{K}$ that correspond to 
 $\mathbf{g}_{1}$ and $\mathbf{g}_{2}$, respectively~\cite{Fernando2014} and
-where $\mathbf{\hat{g}}_{1}$ pertains to the imputed genetic values in the
-incomplete predictor.
+where $\mathbf{\hat{g}}_{1}$ pertains to the imputed genetic values of genotypes
+not equipped with the incomplete predictor.
 
 The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{K}_{11} -
 \mathbf{K}_{12}\mathbf{K}^{-1}_{22}\mathbf{K}_{21} =
