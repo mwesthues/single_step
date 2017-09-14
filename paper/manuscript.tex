@@ -334,7 +334,7 @@ when fixed effects have been accomodated by the dependent variable
 \cite{Mrode2014}.
 Depending on the data set, up to three predictors were available for agronomic
 trait predictions, namely pedigree data (P), genomic data (G) and
-transcriptompic data (T).
+transcriptomic data (T).
 The corresponding feature matrix of the inbred lines ($\mathbf{M}$) has
 dimensions $n \times p$ where $n$ pertains to the number of genotypes.
 For the sake of clarity, we do not distinguish between models for Exp1 and Exp2
@@ -415,13 +415,14 @@ predictor as
 \begin{equation} \label{eq:incomplete-covariates}
 \mathbf{W} =
 \begin{bmatrix}
-  \mathbf{\hat{W}}_{1} \\
+  \mathbf{Z}_{1}\mathbf{\hat{W}}_{1} \\
   \mathbf{W}_{2}
  \end{bmatrix},
 \end{equation}
 where observed feature covariates are stored in $\mathbf{W}_{2}$ while marker
 covariates for genotypes not covered by the incomplete predictor
-($\mathbf{\hat{W}}_{1}$) need to be imputed.
+($\mathbf{\hat{W}}_{1} = \mathbf{K}_{12} \mathbf{K}^{-1}_{22} \mathbf{W}_{2}$)
+need to be imputed.
 In this case we need to partition the vector of genetic values $\mathbf{g}$
 into a component $\mathbf{g}_{1}$ (\textit{i.e.,} genetic values of genotypes
 covered only by the complete predictor) and a component
@@ -456,7 +457,8 @@ therefore be modeled.
 The general model for the single step procedure can then be written as 
 
 \begin{equation} \label{eq:single-step-model}
-\mathbf{y} = \mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U} \boldsymbol{\epsilon} + \mathbf{e},
+\mathbf{y} =
+\mathbf{Xb} + \mathbf{W} \boldsymbol{\alpha} + \mathbf{U} \boldsymbol{\epsilon} + \mathbf{e},
 \end{equation}
 
 with
@@ -467,20 +469,12 @@ with
   \mathbf{X}_1 \\
   \mathbf{X}_2
  \end{bmatrix},
- \mathbf{W} =
-\begin{bmatrix}
-  \mathbf{Z}_1\mathbf{\hat{W}}_{1} \\
-  \mathbf{W}_2
- \end{bmatrix},
  \mathbf{U} =
 \begin{bmatrix}
   \mathbf{Z}_1 \\
   0
- \end{bmatrix},
+ \end{bmatrix}.
 \end{equation}
-
-where $\mathbf{\hat{W}}_{1} = \mathbf{K}_{12} 
-\mathbf{K}^{-1}_{22} \mathbf{W}_{2}$.
 
 Following the notation in \citeNP{Fernando2014} the phenotypes can be untangled 
 as:
@@ -538,18 +532,40 @@ as:
   + \mathbf{e} \\
 \end{align}
 
+The above equation implies that ultimately single step prediction uses only
+one random effect vector $\mathbf{g}$, which entails the observed effects of
+the incomplete predictor $\mathbf{g}_{2}$ and the imputed effects
+$\mathbf{\hat{g}}_{1}$ for genotypes that are not equipped with the incomplete
+predictor plus the residual imputation error $\boldsymbol{\epsilon}$.
 
-Our final model looks like this:
+Our final model is now:
 
 \begin{align} \label{eq:final-model}
 \mathbf{y} &= \mathbf{Xb} +
-\mathbf{Z}\mathbf{W} \boldsymbol{\alpha}_{l} + 
-\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{U}_{l} \boldsymbol{\epsilon}_{l} +
+\mathbf{Z}\mathbf{W} \boldsymbol{\alpha} +
+\mathbf{Z}\mathbf{U} \boldsymbol{\epsilon} +
+\mathbf{e}.
+\end{align}
+
+Extending this model to hybrids with parent lines from two heterotic groups
+simply requires us to separate the feature matrices of the two predictors
+into a paternal and a maternal component, respectively.
+Using the index $D$ for the Dent and the index $F$ for the Flint lines in Exp2
+we then have a feature matrix $\mathbf{M}_{D}$ and $\mathbf{M}_{F}$ for each
+predictor.
+For the hybrids the final model is therefore simply
+\begin{align} \label{eq:final-model}
+\mathbf{y} &= \mathbf{Xb} +
+\mathbf{Z}_{D}\mathbf{W}_{D} \boldsymbol{\alpha}_{D} + 
+\mathbf{Z}_{D}\mathbf{U}_{D} \boldsymbol{\epsilon}_{D} +
+\mathbf{Z}_{F}\mathbf{W}_{F} \boldsymbol{\alpha}_{F} + 
+\mathbf{Z}_{F}\mathbf{U}_{F} \boldsymbol{\epsilon}_{F} +
 \mathbf{e}.
 \end{align}
 
 
-Breeding values or general combining abilities can be estimated as:
+Breeding values or, separately for each heterotic group, general combining
+abilities can be estimated as:
 
 \begin{equation} \label{eq:breeding-values}
 \hat{\mathbf{g}} = 
@@ -568,12 +584,17 @@ Breeding values or general combining abilities can be estimated as:
 
 For the hybrid data, the obtained GCA effects for the inbred lines represent 
 half their breeding values.
-The predicted agronomic performance is:
+The predicted agronomic performance of the inbred lines is
 
-\begin{equation} \label{eq:predicted-performance}
-\hat{\mathbf{y}} = \sum_{l=1}^{L} \mathbf{Z}_{l}\hat{\mathbf{g}}_{l} 
+\begin{equation} \label{eq:inbred-predicted-performance}
+\hat{\mathbf{y}} = \mathbf{Z}\mathbf{\hat{g}} 
 \end{equation}
 
+and that of the hybrids is equivalently
+
+\begin{equation} \label{eq:inbred-predicted-performance}
+\hat{\mathbf{y}} = \mathbf{Z}_{D}\mathbf{\hat{g}}_{D} + \mathbf{Z}_{F}\mathbf{\hat{g}}_{F}.
+\end{equation}
 
 \subsection{Predictive ability and model validation}
 For the validation of our predictions, we employed leave-one-out
