@@ -880,16 +880,17 @@ all available genotypes.
 Another possibility is that the number of additional phenotypes in the full
 set compared to the reduced set ($\Delta(n) = 54$) was not large enough to
 provide considerably more useful information.
-The latter was the case for \citeNP{Ashraf2016}, who imputed genotypes for about 
-10,000 wheat lines using pedigree information and observed greater accuracy of
-the single step method over genomic BLUP for all four evaluated traits.
+A larger dataset was available to~\citeNP{Ashraf2016}, who imputed genotypes
+for about 10,000 wheat lines using pedigree information and observed greater
+prediction accuracy of the single step method over genomic BLUP for all four
+evaluated traits.
 Predictive abilities reported for the maize diversity panel in this study were
 slightly different from those reported by \citeNP{Guo2016}, for three
 possible reasons:
 1) We reduced the dataset to 164 tropical/subtropical lines with little evident
 population structure and excluded all other genotypes from our analyses whereas
-\citeNP{Guo2016} used genotypes from four different subpopulations, modeled as a
-fixed effect.
+\citeNP{Guo2016} used genotypes from four different subpopulations with a model
+using a fixed effect to account for the differences between subpopulations.
 2) We applied quality checks for the predictor data after generating the subset
 of 164 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
 genotypes.
@@ -919,8 +920,8 @@ single step, might justify additional investments in RNA-seq at least for a
 subset of genotypes that represents the genetic space of the breeding 
 material well.
 For the hybrid data, the predictive abilities of genomic information
-for the whole set of available parent lines rose considerably for several
-agronomic traits.
+increased considerably in the full set of genotypes compared to the reduced
+set for several agronomic traits.
 Hence, the inclusion of trancsriptomic data could not further improve upon
 genomic information alone.
 Predictive abilities obtained when using pedigree data could be 
@@ -950,13 +951,19 @@ We observed that about $20-30\%$ of genotypes needed to be covered by both
 predictors to match the performance achieved with the complete predictor
 individually.
 Beyond this fraction of covered genotypes the trend in predictive ability
-changes was stable.
+changes was stable in either direction.
+Predictive abilities increased simultaneously with $x$ when the incomplete
+predictor outperformed the complete predictor in the reduced set of genotypes
+and decreased with increasing $x$ when the complete predictor was the better
+predictor.
+This pattern clearly elucidates the influence on the difference between the
+two predictors on predictive ability in a single step approach.
 
 
 
 \section*{Conclusions}
-We successfully applied single step prediction to a hybrid plant data set 
-while imputing with a quantitative downstream `omics' predictor.
+We successfully applied single step prediction to an inbred and a hybrid plant
+data sets while imputing with a quantitative downstream `omics' predictor.
 By declaring different subsets of individuals as covered by one or two 
 predictors, respectively, we could elucidate the influence of differences
 between two predictors on predictive ability when used in a single step
