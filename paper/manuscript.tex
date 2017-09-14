@@ -610,18 +610,21 @@ Let $D$ and $F$ denote the set of parental inbred lines from the Dent and the
 Flint group, respectively.
 Further, let $H \cap [D \times F]$ denote the set of hybrids from crosses 
 between $D$ and $F$.
-Let $H_{i \times j}$ denote the test set hybrid to be predicted.
+Note that $H$ does not comprise all possible crosses between $D$ and $F$,
+which would have been $142 \times 103 = 14,626$ hybrids, but a subset of 1,521
+hybrids.
+Let $H_{i \times j}$ denote the hybrid to be predicted.
 We can then define the parents of the training set hybrids as
 $D_{i} = D \setminus \{i\}$ and $F_{j} = F \setminus \{j\}$, respectively.
 The training set is then defined as 
-$H_{TRN}(x \times j) = H \cap (D_{i} \times F_{j})$.
+$H_{TRN}(i \times j) = H \cap (D_{i} \times F_{j})$.
 
 We judged the performance of each model by looking at its predictive ability,
 which is calculated as $\rho(\mathbf{y}, \mathbf{\hat{y}})$, where 
-$\mathbf{\hat{y}}$ is the vector of predicted values from each LOOCV run.
+$\mathbf{\hat{y}}$ is the vector of predicted values for all genotypes.
 
 Standard errors for the predictive abilities were calculated by bootstrapping
-predictive and observed values 1,000 times using the \emph{R} package 
+the predicted and observed values 1,000 times using the \emph{R} package 
 \emph{boot}~\cite{Canty2017}.
 
 
