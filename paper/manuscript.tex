@@ -268,22 +268,22 @@ BLUEs for gene expression were computed for 1,323 transcripts
 \centering
 \caption{Acronyms for the trait names}
 \label{table:TraitKey}
-\begin{tabular}{@{}lll@{}}
+\begin{tabular}{@{}llll@{}}
 \toprule
-Trait              & Abbreviation & Data Set  & Experiment\\ \midrule
-Cob weight         & CW           & Diversity & Exp1 \\
-Days to silking    & DS           & Diversity & Exp1 \\
-Ear diameter       & ED           & Diversity & Exp1 \\
-100-grain weight   & GW           & Diversity & Exp1 \\
-Kernel width       & KW           & Diversity & Exp1 \\
-Plant height       & PH           & Diversity & Exp1 \\
-Dry matter yield   & DMY          & Hybrid    & Exp2 \\
-Dry matter content & DMC          & Hybrid    & Exp2 \\
-Lignin             & ADL          & Hybrid    & Exp2 \\
-Fat                & FAT          & Hybrid    & Exp2 \\
-Protein            & PRO          & Hybrid    & Exp2 \\
-Starch             & STA          & Hybrid    & Exp2 \\
-Sugar              & SUG          & Hybrid    & Exp2 \\ \bottomrule
+Trait              & Abbreviation & Data Set  & Experiment \\ \midrule
+Cob weight         & CW           & Diversity & Exp1       \\
+Days to silking    & DS           & Diversity & Exp1       \\
+Ear diameter       & ED           & Diversity & Exp1       \\
+100-grain weight   & GW           & Diversity & Exp1       \\
+Kernel width       & KW           & Diversity & Exp1       \\
+Plant height       & PH           & Diversity & Exp1       \\
+Dry matter yield   & DMY          & Hybrid    & Exp2       \\
+Dry matter content & DMC          & Hybrid    & Exp2       \\
+Lignin             & ADL          & Hybrid    & Exp2       \\
+Fat                & FAT          & Hybrid    & Exp2       \\
+Protein            & PRO          & Hybrid    & Exp2       \\
+Starch             & STA          & Hybrid    & Exp2       \\
+Sugar              & SUG          & Hybrid    & Exp2       \\ \bottomrule
 \end{tabular}
 \end{table}
 
@@ -335,56 +335,44 @@ when fixed effects have been accomodated by the dependent variable
 Depending on the data set, up to three predictors were available for agronomic
 trait predictions, namely pedigree data (P), genomic data (G) and
 transcriptompic data (T).
-The corresponding feature matrix of the $l$-th group of inbred lines 
-($\mathbf{W}_{l}$) has dimensions $n_{l} \times p$ where $n_{l}$ pertains to 
-the number of genotypes in the $l$-th group and $p$ pertains to the number of 
-features.
-Note that $l$ is only defined for Exp2 where a distinction between 
-the two heterotic groups is necessary whereas $l$ can be ignored for all 
-models pertaining to the inbred lines of the maize diversity panel in 
-Exp1.
-For the diversity panel maize lines, $n_{l}$ corresponds to the number of 
-genotypes whereas, in the case of the hybrid data, $n_{l}$ corresponds to the 
-number of parent lines in the $l$-th heterotic group.
-In generating kernels for each predictor, all features in $\mathbf{W}_{l}$ were
+The corresponding feature matrix of the inbred lines ($\mathbf{M}$) has
+dimensions $n \times p$ where $n$ pertains to the number of genotypes.
+Note that, for the sake of clarity, we do not distinguish between models for
+Exp1 and Exp2 at this point.
+In the case of Exp2 the term `genotype' refers strictly to the parent lines.
+In generating kernels for each predictor, all features in $\mathbf{M}$ were
 centered and standardized to unit variance.
 Then, each kernel can be defined as
 
 \begin{equation} \label{eq:GenomicRelationship}
-  \mathbf{K}_{l} = \frac{1}{W_{l}} \mathbf{W}_{l} \mathbf{W}_{l}^{\top},
+  \mathbf{K} = \frac{1}{M} \mathbf{M} \mathbf{M}^{\top},
 \end{equation}
 
-where $W_{l}$ denotes the number of features~\cite{VanRaden2008}.
+where $M$ denotes the number of features~\cite{VanRaden2008}.
 In the case of pedigree data (P), coancestry coefficients were used directly
-for $\mathbf{K}_{l}$.
+for $\mathbf{K}$.
 
 
-\subsection{Breeding value model}
-The general model for breeding values was:
+\subsection{Genetic model}
+The general model for genetic values was:
 
 \begin{equation} \label{eq:KBLUPModel}
-  \mathbf{y} = \mu + 
-  \sum_{l=1}^{L} \mathbf{Z}_{l} \mathbf{g}_{l} + \mathbf{e},
+  \mathbf{y} = \mu + \mathbf{Z} \mathbf{g} + \mathbf{e},
 \end{equation}
 
 where $\mathbf{y}$ is the vector of observed inbred line or hybrid performance,
 respectively, $\mu$ is the fixed model intercept, and $\mathbf{e}$ is the 
 residual error.
-For the hybrid data from Exp2, we fit separate additive effects for 
-each of the $L$ heterotic groups and $\mathbf{g}_{l}$ now pertains to the 
-general combining ability effects of the parental inbred lines (either Dent or 
-Flint, as expressed by $l$).
-For the maize diversity panel inbred lines from Exp1, we fit random 
-genotype effects $\mathbf{g}_{l}$ (\textit{i.e.}, breeding values).
-For both experiments, genetic effects $\mathbf{g}_{l}$ are associated with 
-the vector of phenotypic performance $\mathbf{y}$ through a corresponding 
-design matrix $\mathbf{Z}_{l}$.
-The random effects ($\mathbf{g}_{l}$) have expectation zero and variance equal 
-to $\mathbf{K}_{l} \sigma^{2}_{{g}^{l}}$ and $\mathbf{I} \sigma^2_{e}$ 
-for the residual error.
+For the inbred lines we fit random genotype effects $\mathbf{g}$.
+For both experiments, genetic effects $\mathbf{g}$ are associated with the
+vector of phenotypic performance $\mathbf{y}$ through a corresponding design
+matrix $\mathbf{Z}$.
+The random effects ($\mathbf{g}$) have expectation zero and variance equal to
+$\mathbf{K} \sigma^{2}_{g}$ and $\mathbf{I} \sigma^2_{e}$ for the residual
+error.
 Here, we did not consider the inclusion of dominance effects for the hybrid
 material after a previous investigation into the predictive ability of various
-``omics'' predictors in the same material concluded no considerably gains 
+``omics'' predictors in the same material concluded no considerable gains 
 \cite{Westhues2017}.
 All prediction models were implemented using the R-packages \textit{BGLR}
 \cite{Perez2014} and \textit{sspredr}
@@ -392,24 +380,28 @@ All prediction models were implemented using the R-packages \textit{BGLR}
 
 
 \subsection{Single step prediction}
-For simplicity, let us assume throughout this section that we have $L=1$.
-If the breeding values are fully captured by the features in $\mathbf{W}$,
+If the genetic values are fully captured by the features in $\mathbf{M}$,
 Eq.~\ref{eq:KBLUPModel} can then be expressed as
 
 \begin{align} \label{eq:KBLUPModelSimplified}
 	\mathbf{y} &= \mu + \mathbf{Z} \mathbf{g} + \boldsymbol{e} \\
-	&= \mu + \mathbf{Z} \mathbf{W} \boldsymbol{\alpha} + \boldsymbol{e}
+	&= \mu + \mathbf{Z} \mathbf{M} \boldsymbol{\alpha} + \boldsymbol{e},
 \end{align}
-\cite{Fernando2014} since the ridge regression model is equivalent to the BLUP
-model~\cite{Ruppert2003}.
+
+\cite{Fernando2014} because the ridge regression model is equivalent to the
+BLUP model~\cite{Ruppert2003}.
+In Eq.~\ref{eq:KBLUPModelSimplified}, $\mathbf{M}$ is a matrix of feature
+covariates and $\boldsymbol{\alpha}$ is the vector of random, partial-regression
+coefficients of the feature covariates.
 
 
 Hence, the breeding values in a prediction model are given by:
 \begin{equation} \label{eq:mrnaebv}
-	\mathbf{\hat{g}} = \mathbf{W}\boldsymbol{\hat{\alpha}},
+	\mathbf{\hat{g}} = \mathbf{M}\boldsymbol{\hat{\alpha}},
 \end{equation}
 
-where $\boldsymbol{\hat{\alpha}}$ is the solution to a ridge regression model.
+where $\boldsymbol{\hat{\alpha}}$ is the solution to the ridge regression model
+(Eq.~\ref{eq:KBLUPModel}).
 
 Consider now the situation in which one predictor is complete in the sense that
 the whole population is equipped with features for that predictor whereas only
@@ -419,25 +411,36 @@ of the incomplete predictor by using covariates of the complete predictor.
 Let the subscript $1$ denote individuals covered only by the complete
 predictor whereas individuals covered by both, the complete and the
 incomplete predictor, are indicated by the subscript $2$.
-Further, the covariates in $\mathbf{W}$ are centered.
-In this case we need to partition the vector of breeding values $\mathbf{g}$
-into a component $\mathbf{g}_{1}$ (\textit{i.e.,} breeding values of animals 
-covered only by the complete predictor) and a component 
-$\mathbf{g}_{2} = \mathbf{W}_{2}\boldsymbol{\alpha}$ (\textit{i.e.,} breeding 
-values of animals covered by both predictors).
+Further, we center the covariates of the incomplete predictor and denote it as
+$\mathbf{W}$.
+Correspondingly, $\mathbf{K}$ corresponds to the kernel for the complete
+predictor.
+In this case we need to partition the vector of genetic values $\mathbf{g}$
+into a component $\mathbf{g}_{1}$ (\textit{i.e.,} genetic values of genotypes
+covered only by the complete predictor) and a component
+$\mathbf{g}_{2} = \mathbf{W}_{2}\boldsymbol{\alpha}$ (\textit{i.e.,} genetic
+values of genotypes covered by both predictors, where $\boldsymbol{\alpha}$
+pertains to the random feature effects of the incomplete predictor).
 Under multivariate normality, the vector $\mathbf{g}_1$ can be written as the
 sum of the conditional expectation given $\mathbf{g}_2$ and a residual error
 term:
 \begin{align} \label{eq:mrna1}
 	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
-	&= \mathbf{K_{12}}\mathbf{K_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{K_{12}}\mathbf{K_{22}}^{-1}\mathbf{W_2}\boldsymbol{\hat{\alpha}}) \\
+	&= \mathbf{K}_{12}\mathbf{K}^{-1}_{22}\mathbf{W}_{2}
+	\boldsymbol{\hat{\alpha}} + (\mathbf{g_1} - \mathbf{K}_{12}
+	\mathbf{K}^{-1}_{2}
+	\boldsymbol{\hat{\alpha}}) \\
 	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon},
 \end{align}
 
 where $\mathbf{K}_{ij}$ are partitions of $\mathbf{K}$ that correspond to 
-$\mathbf{g}_{1}$ and $\mathbf{g}_{2}$, respectively~\cite{Fernando2014}.
+$\mathbf{g}_{1}$ and $\mathbf{g}_{2}$, respectively~\cite{Fernando2014} and
+where $\mathbf{\hat{g}}_{1}$ pertains to the imputed genetic values in the
+incomplete predictor.
 
-The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{K}_{11} - \mathbf{K}_{12}\mathbf{K}_{22}^{-1}\mathbf{K}_{21} = (\mathbf{K}^{11})^{-1}$
+The covariance matrix of $\boldsymbol{\epsilon}$ is $\mathbf{K}_{11} -
+\mathbf{K}_{12}\mathbf{K}^{-1}_{22}\mathbf{K}_{21} =
+(\mathbf{K}^{11})^{-1}$
 \cite{Legarra2009}.
 
 The structure of the residual imputation/prediction error is known and can 
@@ -452,75 +455,77 @@ The general model for the single step procedure can then be written as
 with
 
 \begin{equation} \label{eq:single-step-submatrices}
-\mathbf{X} = 
+\mathbf{X} =
 \begin{bmatrix}
-  X_1 \\
-  X_2 
+  \mathbf{X}_1 \\
+  \mathbf{X}_2
  \end{bmatrix},
- \mathbf{W} = 
+ \mathbf{W} =
 \begin{bmatrix}
-  Z_1\hat{\mathbf{W}_1} \\
-  \mathbf{W}_2 
+  \mathbf{Z}_1\mathbf{\hat{W}}_{1} \\
+  \mathbf{W}_2
  \end{bmatrix},
- \mathbf{U} = 
+ \mathbf{U} =
 \begin{bmatrix}
-  Z_1 \\
-  0 
+  \mathbf{Z}_1 \\
+  0
  \end{bmatrix},
 \end{equation}
 
-where $\hat{\mathbf{W}}_{1} = \mathbf{K}_{12} \mathbf{K}_{22}^{-1} \mathbf{W}_{2}$.
+where $\mathbf{\hat{W}}_{1} = \mathbf{K}_{12} 
+\mathbf{K}^{-1}_{22} \mathbf{W}_{2}$.
 
 Following the notation in \citeNP{Fernando2014} the phenotypes can be untangled 
 as:
 
 \begin{align} \label{eq:entangled-augmented-single-step-model}
 \begin{bmatrix}
-  y_1 \\
-  y_2 
+  \mathbf{y}_1 \\
+  \mathbf{y}_2
  \end{bmatrix}
 & =
  \begin{bmatrix}
-  X_1 \\
-  X_2 
+  \mathbf{X}_1 \\
+  \mathbf{X}_2
  \end{bmatrix}
- \boldsymbol{\beta} + 
+ \boldsymbol{\beta} +
  \begin{bmatrix}
-  Z_1 & 0 \\
-  0 & Z_2 
+  \mathbf{Z}_1 & \boldsymbol{0} \\
+  \boldsymbol{0} & \mathbf{Z}_2
  \end{bmatrix}
 \begin{bmatrix}
-  g_1 \\
-  g_2 
+  \mathbf{g}_1 \\
+  \mathbf{g}_2
  \end{bmatrix}
   + \mathbf{e} \\
-    & = 
+    & =
  \begin{bmatrix}
-  X_1 \\
-  X_2 
+ \mathbf{X}_1 \\
+ \mathbf{X}_2
  \end{bmatrix}
- \boldsymbol{\beta} + 
+ \boldsymbol{\beta} +
  \begin{bmatrix}
-  Z_1 & 0 \\
-  0 & Z_2 
+  \mathbf{Z}_1 & \boldsymbol{0} \\
+  \boldsymbol{0} & \mathbf{Z}_2
  \end{bmatrix}
 \begin{bmatrix}
-  \mathbf{K}_{12}\mathbf{K}_{22}^{-1}\mathbf{W}_2\boldsymbol{\alpha} + \boldsymbol{\epsilon}  \\
+  \mathbf{K}_{12}\mathbf{K}^{-1}_{22}\mathbf{W}_2
+  \boldsymbol{\alpha} + \boldsymbol{\epsilon}  \\
   \mathbf{W}_2\boldsymbol{\alpha} \\
  \end{bmatrix}
   + \mathbf{e} \\
-    & = 
+    & =
  \begin{bmatrix}
-  X_1 \\
-  X_2 
+  \mathbf{X}_1 \\
+  \mathbf{X}_2
  \end{bmatrix}
- \boldsymbol{\beta} + 
+ \boldsymbol{\beta} +
  \begin{bmatrix}
-  Z_1 & 0 \\
-  0 & Z_2 
+  \mathbf{Z}_1 & \boldsymbol{0} \\
+  \boldsymbol{0} & \mathbf{Z}_2
  \end{bmatrix}
 \begin{bmatrix}
-  \hat{\mathbf{W}_1}\boldsymbol{\alpha} + \boldsymbol{\epsilon} \\
+  \mathbf{\hat{W}}_{1}\boldsymbol{\alpha} + \boldsymbol{\epsilon} \\
   \mathbf{W}_2\boldsymbol{\alpha} \\
  \end{bmatrix}
   + \mathbf{e} \\
@@ -531,7 +536,7 @@ Our final model looks like this:
 
 \begin{align} \label{eq:final-model}
 \mathbf{y} &= \mathbf{Xb} +
-\sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{W}_{l} \boldsymbol{\alpha}_{l} + 
+\mathbf{Z}\mathbf{W} \boldsymbol{\alpha}_{l} + 
 \sum_{l=1}^{L} \mathbf{Z}_{l}\mathbf{U}_{l} \boldsymbol{\epsilon}_{l} +
 \mathbf{e}.
 \end{align}
