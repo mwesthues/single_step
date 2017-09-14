@@ -94,15 +94,13 @@ $\dots$
 % Rationale for predictions.
 Genomic prediction, pioneered by \citeNP{Meuwissen2001}, has revolutionized
 animal and plant breeding by a more efficient selection of promising candidates 
-without phenotypes~\cite{DeLosCampos2013,Garcia-Ruiz2016} and recently emerged
-as an important tool in human diagnostics~\cite{DeLosCampos2010,Vazquez2016}.
+without phenotypes~\cite{DeLosCampos2013,Garcia-Ruiz2016}.
 Its use is largely motivated by the high costs and oftentimes long duration of 
-phenotyping, which can be reduced when covering all genotypes with a predictor 
+phenotyping, which can be reduced when all genotypes are equipped with a predictor 
 while limiting phenotyping to a few genotypes with high precision
 \cite{Kadam2016}.
 The performance of all other genotypes is then forecast using model parameters
-obtained from thorough resampling routines applied to the subset of individuals 
-with full information~\cite{Hastie2009}.
+estimated in the subset of individuals with full information.
 In animal breeding, genomic selection has increased the annual selection gain 
 by $\approx$ 50--100\% for yield traits and by 300--400\% for traits with low 
 heritability~\cite{Garcia-Ruiz2016}.
@@ -150,19 +148,48 @@ trait-independent~\cite{Vitezica2011,Ashraf2016}.
 \citeNP{Fernando2014} derived the equivalent single step marker-effect-model to 
 the single step breeding value model of \citeNP{Legarra2009} and 
 \citeNP{Christensen2010}, which does not require weights for $\mathbf{A}$ and 
-$\mathbf{G}$ and allows implicit modeling of the imputation error's structure.
+$\mathbf{G}$ and allows implicit modeling of the imputation error structure.
 
 
-% -   Mention scarcity of data on single step prediction in plant populations.
+% -   Objectives (Hybrids)
 In animal breeding, single step prediction, particularly H-BLUP, has already 
 become a routine procedure~\cite{Legarra2014} but, to the best of our knowledge, 
 has only been considered in plants in a study on wheat~\cite{Ashraf2016} and
 white spruce lines, respectively~\cite{Ratcliffe2017}.
-Our objectives were threefold: (1) Examine whether the single step prediction
-framework can be transfered to plant hybrids, (2) explore the utility of single 
-step predition with a quantitative predictor and (3) evaluate the impact of the
-proporition of genotypes not covered by the incomplete predictor on predictive
-ability.
+While single step prediction has been applied to pig hybrids~\cite{Xiang2016}
+this application is not equivalent to hybrid breeding in plants.
+There, the maternal and the paternal crossing partner can be selected without
+constraints whereas animal breeders select only males because of the limited
+fertility of the female animals.
+Technological advances in plant hybrid breeding such as the rapid generation
+of completely homozygous lines~\cite{Wedzony2009} now enable breeders to
+produce about $n = 1,000$ individuals per generation and sex.
+Assuming that about 90\% of these lines were never before tested in any hybrid
+combination about $n^{2} * 0.9^{2} = 810,000$ putative hybrids per generation
+would not have a single parent with phenotypically tested progeny
+\cite{Westhues2017}.
+Predicting these hybrid candidates with low relatedness to tested hybrids using
+only information from their parents is currently a hot topic in plant breeding
+\cite{Technow2014,Kadam2016,Westhues2017}.
+Hence, our first objective was to examine whether the single step prediction 
+framework can be transfered to hybrids in plants.
+
+% -   Objectives (quantitative predictores)
+Given that the availability of pedigree and genomic data is the most prevalent
+situation in animal breeding, previous studies have focused exclusively on the
+application of single step prediction to these predictors.
+Recent investigations into the utility of `omics' data for boosting predictive
+abilities in plants have suggested that metabolites and transcriptomic data can
+improve upon predictive abilities based on pedigree or genomic data
+\cite{Guo2016,Xu2016,Dan2016,Zenke-Philippi2017,Westhues2017}.
+This situation motivated our second objective, namely exploring the utility of
+single step predition with a quantitative predictor.
+Yet, these technologies are not fully mature and therefore incur higher costs
+to breeders than pedigree and genomic data, putting their utility into question
+despite their proven usefulness.
+Our third objective is therefore to evaluate the impact of equipping only a
+subset of all genotypes with both, the complete and the incomplete predictor on
+predictive ability.
 
 
 
