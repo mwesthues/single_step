@@ -289,22 +289,23 @@ Sugar              & SUG          & Hybrid    & Exp2 \\ \bottomrule
 
 
 \Genetics2level{Population structure}
-Population structure in Exp1 was examined by running a STRUCTURE
+Population structure in Exp1 was examined through a STRUCTURE
 \cite{Pritchard2000} analysis with the number of putative ancestral
 populations $K$ ranging from 2 to 9.
 Based on the estimated probability of the data for each $K$, we chose $K=4$
 and ran a principal component analysis (PCA) on the scaled and centered
 genomic feature matrix using the \emph{pca} function from the \emph{R}-package
-\emph{LEA} \cite{Frichot2015}.
+\emph{LEA}~\cite{Frichot2015}.
 Least-squares estimates of ancestry proportions were estimated based on sparse 
 nonnegative matrix factorization algorithms~\cite{Frichot2014} using the 
 \emph{snmf} function in \emph{LEA}.
 Genotypes in the PCA plot (Fig.~\ref{fig:inbred-pca}) were colorized based on their
 primary assignment to any of the four putative ancestral populations.
-To avoid inflated predictive abilities, which can arise from large differences
-in the average performance of the different subpopulations
-\cite{Windhausen2012}, we reduced the panel of inbred lines to those primarily
-belonging to either cluster 1 or cluster 4 in Fig.~\ref{fig:inbred-pca}.
+To mitigate the possibility of inflated predictive abilities, which can arise
+from large differences in the average performance of the different
+subpopulations~\cite{Windhausen2012}, we reduced the panel of inbred lines to
+those primarily belonging to either cluster 1 or cluster 4 in 
+Fig.~\ref{fig:inbred-pca}.
 This reduction yielded 164 genotypes, 110 of which were covered by both, genomic
 and transcriptomic data.
 
