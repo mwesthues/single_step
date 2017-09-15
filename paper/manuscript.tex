@@ -121,13 +121,13 @@ heritability~\cite{Garcia-Ruiz2016}.
 
 % Incomplete predictors.
 Breeding programs --- particularly in animal breeding --- are characterized by
-the presence of one predictor type, which is available for all recorded
+the availability of one predictor type, which is available for all recorded
 genotypes while other predictors are incomplete in that they cover only a 
 subset of all genotypes~\cite{Fragomeni2015}.
 Usually, the complete predictor is pedigree information while genomic data are
 the most prevalent incomplete predictor.
 To utilize all available phenotypic information for model training, methods were 
-developed that allowed for a combined use of genomic and pedigree information 
+developed that allow the combined use of genomic and pedigree information 
 \cite{Hayes2009a,VanRaden2009}.
 
 % Two-step prediction.
@@ -135,16 +135,16 @@ Initially, a two-step procedure was the most intuitive choice for accomplishing
 this goal~\cite{VanRaden2009}.
 The first step consists of conventionally estimating breeding values based on
 pedigree relationships and the phenotypes of relatives.
-Individuals with accurate breeding values out of the first step (that is, a
-high number of offspring), enter the second step in which conventional breeding
+Individuals with accurate breeding values out of the first step, which have a
+high number of offspring, enter the second step in which conventional breeding
 values are regressed onto SNP genotypes.
-The estimated model coefficients can then be used to predict genomic breeding 
-values for solely genotyped and potentially very young individuals.
+The estimated model coefficients can then be used to predict breeding values
+for solely genotyped and potentially very young individuals.
 However, as the breeding values from step one enter the genomic prediction
 model as phenotypes, one has to be careful about the residual error
 distribution of such a model.
 For instance, the range of the prediction errors will no longer be identically
-distributed, \textit{i.e.}, they should be weighted differently or estimated 
+distributed and thus, they should be weighted differently or estimated 
 individually~\cite{Aguilar2010}.
 One popular approach to account for this problem is deregressing the breeding
 values and weighting the residuals according to the prediction error variances
@@ -159,7 +159,7 @@ simultaneously.
 Issues with this H-BLUP approach were the compatability of $\mathbf{A}$ with
 $\mathbf{G}$~\cite{Christensen2012} and their weighting, which is not
 trait-independent~\cite{Vitezica2011,Ashraf2016}.
-\citeNP{Fernando2014} derived the equivalent single step marker-effect-model to 
+\citeN{Fernando2014} derived the equivalent single step marker-effect-model to 
 the single step breeding value model of \citeNP{Legarra2009} and 
 \citeNP{Christensen2010}, which does not require weights for $\mathbf{A}$ and 
 $\mathbf{G}$ and allows implicit modeling of the imputation error structure.
@@ -186,7 +186,8 @@ Predicting these hybrid candidates with low relatedness to tested hybrids using
 only information from their parents is currently a hot topic in plant breeding
 \cite{Technow2014,Kadam2016,Westhues2017}.
 Hence, our first objective was to examine whether the single step prediction 
-framework can be transfered to hybrids in plants.
+framework can be transfered to a situation where a very large number of hybrids
+($\approx$ 1 million) needs to be predicted.
 
 % -   Objectives (quantitative predictores)
 Given that the availability of pedigree and genomic data is the most prevalent
@@ -196,14 +197,13 @@ Recent investigations into the utility of `omics' data for boosting predictive
 abilities in plants have suggested that metabolites and transcriptomic data can
 improve upon predictive abilities based on pedigree or genomic data
 \cite{Guo2016,Xu2016,Dan2016,Zenke-Philippi2017,Westhues2017}.
-This situation motivated our second objective, namely exploring the utility of
-single step predition with a quantitative predictor.
 Yet, these technologies are not fully mature and therefore incur higher costs
 to breeders than pedigree and genomic data, putting their utility into question
 despite their proven usefulness.
-Our third objective is therefore to evaluate the impact of equipping only a
+Our second objective is therefore to evaluate the impact of covering only a
 subset of all genotypes with both, the complete and the incomplete predictor on
-predictive ability.
+predictive ability, where for the remaining individuals only genomic data are
+available.
 
 
 
@@ -216,7 +216,7 @@ predictive ability.
 
 \section{Materials and Methods}
 \Genetics2level{Exp1}
-To address objectives 2 and 3, a maize inbred line data set, subsequently
+To address the second objective a maize inbred line data set, subsequently
 referred to as Exp1, was used~\cite{Yang2014}.
 Exp1 originally comprised 513 maize lines representing the global maize
 diversity  and was reduced to the set of tropical and subtropical lines
@@ -224,11 +224,12 @@ diversity  and was reduced to the set of tropical and subtropical lines
 subgroups~\cite{Yang2014}.
 All inbred lines were evaluated in five Chinese environments described in detail
 by~\citeNP{Yang2014}.
-Best linear unbiased predictors (BLUPs) were calculated for 17 traits of which 
-six are presented in this study (Table~\ref{table:TraitKey}).
-The selection of these traits was done so that four traits were better 
-predicted by transcriptomic data and two further traits were better predicted 
-by genomic data.
+Best linear unbiased predictors (BLUPs) were calculated for 17
+traits~\cite{Guo2016} of which six are presented in this study
+(Table~\ref{table:TraitKey}).
+The selection of these traits was done so that four traits were predicted with
+greater precision by transcriptomic data and two further traits were predicted
+with greater precision by genomic data.
 MaizeSNP50 BeadChip-data were available for the entire set of 513 lines from the
 diversity panel.
 Additionally, RNA sequencing was performed for 368 lines on young seedlings 15 
@@ -245,15 +246,15 @@ for 37,760 SNPs using the Beagle software~\cite{Browning2009}.
 Gene expression data were normalized using a normal quantile transformation to
 satisfy modeling assumptions~\cite{Fu2013}.
 A subset of 28,850 annotated genes was available for 149 out of the 211
-genotypes and was kept for further analyses~\cite{Li2013}.
+genotypes~\cite{Fu2013} and provided the basis for further analyses.
 
 
 \Genetics2level{Exp2}
 To address objectives 1 and 2, a maize hybrid data set, subsequently
 denoted as Exp2, was used.
 The material comprised 1,521 hybrids produced in 16 factorial mating designs
-between 142 Dent and 103 Flint parent lines (described in detail by
-\citeNP{Westhues2017}).
+between 142 Dent and 103 Flint parent lines described in detail by
+\citeN{Westhues2017}.
 Best linear unbiased estimates (BLUEs) were computed across all factorials and 
 three or more agro-ecologically diverse environments across Germany for seven
 agronomically important traits in silage maize by accounting for year, location,
@@ -307,7 +308,7 @@ Population structure in Exp1 was examined through a STRUCTURE
 \cite{Pritchard2000} analysis with the number of putative ancestral
 populations $K$ ranging from 2 to 9.
 Based on the estimated probability of the data for each $K$, we chose $K=4$
-and ran a principal component analysis (PCA) on the scaled and centered
+and carried out a principal component analysis (PCA) on the scaled and centered
 genomic feature matrix using the \emph{pca} function from the \emph{R}-package
 \emph{LEA}~\cite{Frichot2015}.
 Least-squares estimates of ancestry proportions were estimated based on sparse 
@@ -318,8 +319,7 @@ primary assignment to any of the four putative ancestral populations.
 To mitigate the possibility of inflated predictive abilities, which can arise
 from large differences in the average performance of the different
 subpopulations~\cite{Windhausen2012}, we reduced the panel of inbred lines to
-those primarily belonging to either cluster 1 or cluster 4 in 
-Fig.~\ref{fig:inbred-pca}.
+those assigned to either cluster 1 or cluster 4 in Fig.~\ref{fig:inbred-pca}.
 This reduction yielded 164 genotypes, 110 of which were covered by both, genomic
 and transcriptomic data.
 
