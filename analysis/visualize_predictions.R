@@ -188,7 +188,13 @@ line_type_df <- inbred_df %>%
 
 
 core_df <- inbred_df %>%
-  dplyr::filter(Predictor == "GT", Combi == "CIA") %>%
+  dplyr::filter(Combi == "CIA") %>%
+  dplyr::mutate(Core_Fraction = dplyr::case_when(
+    Predictor == "T" ~ "1",
+    Predictor == "G" ~ "0",
+    Predictor == "GT" ~ Core_Fraction
+    )
+  ) %>%
   dplyr::mutate_at(vars(Predictor), funs(as.factor)) %>%
   dplyr::inner_join(y = line_type_df, by = "Trait")
 
@@ -203,11 +209,13 @@ core_plot <- core_df %>%
     )
   ) +
   geom_line(aes(linetype = LineType), size = 1.2) +
+  geom_point(size = 3, shape = 4, color = "black") +
   ggthemes::scale_color_tableau() +
   ggthemes::theme_pander(base_size = 10) +
   theme(legend.position = "top") +
   guides(color = guide_legend(override.aes = list(size = 3))) +
-  scale_linetype(guide = "none")
+  scale_linetype(guide = "none") +
+  scale_shape(guide = "none")
 
 ggsave(
   plot = core_plot,
