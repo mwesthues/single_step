@@ -267,7 +267,7 @@ BLUEs for gene expression were computed for 1,323 transcripts
 % \usepackage{booktabs}
 \begin{table}[]
 \centering
-\caption{Acronyms for the trait names}
+\caption{Abbreviations for the trait names}
 \label{table:TraitKey}
 \begin{tabular}{@{}llll@{}}
 \toprule
@@ -315,12 +315,14 @@ and transcriptomic data.
   \centering
   \includegraphics{./tables_figures/inbred_pca.pdf}
   \caption{
-  Principal component analysis of 211 genotypes from the set
+  Principal component analysis (PCA) of 211 genotypes from the set
   `tropical/subtropical' of the maize diversity panel inbred lines.
   The four clusters are based on $K=4$ putative ancestral populations from a
   STRUCTURE analysis of the corresponding genomic feature matrix.
   Genotypes are colored based on their primary assignment to any of these four
   clusters.
+  The explained variance for each of the two PCs is given in the corresponding
+  axis labels.
 }
 \label{fig:inbred-pca}
 \end{figure}
@@ -675,7 +677,7 @@ imputed.
   \caption{
   (\textbf{a}) Scheme for the amount of genotypes covered by predictors.
   The two extended bars represent the entire set of genotypes in either
-  Exp2 or Exp1.
+  Exp1 or Exp2.
   All genotypes are covered by at least one predictor, which is called the
   `complete' predictor and depicted as a white bar.
   The second bar shows that only a fraction of genotypes is covered by both,
@@ -686,7 +688,7 @@ imputed.
   For nine different values of $x$, which represents the fraction of genotypes
   covered by the `incomplete' predictor, core sets are build.
   (\textbf{b}) Subsampling within core sets.
-  Each of the black symbols represents a different genotype.
+  Each of the white symbols represents a different genotype.
   For each value of $x$, 100 subsets $s$ are generated where $x\%$ of genotypes
   are randomly declared to be covered by both, the `complete' and the
   `incomplete' predictor whereas the remaining $100\% - x\%$ of genotypes
@@ -801,13 +803,15 @@ predictor (Fig.~\ref{fig:inbred-pca}).
   \caption{
   Influence of the fraction of genotypes covered by the incomplete predictor
   on predictive abilities.
-  Predictive abilities are based on transcriptomic effects derived from a
-  single step prediction model involving transcriptomic (T) and genomic (G)
-  data, respectively.
   Results are shown for the core set of 110 inbred lines from Exp1 for
   which both, G and T are available for any genotype and six agronomic traits.
   The fraction of genotypes (\textit{i.e.} `Core Fraction') for which
   T was available is given on the x-axis.
+  Predictive abilities for core fractions between 0.1 and 0.9 are based on
+  transcriptomic effects derived from a single step prediction model involving
+  transcriptomic (T) and genomic (G) data, respectively.
+  The predictive ability at a core fraction of 0 is based only on G and at a
+  core fraction of 1 it is based only on T.
   Dotted lines indicate that $T > G$, dashed lines indicate that $T \approx G$
   and solid lines indicate that $G > T$ when running predictions using single
   predictors on the same data set.
