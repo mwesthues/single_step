@@ -46,11 +46,9 @@ colnames(pc_mat) <- paste0("PC_", seq_len(ncol(pc_mat)))
 
 # Explained variance of the first five principal components
 # Assumed number of ancestral populations: 4
-k <- 4
-snp_pc %>%
+pc_var_explained <- snp_pc %>%
   tracy.widom() %>%
-  pull(percentage) %>%
-  .[seq_len(k)]
+  pull(percentage)
 
 
 pc_df <- pc_mat %>%
@@ -133,34 +131,21 @@ change_to_k <- function(x) {
     gsub(x = ., replacement = "", pattern = "popstruc")
 }
 
+# Label PC plot components.
+label_pca <- function(explained_var, component_number) {
+  rounded_var <- round(explained_var, digits = 2)
+  paste0(
+    "PC", component_number, " (", rounded_var * 100, "%", ")"
+    )
+}
 
-g1 <- slist %>%
-  set_names(., change_to_k(names(.))) %>%
-  map(.f = ~mutate(., G = genos)) %>%
-  keep(names(.) == k) %>%
-  map(.f = ~mutate(., Central_Cluster = Cluster1 + Cluster4)) %>%
-  map(.f = ~gather(
-    ., key = "Cluster", value = "AncCoef", -G, -Central_Cluster)
-    ) %>%
-  bind_rows(.id = "K") %>%
-  mutate(G = as.factor(G)) %>%
-  ggplot(aes(
-    x = fct_reorder(G, x = Central_Cluster), y = AncCoef, fill = Cluster)
-    ) +
-  geom_bar(stat = "identity") +
-  scale_fill_brewer(palette = "Set1") +
-  theme(
-    axis.text.x = element_blank(),
-    axis.ticks = element_blank()
-  )
-
-g2 <- cluster_df %>%
+g1 <- cluster_df %>%
   mutate(K = change_to_k(K)) %>%
   filter(K == k) %>%
   ggplot(aes(x = PC1, y = PC2, color = main_cluster)) +
   geom_point(size = 1) +
   guides(color = guide_legend(
-    override.aes = list(size = 6),
+    override.aes = list(size = 3),
     title = "Cluster",
     title.theme = element_text(size = 12, angle = 0)
     )
@@ -168,70 +153,20 @@ g2 <- cluster_df %>%
   scale_color_brewer(palette = "Set1") +
   theme_pander(base_size = 12) +
   theme(
-    legend.position = "top",
+    legend.position = c(0.8, 1),
+    legend.justification = c(0, 1),
     strip.background = element_blank(),
     strip.placement = "outside"
-  )
+  ) +
+  xlab(label_pca(pc_var_explained[1], 1)) +
+  ylab(label_pca(pc_var_explained[2], 2))
+
 ggsave(
   filename = "./paper/tables_figures/inbred_pca.svg",
-  plot = g2,
+  plot = g1,
   device = "svg",
   width = 4,
   height = 4,
   units = "in"
   )
-
-plot_grid(
-  g1, g2, labels = c("A", "B"), nrow = 2
-)
-
-
-# Select genotypes from the first and the fourth cluster, respectively, given
-# that they cluster together and look homogeneous.
-selected_geno <- slist %>%
-  set_names(., change_to_k(names(.))) %>%
-  map(.f = ~mutate(., G = genos)) %>%
-  keep(names(.) == k) %>%
-  map(get_max_cluster, genos = genos) %>%
-  .[[1]] %>%
-  filter(main_cluster %in% c("1", "4")) %>%
-  pull(G) %>%
-  unique()
-saveRDS(selected_geno, "./data/derived/maizego/cluster_14_genotypes.RDS")
-
-
-
-sel_snps <- snp %>%
-  .[rownames(snp) %in% selected_geno, ] %>%
-  sspredr::ensure_snp_quality(
-    ., callfreq_check = FALSE, maf_check = TRUE, maf_threshold = 0.05,
-    any_missing = FALSE, remove_duplicated = TRUE
-  )
-write.lfmm(sel_snps, "./data/derived/maizego/sel_snps.lfmm")
-# Determine the structure of the data using genotypic data.
-sel_snp_pc <- LEA::pca(
-  input.file = "./data/derived/maizego/sel_snps.lfmm",
-  scale = TRUE
-  )
-
-sel_pc_mat <- sel_snp_pc$projections
-rownames(sel_pc_mat) <- rownames(sel_snps)
-colnames(sel_pc_mat) <- paste0("PC_", seq_len(ncol(sel_pc_mat)))
-
-sel_pc_df <- sel_pc_mat %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "G") %>%
-  gather(key = PC, value = Score, -G) %>%
-  as_data_frame() %>%
-  filter(PC %in% paste0("PC_", seq_len(2))) %>%
-  mutate(
-    PC = gsub("PC_", replacement = "PC", x = PC)
-  ) %>%
-  spread(key = PC, value = Score)
-
-sel_snp_pc %>%
-  tracy.widom() %>%
-  pull(percentage) %>%
-  .[seq_len(k)]
-
 
