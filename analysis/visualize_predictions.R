@@ -148,7 +148,8 @@ inbred_plot <- inbred_df %>%
   geom_errorbar(limits, position = dodge, width = 0.25) +
   facet_grid(Trait ~ .) +
   scale_fill_manual(values = a_colors) +
-  theme_pander(base_size = 10)
+  theme_pander(base_size = 10) +
+  theme(axis.title.x = element_blank())
 
 ggsave(
   plot = inbred_plot,
