@@ -165,16 +165,13 @@ the single step breeding value model of \citeNP{Legarra2009} and
 $\mathbf{G}$ and allows implicit modeling of the imputation error structure.
 
 
-% -   Objectives (Hybrids)
+% -   Hybrids
 In animal breeding, single step prediction, particularly H-BLUP, has already 
 become a routine procedure~\cite{Legarra2014} but, to the best of our knowledge, 
 has only been considered in plants in a study on wheat~\cite{Ashraf2016} and
 white spruce lines, respectively~\cite{Ratcliffe2017}.
-While single step prediction has been applied to pig hybrids~\cite{Xiang2016}
-this application is not equivalent to hybrid breeding in plants.
-There, the maternal and the paternal crossing partner can be selected without
-constraints whereas animal breeders select only males because of the limited
-fertility of the female animals.
+Moreover, while an application of the single step framework to animals exists
+for pigs~\cite{Xiang2016}, it is yet lacking for plant hybrids.
 Technological advances in plant hybrid breeding such as the rapid generation
 of completely homozygous lines~\cite{Wedzony2009} now enable breeders to
 produce about $n = 1,000$ individuals per generation and sex.
@@ -185,11 +182,8 @@ would not have a single parent with phenotypically tested progeny
 Predicting these hybrid candidates with low relatedness to tested hybrids using
 only information from their parents is currently a hot topic in plant breeding
 \cite{Technow2014,Kadam2016,Westhues2017}.
-Hence, our first objective was to examine whether the single step prediction 
-framework can be transfered to a situation where a very large number of hybrids
-($\approx$ 1 million) needs to be predicted.
 
-% -   Objectives (quantitative predictores)
+% -   quantitative predictores
 Given that the availability of pedigree and genomic data is the most prevalent
 situation in animal breeding, previous studies have focused exclusively on the
 application of single step prediction to these predictors.
@@ -200,10 +194,14 @@ improve upon predictive abilities based on pedigree or genomic data
 Yet, these technologies are not fully mature and therefore incur higher costs
 to breeders than pedigree and genomic data, putting their utility into question
 despite their proven usefulness.
-Our second objective is therefore to evaluate the impact of covering only a
-subset of all genotypes with both, the complete and the incomplete predictor on
-predictive ability, where for the remaining individuals only genomic data are
-available.
+
+% - Objectives
+Hence, our objectives were to i) examine whether the single step prediction 
+framework can be transfered to a situation where a very large number of hybrids
+($\approx$ 1 million) needs to be predicted and ii) evaluate the impact of
+covering only a subset of all genotypes with both, the complete and the
+incomplete predictor on predictive ability, where for the remaining individuals
+only genomic data are available.
 
 
 
@@ -220,12 +218,12 @@ To address the second objective a maize inbred line data set, subsequently
 referred to as Exp1, was used~\cite{Yang2014}.
 Exp1 originally comprised 513 maize lines representing the global maize
 diversity  and was reduced to the set of tropical and subtropical lines
-($n = 211$) given that it is the largest of the four pre-classified
-subgroups~\cite{Yang2014}.
+($n = 211$) given that it is the largest of the four subgroups classified by
+\citeN{Yang2014}.
 All inbred lines were evaluated in five Chinese environments described in detail
 by~\citeNP{Yang2014}.
-Best linear unbiased predictors (BLUPs) were calculated for 17
-traits~\cite{Guo2016} of which six are presented in this study
+Best linear unbiased predictors (BLUPs) were calculated by~\citeN{Yang2014} for
+17 traits~\cite{Guo2016} of which six are presented in this study
 (Table~\ref{table:TraitKey}).
 The selection of these traits was done so that four traits were predicted with
 greater precision by transcriptomic data and two further traits were predicted
@@ -319,7 +317,8 @@ primary assignment to any of the four putative ancestral populations.
 To mitigate the possibility of inflated predictive abilities, which can arise
 from large differences in the average performance of the different
 subpopulations~\cite{Windhausen2012}, we reduced the panel of inbred lines to
-those assigned to either cluster 1 or cluster 4 in Fig.~\ref{fig:inbred-pca}.
+those assigned to the largely overlapping clusters 1 and 4 in
+Fig.~\ref{fig:inbred-pca}.
 This reduction yielded 164 genotypes, 110 of which were covered by both, genomic
 and transcriptomic data.
 
@@ -344,19 +343,16 @@ and transcriptomic data.
 
 \Genetics2level{Prediction}
 \subsection{Kernels}
-BLUP models are computationally attractive when the number of features $p$
-exceeds the number of genotypes $n$ and are equivalent to a selection index
-when fixed effects have been accomodated by the dependent variable 
-\cite{Mrode2014}.
 Depending on the data set, up to three predictors were available for agronomic
 trait predictions, namely pedigree data (P), genomic data (G) and
 transcriptomic data (T).
 The corresponding feature matrix of the inbred lines ($\mathbf{M}$) has
-dimensions $n \times p$ where $n$ pertains to the number of genotypes.
-For the sake of clarity, we do not distinguish between models for Exp1 and Exp2
-at this point.
-It should be noted, however, that in the case of Exp2 the term `genotype' refers
-strictly to the parent lines.
+dimensions $n \times p$ where $n$ pertains to the number of genotypes and $p$
+pertains to the number of features; that is transcripts for T and SNPs for G.
+For the sake of simplicity the derivations are detailed first for predicting
+breeding values of inbred lines.
+Later, we briefly describe the extension to models required for predicting the
+genetic value of hybrids.
 For the complete predictor we generated kernels by centering and standardizing
 all features in $\mathbf{M}$ to unit variance:
 
@@ -365,12 +361,12 @@ all features in $\mathbf{M}$ to unit variance:
 \end{equation}
 
 where $M$ denotes the number of features~\cite{VanRaden2008}.
-In the case of pedigree data (P), coancestry coefficients were used directly
-for $\mathbf{K}$.
+In the case of pedigree data (P), the numerator relationship matrix was used
+directly for $\mathbf{K}$.
 
 
 \subsection{Genetic model}
-The general model for genetic values was:
+The general model for breeding values of the lines was:
 
 \begin{equation} \label{eq:KBLUPModel}
   \mathbf{y} = \mu + \mathbf{Z} \mathbf{g} + \mathbf{e},
@@ -396,11 +392,10 @@ All prediction models were implemented using the R-packages \textit{BGLR}
 
 
 \subsection{Single step prediction}
-If the genetic values are fully captured by the features in $\mathbf{M}$,
+If the breeding values are fully captured by the features in $\mathbf{M}$,
 Eq.~\ref{eq:KBLUPModel} can be expressed as
 
 \begin{align} \label{eq:KBLUPModelSimplified}
-	\mathbf{y} &= \mu + \mathbf{Z} \mathbf{g} + \boldsymbol{e} \\
 	&= \mu + \mathbf{Z} \mathbf{M} \boldsymbol{\alpha} + \boldsymbol{e},
 \end{align}
 
@@ -439,10 +434,13 @@ predictor as
   \tensor[_I]{\mathbf{W}}{_{2}}
  \end{bmatrix},
 \end{equation}
-where observed feature covariates are stored in $\tensor[_I]{\mathbf{W}}{_{2}}$ while feature
-covariates for genotypes not covered by the incomplete predictor
-($\tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} = \tensor[_C]{\mathbf{K}}{_{12}} \; \tensor[_C]{\mathbf{K}}{_{22}^{-1}} \; \tensor[_I]{\mathbf{W}}{_{2}}$)
-need to be imputed.
+where observed feature covariates are stored in $\tensor[_I]{\mathbf{W}}{_{2}}$
+while the feature covariates for genotypes not covered by the incomplete
+predictor can be estimated/imputed with the aid of the covariance matrix of the
+complete predictor $\tensor[_{C}]{\mathbf{K}}{}$ and the feature matrix of the
+incomplete predictor $\tensor[_{I}]{\mathbf{W}}{_{22}}$ by calculating
+($\tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} = \tensor[_C]{\mathbf{K}}{_{12}} \;
+\tensor[_C]{\mathbf{K}}{_{22}^{-1}} \; \tensor[_I]{\mathbf{W}}{_{2}}$).
 In this case we need to partition the vector of genetic values $\mathbf{g}$
 into a component $\mathbf{g}_{1}$ (\textit{i.e.,} genetic values of genotypes
 covered only by the complete predictor) and a component
@@ -454,15 +452,20 @@ Under multivariate normality, the vector $\mathbf{g}_1$ can be written as the
 sum of the conditional expectation given $\mathbf{g}_2$ and a residual error
 term:
 \begin{align} \label{eq:mrna1}
-	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) + \boldsymbol{\epsilon} \\
-	&= \tensor[_{C}]{\mathbf{K}}{_{12}} \; \tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \; \tensor[_{I}]{\mathbf{W}}{_{2}} \;
-	\tensor[_{I}]{\boldsymbol{\hat{\alpha}}} + (\mathbf{g_1} - \tensor[_{C}]{\mathbf{K}}{_{12}} \;
-	\tensor[_{C}]{\mathbf{K}}{_{2}^{-1}} \;
+	\mathbf{g_1} &= E(\mathbf{g}_1|\mathbf{g}_2) +
+	\boldsymbol{\epsilon} \\
+	&= \tensor[_{C}]{\mathbf{K}}{_{12}} \;
+       	\tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
+       	\tensor[_{I}]{\mathbf{W}}{_{2}} \;
+	\tensor[_{I}]{\boldsymbol{\hat{\alpha}}}{} +
+       	(\mathbf{g_1} - \tensor[_{C}]{\mathbf{K}}{_{12}} \;
+	\tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
+       	\tensor[_{I}]{\mathbf{W}}{_{2}} \;
 	\tensor[_{I}]{\boldsymbol{\hat{\alpha}}}{}) \\
 	&= \mathbf{\hat{g}}_1 + \boldsymbol{\epsilon},
 \end{align}
 
-where $\tensor[_{C}]{\mathbf{K}}{_{ij}}$ are partitions of
+where $\tensor[_{C}]{\mathbf{K}}{_{ij}}$ are partitions of the matrix
 $\tensor[_{C}]{\mathbf{K}}{}$ that correspond to $\mathbf{g}_{1}$ and
 $\mathbf{g}_{2}$, respectively~\cite{Fernando2014} and where
 $\mathbf{\hat{g}}_{1}$ pertains to the imputed genetic values of genotypes
@@ -482,18 +485,23 @@ $\tensor[_{C}]{\mathbf{K}}{_{12}} \;
 \tensor[_{I}]{\mathbf{W}}{_{2}} \;
 \tensor[_{I}]{\mathbf{W}}{_{2}^{\top}} \;
 \tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
-\tensor[_{C}]{\mathbf{K}}{_{21}}\sigma^{2}_{\alpha}$
+\tensor[_{C}]{\mathbf{K}}{_{21}} \;
+\tensor[_{I}]{\sigma^{2}_{\alpha}}{}$
 \cite{Fernando2014}.
 
 
-The structure of the residual imputation/prediction error is known and can 
-therefore be modeled.
+The structure of the residual imputation/prediction error is known and,
+therefore, can modeled.
 
 The general model for the single step procedure can then be written as 
 
 \begin{equation} \label{eq:single-step-model}
 \mathbf{y} =
-\mathbf{Xb} + \tensor[_{I}]{\mathbf{W}}{} \; \tensor[_{I}]{\boldsymbol{\alpha}} + \mathbf{U} \boldsymbol{\epsilon} + \mathbf{e},
+\mathbf{Xb} +
+\tensor[_{I}]{\mathbf{W}}{} \;
+\tensor[_{I}]{\boldsymbol{\alpha}}{} +
+\mathbf{U} \boldsymbol{\epsilon} +
+\mathbf{e},
 \end{equation}
 
 with
@@ -511,8 +519,8 @@ with
  \end{bmatrix}.
 \end{equation}
 
-Following the notation in \citeNP{Fernando2014} the phenotypes can be untangled 
-as:
+According to the notation in \citeNP{Fernando2014} the phenotypes can be
+untangled as:
 
 \begin{align} \label{eq:entangled-augmented-single-step-model}
 \begin{bmatrix}
@@ -547,7 +555,7 @@ as:
 \begin{bmatrix}
   \tensor[_{C}]{\mathbf{K}}{_{12}} \; \tensor[_{C}]{\mathbf{K}}{_{22}^{-1}} \;
   \tensor[_{I}]{\mathbf{W}}{_{2}} \;
-  \tensor[_{I}]{\boldsymbol{\alpha}} + \boldsymbol{\epsilon}  \\
+  \tensor[_{I}]{\boldsymbol{\alpha}}{} + \boldsymbol{\epsilon}  \\
   \tensor[_{I}]{\mathbf{W}}{_{2}} \; \tensor[_{I}]{\boldsymbol{\alpha}} \\
  \end{bmatrix}
   + \mathbf{e} \\
@@ -562,50 +570,30 @@ as:
   \boldsymbol{0} & \mathbf{Z}_2
  \end{bmatrix}
 \begin{bmatrix}
-  \tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} \; \tensor[_{I}]{\boldsymbol{\alpha}} + \boldsymbol{\epsilon} \\
+  \tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} \;
+  \tensor[_{I}]{\boldsymbol{\alpha}}{} + \boldsymbol{\epsilon} \\
   \tensor[_{I}]{\mathbf{W}}{_{2}} \; \tensor[_{I}]{\boldsymbol{\alpha}} \\
  \end{bmatrix}
   + \mathbf{e} \\
 \end{align}
 
-The above equation implies that ultimately single step prediction uses only
-one random effect vector $\mathbf{g}$, which entails the observed effects of
-the incomplete predictor $\mathbf{g}_{2}$ and the imputed effects
-$\mathbf{\hat{g}}_{1}$ for genotypes that are not equipped with the incomplete
-predictor plus the residual imputation error $\boldsymbol{\epsilon}$.
+The model above indicates that single step prediction models ultimately use
+only the matrix of known and imputed feature covariates $\mathbf{W}$ for the
+estimation of breeding values while accounting for the imputation error
+$\boldsymbol{\epsilon}$.
 
 Our final model is now:
 
 \begin{align} \label{eq:final-model}
 \mathbf{y} &= \mathbf{Xb} +
-\mathbf{Z} \; \tensor[_{I}]{\mathbf{W}}{} \;
-\tensor[_{I}]{\boldsymbol{\alpha}} +
+\mathbf{Z} \;
+\tensor[_{I}]{\mathbf{W}}{} \;
+\tensor[_{I}]{\boldsymbol{\alpha}}{} +
 \mathbf{Z}\mathbf{U} \boldsymbol{\epsilon} +
 \mathbf{e}.
 \end{align}
 
-Extending this model to hybrids with parent lines from two heterotic groups
-simply requires separating the feature matrices of the two predictors into a
-paternal and a maternal component, respectively.
-Using the index $D$ for the Dent and the index $F$ for the Flint lines in Exp2
-we then have a feature matrix $\mathbf{M}_{D}$ and $\mathbf{M}_{F}$ for each
-predictor.
-For the hybrids the final model is therefore simply
-\begin{align} \label{eq:final-model}
-\mathbf{y} &= \mathbf{Xb} +
-\mathbf{Z}_{D} \;
-\tensor[_{I}]{\mathbf{W}}{_{D}} \; \tensor[_{I}]{\boldsymbol{\alpha}}{_{D}} +
-\mathbf{Z}_{D} \mathbf{U}_{D} \boldsymbol{\epsilon}_{D} +
-\mathbf{Z}_{F} \;
-\tensor[_{I}]{\mathbf{W}}{_{F}} \;
-\tensor[_{I}]{\boldsymbol{\alpha}}{_{F}} +
-\mathbf{Z}_{F}\mathbf{U}_{F} \boldsymbol{\epsilon}_{F} +
-\mathbf{e}.
-\end{align}
-
-
-Breeding values or, separately for each heterotic group, general combining
-abilities can be estimated as:
+Breeding values can be estimated as:
 
 \begin{equation} \label{eq:breeding-values}
 \hat{\mathbf{g}} =
@@ -619,22 +607,29 @@ abilities can be estimated as:
   \mathbf{Z}_1 \\
   0
  \end{bmatrix}
- \hat{\boldsymbol{\epsilon}} 
+ \hat{\boldsymbol{\epsilon}}
 \end{equation}
 
-For the hybrid data, the obtained GCA effects for the inbred lines represent 
-half their breeding values.
+
 The predicted agronomic performance of the inbred lines is
 
 \begin{equation} \label{eq:inbred-predicted-performance}
 \hat{\mathbf{y}} = \mathbf{Z}\mathbf{\hat{g}} 
 \end{equation}
 
-and that of the hybrids is equivalently
+The previous models can simply be extended to hybrids by defining separate
+feature matrices for each predictor and each heterotic group; here
+$\mathbf{M}_{D}$ for Dent and $\mathbf{M}_{F}$ for Flint parent lines in Exp2.
+The general model for the calculation of genetic values in Exp2 is then
 
-\begin{equation} \label{eq:inbred-predicted-performance}
-\hat{\mathbf{y}} = \mathbf{Z}_{D}\mathbf{\hat{g}}_{D} + \mathbf{Z}_{F}\mathbf{\hat{g}}_{F}.
+\begin{equation} \label{eq:hybrid-genetic-value-model}
+  \mathbf{y} = \mu + \mathbf{Z}_{D} \mathbf{g}_{D} +
+  \mathbf{Z}_{F} \mathbf{g}_{F} +
+  \mathbf{e},
 \end{equation}
+
+corresponding to Eq.~\ref{eq:KBLUPModel}.
+
 
 \subsection{Predictive ability and model validation}
 For the validation of our predictions, we employed leave-one-out
@@ -648,20 +643,18 @@ and $n - 1$ times for model training.
 For the hybrid data, LOOCV was carried out as follows:
 Let $D$ and $F$ denote the set of parental inbred lines from the Dent and the 
 Flint group, respectively.
-Further, let $H \cap [D \times F]$ denote the set of hybrids from crosses 
-between $D$ and $F$.
-Note that $H$ does not comprise all possible crosses between $D$ and $F$,
-which would have been $142 \times 103 = 14,626$ hybrids, but a subset of 1,521
+The set $H$ is the subset of 1,521 phenotyped hybrids within the set of all
+possible hybrids $D \times F$, which would comprise $14,626 = 142 * 103$
 hybrids.
-Let $H_{i \times j}$ denote the hybrid to be predicted.
+Let $i \times j$ denote the hybrid to be predicted.
 We can then define the parents of the training set hybrids as
 $D_{i} = D \setminus \{i\}$ and $F_{j} = F \setminus \{j\}$, respectively.
 The training set is then defined as 
 $H_{TRN}(i \times j) = H \cap (D_{i} \times F_{j})$.
 
 We judged the performance of each model by looking at its predictive ability,
-which is calculated as $\rho(\mathbf{y}, \mathbf{\hat{y}})$, where 
-$\mathbf{\hat{y}}$ is the vector of predicted values for all genotypes.
+which was calculated as the correlation $\rho(\mathbf{y}, \mathbf{\hat{y}})$,
+where $\mathbf{\hat{y}}$ is the vector of predicted values for all genotypes.
 
 Standard errors for the predictive abilities were calculated by bootstrapping
 the predicted and observed values 1,000 times using the \emph{R} package 
@@ -673,7 +666,7 @@ the predicted and observed values 1,000 times using the \emph{R} package
 In order to evaluate the influence of the fraction of genotypes that is not
 covered by the incomplete predictor on predictive ability we generated core
 sets of nine different sizes from Exp1 (Fig.~\ref{fig:compound-plot}~a).
-The base of each of these core sets was the superset of genotypes that were
+The base of each of these core sets was the set of 110 genotypes that were
 covered by both, genomic and trancriptomic data.
 A core set was created by artificially declaring a pre-specified fraction 
 $x = {10\%, 20\%, \dots, 90\%}$ of genotypes as lacking of transcriptomic 
@@ -683,6 +676,8 @@ repeatedly sampling genotypes, whose trancsriptomic information was declared
 as missing, at random (Fig.~\ref{fig:compound-plot}~b).
 The artificially removed transriptomic information on these genotypes was then
 imputed.
+For the each core set, comprising 110 genotypes, predictive abilities were again
+computed as described above, using LOOCV and bootstrapping.
 
 \begin{figure}[H]
   \centering
@@ -715,7 +710,7 @@ imputed.
 \section*{Results}
 \Genetics2level{Exp1}
 At the level of the 110 genotypes for which both, genomic (G) and 
-transcriptomic (T) information, were available, the use of T yielded higher
+transcriptomic (T) information were available, the use of T yielded higher
 predictive abilities than the use of G for two out of six traits
 (Fig.~\ref{fig:InbredResults}A).
 In terms of predictive ability, the absolute advantage of T over G was as large 
@@ -723,14 +718,16 @@ as 0.15 as observed for the trait ED\@.
 The predictive ability for predictions based on G were always higher for the
 full set of inbred lines ($n = 164$) than for the reduced set of inbred lines
 ($n = 110$).
-The combination of G and T (\textit{i.e.}, GT) in a single-step approach for the 
+The combination of G and T (\textit{i.e.}, $\tensor[_{C}]{G}{}
+\tensor[_{I}]{T}{}$, where the subscripts correspond to the complete ($C$) and
+the incomplete ($I$) predictor, respectively) in a single-step approach for the 
 prediction of all 164 lines, performed at least as well as G alone when T was 
 superior over G for the reduced set of 110 lines.
-In the case of KW and ED, the use of GT yielded a slight improvement in predictive 
-ability over G.
+In the case of KW and ED, the use of $\tensor[_{C}]{G}{}\tensor[_{I}]{T}{}$
+yielded a slight improvement in predictive ability over G.
 Where T was a worse predictor for the reduced set of 110 lines than G,
-predictive abilities of GT for the full set of 164 lines were also worse than 
-those based on G alone.
+predictive abilities of $\tensor[_{C}]{G}{}\tensor[_{I}]{T}{}$ for the full set
+of 164 lines were also worse than those based on G alone.
 
 \begin{figure}[H]
   \centering
@@ -740,7 +737,7 @@ those based on G alone.
   tropical/subtropical inbred lines from the maize diversity panel and six
   agronomic traits.
   As predictors, genomic (G) data, transcriptomic (T) data and their 
-  combination (GT) were used.
+  combination ($\tensor[_{C}]{G}{}\tensor[_{I}]{T}{}$) were used.
   The `Reduced' panel includes a subset of 110 lines covered by genomic and
   transcriptomic information whereas the `Full' panel comprises all 164
   genotypes.
@@ -768,13 +765,22 @@ In the reduced set, P had the highest predictive ability for STA and DMC\@.
 For FAT and SUG, G was the superior predictor inside the reduced set.
 In the full set of 1,521 hybrids, predictive abilities obtained with G increased
 markedly for all traits with the exception of FAT\@.
-The combination of genomic and transriptomic information (GT) in a single-step
-model yielded a small improvement over G alone for the traits DMY and PRO\@.
+The combination of genomic and transriptomic information
+($\tensor[_{C}]{G}{}\tensor[_{I}]{T}{}$) in a single-step model yielded a small
+improvement over G alone for the traits DMY and PRO\@.
 Except for PRO, compared to using only G, trait prediction did not benefit from 
 the single step approach when T was not superior to G in the reduced set.
-Predictive abilities resulting from combinations of pedigree with genomic (PG)
-information were better than P alone for all traits and PT improved upon P in
+Predictive abilities resulting from combinations of pedigree with genomic
+($\tensor[_{C}]{P}{}\tensor[_{I}]{G}{}$) information were better than P alone
+for all traits and $\tensor[_{C}]{P}{}\tensor[_{I}]{T}{}$ improved upon P in
 the `full' set for four traits.
+
+A previous study using the same data as in Exp2 concluded that modeling of
+specific combining ability (SCA) effects did not appreciably improve predictive
+abilities over that of a purely additive model for any of the investigated
+traits.
+Nevertheless, the inclusion of SCA effects in a single step prediction model
+would be as straightforward as computing the Kronecker product between extension of single step prediction 
 
 \begin{figure}[H]
 \centering
@@ -783,7 +789,7 @@ the `full' set for four traits.
     Predictive abilities and average, bootstrapped standard errors for the set
     of maize hybrids and seven agronomic traits.
     As predictors, pedigree (P), genomic (G), transcriptomic (T) data and 
-    combinations thereof we used.
+    combinations thereof were used.
     The `Full' set of genotypes comprises 1,521 hybrid progeny based on 245
     parental inbred lines, whereas the `Reduced' set comprises 685 hybrid
     progeny based on 103 parental inbred lines.
@@ -796,19 +802,22 @@ the `full' set for four traits.
 
 
 \Genetics2level{Impact of coverage by the incomplete predictor}
-Single-step approaches are based on the use of one complete predictor that
-covers all genotypes and one incomplete predictor that covers only a subset of
-all available genotypes.
-Here, we explore the impact of which data are covered by the incomplete 
-predictor on the predictive abilities obtained via single-step approaches by
-focusing exclusively on the 110 inbred lines from the maize diversity panel
-that are covered by both, genomic and transcriptomic information.
-First, we assembled nine different core sets, each with 100 nested subsamples,
-which were generated by randomly removing transcriptomic information from
-some genotypes (Fig.~\ref{fig:compound-plot}).
-The nine core sets differ in that each covers a different number of genotypes,
-ranging from only 10\% to 90\% of all genotypes covered by the incomplete
-predictor (Fig.~\ref{fig:inbred-pca}).
+Predictive abilities for the six traits in the the different core sets of Exp1
+varied widely within most traits (Fig.~\ref{fig:core-results}).
+For most traits, an initial increase in predictive abilities when moving
+from a core set size of 10\% to 20\%/30\% was observed, regardless of whether G
+or T individually was the superior predictor.
+For the traits CW, GW and PH, which were better predicted via G than via T in
+the reduced set of lines, predictive abilities were higher when only a small
+number of genotypes was included in the core set.
+This corresponds to a situation where a large number of genotypes is being 
+imputed and the majority of the information is derived from genomic information.
+A hike in predictive abilities, when moving from a core fraction of 10\% to 
+90\%, was observed for ED and KW, which were predicted better when using T
+individually compared to using G individually.
+The only trait that was barely affected by a change in the core fraction was DS
+for which the predictive abilities using either G or T individually were almost
+identical (Fig.~\ref{fig:InbredResults}).
 
 \begin{figure}[H]
   \centering
@@ -831,25 +840,6 @@ predictor (Fig.~\ref{fig:inbred-pca}).
   }
 \label{fig:core-results}
 \end{figure}
-
-
-Predictive abilities obtained with the different core sets varied widely within
-most traits (Fig.~\ref{fig:core-results}).
-For most traits, an initial increase in predictive abilities when moving
-from a core set size of 10\% to 20\%/30\% was observed, regardless of whether G
-or T individually was the superior predictor.
-For the traits CW, GW and PH, which were better predicted via G than via T in
-the reduced set of lines, predictive abilities were higher when only a small
-number of genotypes was included in the core set.
-This corresponds to a situation where a large number of genotypes is being 
-imputed and the majority of the information is derived from genomic information.
-A hike in predictive abilities, when moving from a core fraction of 10\% to 
-90\%, was observed for ED and KW, which were predicted better when using T
-individually compared to using G individually.
-The only trait that was barely affected by a change in the core fraction was DS
-for which the predictive abilities using either G or T individually were almost
-identical (Fig.~\ref{fig:InbredResults}).
-
 
 
 
@@ -905,6 +895,9 @@ pedigree but only incomplete genomic records are available, its application has
 not yet been considered for the imputation of a complete predictor based on 
 incomplete downstream `omics' predictors such as transcriptomic, proteomic or 
 metabolomic data.
+While the heritability of relationship coefficients and genomic markers can be
+assumed to be equal to 1, this is not the case for the aforementioned
+quantitative `omics' predictors.
 Here, we considered single step approaches for a maize inbred line diversity
 panel as well as for a collection of maize hybrids using pedigree, genomic and
 transcriptomic data as predictors.
@@ -922,21 +915,21 @@ all available genotypes.
 Another possibility is that the number of additional phenotypes in the full
 set compared to the reduced set ($\Delta(n) = 54$) was not large enough to
 provide considerably more useful information.
-A larger dataset was available to~\citeNP{Ashraf2016}, who imputed genotypes
+A larger dataset was available to~\citeN{Ashraf2016}, who imputed genotypes
 for about 10,000 wheat lines using pedigree information and observed greater
 prediction accuracy of the single step method over genomic BLUP for all four
 evaluated traits.
 Predictive abilities reported for the maize diversity panel in this study were
-slightly different from those reported by \citeNP{Guo2016}, for three
+slightly different from those reported by~\citeN{Guo2016}, for three
 possible reasons:
 1) We reduced the dataset to 164 tropical/subtropical lines with little evident
 population structure and excluded all other genotypes from our analyses whereas
-\citeNP{Guo2016} used genotypes from four different subpopulations with a model
+\citeN{Guo2016} used genotypes from four different subpopulations with a model
 using a fixed effect to account for the differences between subpopulations.
 2) We applied quality checks for the predictor data after generating the subset
-of 164 inbred lines, whereas \citeNP{Guo2016} applied the quality checks to 368
+of 164 inbred lines, whereas~\citeN{Guo2016} applied the quality checks to 368
 genotypes.
-3) While \citeNP{Guo2016} used five-fold cross-validation with 500 repetitions,
+3) While~\citeN{Guo2016} used five-fold cross-validation with 500 repetitions,
 we employed a leave-one-out cross-validation scheme (LOOCV).
 Notwithstanding, the relative differences between predictive abilities for G 
 and T, respectively, were similar in both studies.
@@ -954,7 +947,7 @@ In medium-sized plant breeding programs, the advent of the doubled haploid (DH)
 technology~\cite{Wedzony2009} now allows for an annual production of 1,000 
 parent lines in each heterotic group, amounting to $10^{6}$ putative hybrid
 progeny.
-\citeNP{Westhues2017} have shown that, in hybrid breeding, the probability 
+\citeN{Westhues2017} have shown that, in hybrid breeding, the probability 
 of successfully selecting the best observed genotypes based on the best 
 predicted candidates is a strongly convex function of the predictive ability.
 Thus, even minor gains, when using transcriptomic and genomic data in a
@@ -989,7 +982,7 @@ By randomly and repeatedly declaring trancsriptomic information missing from
 genotypes in Exp1 we examined how reliably single step prediction works
 depending on the fraction of genotypes covered by both, the complete and the
 incomplete predictor.
-We observed that about $20-30\%$ of genotypes needed to be covered by both
+We observed that about $x=20-30\%$ of genotypes needed to be covered by both
 predictors to match the performance achieved with the complete predictor
 individually.
 Beyond this fraction of covered genotypes the trend in predictive ability
