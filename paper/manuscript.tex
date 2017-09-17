@@ -77,29 +77,27 @@
 
 
 \begin{abstract}
-Predicting the performance of candidates is indispensable for selection
-decisions in animal and plant breeding.
-Novel `omics' predictors have shown to improve upon genomics-based predictions
-of some complex traits but are yet expensive to sample.
-Here we show that single step prediction can be applied to a quantitative
-predictor.
-
+Predicting genotypic values with great precision is pivotal for effective
+candidate selections in animal and plant breeding.
+Novel `omics' predictors have shown to improve upon established genome-based
+predictions of some complex traits but are yet expensive to sample.
+In animal breeding, single step prediction was introduced to efficiently use
+pedigree information, collected on a large number of animals, and genomic
+information, collected on a smaller subset of animals, simultaneously without
+bias.
+Single step prediction has not been attempted with a predictor whose features
+display heritabilities smaller than one, yet.
 Using two maize datasets of inbred lines and hybrids we show that transcriptomic
-data can successfully be imputed, boosting forecasts when their predictive
+data can be imputed successfully, boosting forecasts when their predictive
 ability exceeds that of pedigree or genomic data.
-
-Equipping only a subset of genotypes with `omics' predictors and imputing all
+Covering only a subset of genotypes with `omics' predictors and imputing all
 others using pedigree or genomic data could enable breeders to improve trait
 predictions while keeping costs manageable.
 Employing `omics' predictors could particularly benefit candidate selection in
-hybrid breeding.
+hybrid breeding where the success of forecasts is a strongly convex function of
+predictive ability.
 \end{abstract}
 
-
-
-% Please add here a significance statement to explain the relevance of your work
-\section{Article Summary}
-$\dots$
 
 
 
@@ -699,8 +697,9 @@ computed as described above, using LOOCV and bootstrapping.
   Each of the white symbols represents a different genotype.
   For each value of $x$, 100 subsets $s$ are generated where $x\%$ of genotypes
   are randomly declared to be covered by both, the `complete' and the
-  `incomplete' predictor whereas the remaining $100\% - x\%$ of genotypes
-  are declared to be covered only by the `complete' predictor.
+  `incomplete' predictor (dark gray) whereas the remaining $100\% - x\%$ of
+  genotypes are declared to be covered only by the `complete' predictor (light
+  gray).
   }
 \label{fig:compound-plot}
 \end{figure}
@@ -774,13 +773,14 @@ Predictive abilities resulting from combinations of pedigree with genomic
 ($\tensor[_{C}]{P}{}\tensor[_{I}]{G}{}$) information were better than P alone
 for all traits and $\tensor[_{C}]{P}{}\tensor[_{I}]{T}{}$ improved upon P in
 the `full' set for four traits.
-
 A previous study using the same data as in Exp2 concluded that modeling of
 specific combining ability (SCA) effects did not appreciably improve predictive
 abilities over that of a purely additive model for any of the investigated
 traits.
 Nevertheless, the inclusion of SCA effects in a single step prediction model
-would be as straightforward as computing the Kronecker product between extension of single step prediction 
+would be as straightforward as computing the Kronecker product between the
+feature matrices $\mathbf{M}_{D}$ and $\mathbf{M}_{F}$ of the two corresponding
+heterotic groups~\cite{Martini2016}.
 
 \begin{figure}[H]
 \centering
