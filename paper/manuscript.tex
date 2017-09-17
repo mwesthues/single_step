@@ -103,7 +103,7 @@ predictive ability.
 \section{Cover Letter}
 Dear Managing editors of TAG,
 
-We wish to submit the enclosed manuscript "Omics-based Single Step Prediction"
+We wish to submit the enclosed manuscript ``Omics-based Single Step Prediction''
 by Westhues et al.\@ for publication in TAG.
 
 Recent studies in maize inbred lines~\cite{Guo2016}, maize hybrids
@@ -143,7 +143,7 @@ In conclusion our results demonstrate that single step prediction, using
 an established predictor such as pedigree information, can benefit from sampling
 a highly performant predictor, such as transcriptomic data, on a subset of all
 genotypes.
-The framework presented herein should help promoting the use of attractive
+The framework presented herein should help promote the use of attractive
 `omics' predictors by balancing their advantages with their currently higher
 sampling costs.
 
@@ -265,14 +265,13 @@ referred to as Exp1, was used~\cite{Yang2014}.
 Exp1 originally comprised 513 maize lines representing the global maize
 diversity  and was reduced to the set of tropical and subtropical lines
 ($n = 211$) given that it is the largest of the four subgroups classified by
-\citeN{Yang2014}.
+\citeN{Guo2016}.
 All inbred lines were evaluated in five Chinese environments described in detail
 by~\citeNP{Yang2014}.
 Best linear unbiased predictors (BLUPs) were calculated by~\citeN{Yang2014} for
-17 traits~\cite{Guo2016} of which six are presented in this study
-(Table~\ref{table:TraitKey}).
-The selection of these traits was done so that four traits were predicted with
-greater precision by transcriptomic data and two further traits were predicted
+17 traits of which six are presented in this study (Table~\ref{table:TraitKey}).
+The selection of these traits was done so that two traits were predicted with
+greater precision by transcriptomic data and four further traits were predicted
 with greater precision by genomic data.
 MaizeSNP50 BeadChip-data were available for the entire set of 513 lines from the
 diversity panel.
@@ -484,7 +483,7 @@ where observed feature covariates are stored in $\tensor[_I]{\mathbf{W}}{_{2}}$
 while the feature covariates for genotypes not covered by the incomplete
 predictor can be estimated/imputed with the aid of the covariance matrix of the
 complete predictor $\tensor[_{C}]{\mathbf{K}}{}$ and the feature matrix of the
-incomplete predictor $\tensor[_{I}]{\mathbf{W}}{_{22}}$ by calculating
+incomplete predictor $\tensor[_{I}]{\mathbf{W}}{_{2}}$ by calculating
 ($\tensor[_{I}]{\mathbf{\hat{W}}}{_{1}} = \tensor[_C]{\mathbf{K}}{_{12}} \;
 \tensor[_C]{\mathbf{K}}{_{22}^{-1}} \; \tensor[_I]{\mathbf{W}}{_{2}}$).
 In this case we need to partition the vector of genetic values $\mathbf{g}$
@@ -850,19 +849,19 @@ heterotic groups~\cite{Martini2016}.
 
 
 \Genetics2level{Impact of coverage by the incomplete predictor}
-Predictive abilities for the six traits in the the different core sets of Exp1
+Predictive abilities for the six traits in the different core sets of Exp1
 varied widely within most traits (Fig.~\ref{fig:core-results}).
 For most traits, an initial increase in predictive abilities when moving
 from a core set size of 10\% to 20\%/30\% was observed, regardless of whether G
 or T individually was the superior predictor.
-For the traits CW, GW and PH, which were better predicted via G than via T in
-the reduced set of lines, predictive abilities were higher when only a small
-number of genotypes was included in the core set.
+For the traits CW, GW and PH, which were predicted with higher precision via G
+than via T in the reduced set of lines, predictive abilities were higher when
+only a small number of genotypes was included in the core set.
 This corresponds to a situation where a large number of genotypes is being 
 imputed and the majority of the information is derived from genomic information.
 A hike in predictive abilities, when moving from a core fraction of 10\% to 
-90\%, was observed for ED and KW, which were predicted better when using T
-individually compared to using G individually.
+90\%, was observed for ED and KW, which were predicted with greater precision
+when using T individually compared to using G individually.
 The only trait that was barely affected by a change in the core fraction was DS
 for which the predictive abilities using either G or T individually were almost
 identical (Fig.~\ref{fig:InbredResults}).
