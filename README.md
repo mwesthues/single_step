@@ -41,7 +41,7 @@ set up by the Yan lab and are stored under `data/input/maizego`.
 
 The Hohenheim data were generated as part of the publication
 [Omics-based Hybrid Prediction in Maize](https://link.springer.com/article/10.1007%2Fs00122-017-2934-0) by Westhues et al. (2017) and can be
-found under `data/processed`.
+found [here](data/processed/).
 
 
 Run all scripts strictly in the following order in order to circumvent any
