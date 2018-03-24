@@ -68,9 +68,6 @@ previously described in [Guo et al. (2016)](https://link.springer.com/article/10
 *   `Kernel width` (KW)
 *   `Plant height` (PH)
 
-and explored the explored the distribution (including skewness) of each trait
-and the phenotypic correlation between traits ([script](analysis/maizego_agronomic_data.R)).
-
 In the case of maize hybrids we analyzed the traits
 
 *   `Dry matter yield` (DMY)
@@ -113,44 +110,15 @@ be found under the two following links
 
 # Predictions
 ## Preparation
-### Nested subsampling scheme
-To ensure that a potential bias due to population structure would be
-represented by an increased standard error of the predictive abilities we
-conceived a [nested resampling scheme](analysis/prepare_subsamples.R).
-A first level of sampling was applied to each combination of `Material` (*i.e.*
-"Hybrid" or "Inbred"), `Scenario` ("A" and "B" for inbred lines; "None" for
-hybrids), `Extent` ("Core" if every predictor was available for all genotypes
-and "Full for the entire set of genotypes") and `Core_Fraction`, representing
-the share of core-set genotypes for which data on all predictors were assumed
-to be available.
-The notion of `Core_Fraction` may sound contradictory to the concept of "Core"
-and "Full" sets of genotypes but note that for the variable `Core_Fraction` we
-artificially removed information on a predictor for some genotypes to implore
-the influence of genetic space-coverage through incomplete predictors on
-predictive ability.
-This random subsampling procedure was repeated 20 times and stored as
-`Rnd_Level2`.
-
-For all core-set inbred lines we applied a second, nested randomization scheme
-where `n * frac` genotypes were declared to have both data on the complete and
-the incomplete predictor whereas `n - n * frac` genotypes had only information
-on the complete predictor.
-Here `frac` denotes the fraction of all genotypes having information on both
-predictors.
-This second randomization was nested within each randomization stored in
-`Rnd_Level2` and applied 20 times per randomization in `Rnd_Level2`.
-Therefore, we ended up with 20 sets of predictions for each combination of
-`"Material" * "Extent" * "Scenario"` when `frac = 1` and `20 ** 2 = 400`
-sets of predictions for each combination of `"Material" * "Extent" *
-"Scenario" * "Core_Fraction"` when `frac != 1`.
-
-
+Test and training sets and their corresponding predictor data matrices were
+generated in a [separate script](analysis/prepare_subsamples.R) prior to
+the predictions.
 
 ### Prediction template
 In order to use the resources on the server as efficiently as possible,
 similar combinations of the various parameters considered (`Trait`,
-`Predictor`, `Material`, `Extent`, `Scenario`, `Rnd_Level1`, `Rnd_Level2`,
-`Core_Fraction`) were clustered together (coded as `Interval`) in a
+`Predictor`, `Material`, `Extent`, `Scenario`, `Rnd_Level1`, `Core_Fraction`)
+were clustered together (coded as `Interval`) in a
 [prediction template](analysis/prediction_template.R).
 
 After running some speed tests for some of these combinations a
@@ -171,15 +139,13 @@ After running the prediction, the results from all clusters were [concatenated](
 
 ## Bootstrap
 Separately for each combination of `Material`, `Extent`, `Scenario`, `Trait`,
-`Core_Fraction`, `Predictor`, `Rnd_Level1` and `Rnd_Level2`, a
-[bootstrap](analysis/bootstrap_predictions.R) of 10,000 runs was applied to
-a data frame comprising observed and predicted phenotypic values.
+`Core_Fraction`, `Predictor` and `Rnd_Level1` a [bootstrap](analysis/bootstrap_predictions.R)
+of 10,000 runs was applied to a data frame comprising observed and predicted
+phenotypic values.
 This yielded 10,000 bootstrap predictive abilities for each of the
 aforementioned combinations together with a corresponding standard error.
-The final predictive ability was calculated by taking the arithmetic mean
-of bootstrapped predictive abilities over `Rnd_Level1` and `Rnd_Level2`.
-The corresponding standard error was calculated across the average bootstrapped
-standard error across `Rnd_Level1` and `Rnd_Level`.
+The final predictive ability, and pertaining standard errors, were calculated by
+taking the arithmetic mean of bootstrapped predictive abilities.
 
 
 ## Visualization
