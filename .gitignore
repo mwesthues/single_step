@@ -27,13 +27,8 @@
 # Do not ignore files of the following kind...
 !*.R
 !*.r
-!*.tex
 !*.md
 !*.sh
-!*.Rmd
-!*reports/single-step-hypred-report.html
-!*tabs_figs/compound_plot.svg
-!*data/processed
 
 # ... even if they are in subdirectories
 !*/
@@ -42,7 +37,6 @@
 input_*
 software*
 tmp*
-
 
 .Rproj.user
 .Rproj
