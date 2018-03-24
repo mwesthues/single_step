@@ -14,6 +14,7 @@
 !data/derived/prediction_runs/prediction_template.RDS
 
 !data/processed/predictions/predictions.RDS
+!data/processed/predictions/bootstrapped_predictions.RDS
 
 # Do not ignore files of the following kind...
 !*.R
