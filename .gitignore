@@ -5,6 +5,10 @@
 !data/processed/uhoh/*
 !data/processed/maizego/*
 !data/derived/uhoh/*
+!data/derived/maizego/unique_snp-mrna-pheno_genotypes.RDS
+!data/derived/maizego/tst_pheno_tibble.RDS
+!data/derived/maizego/snp_meta_info_datatable.RDS
+!data/derived/maizego/mrna.RDS
 
 # Do not ignore files of the following kind...
 !*.R
