@@ -1,6 +1,8 @@
 
 # Ignore everything
 *
+
+# Do not ignore
 !data/processed/*
 !data/processed/uhoh/*
 !data/processed/maizego/*
@@ -15,6 +17,12 @@
 
 !data/processed/predictions/predictions.RDS
 !data/processed/predictions/bootstrapped_predictions.RDS
+
+!paper/tables_figures/pred_ability_inbred_core_fraction_pretty.svg
+!paper/tables_figures/pred_ability_inbred_pretty.svg
+!paper/tables_figures/pred_ability_hybrid_pretty.svg
+!paper/tables_figures/imputation.svg
+
 
 # Do not ignore files of the following kind...
 !*.R
