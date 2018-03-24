@@ -224,5 +224,5 @@ standard error across `Rnd_Level1` and `Rnd_Level`.
 
 
 ## Visualization
-Predictive abilities were plotted using [this script](analysis/visualized_predictions.R).
+Predictive abilities were plotted using [this script](analysis/visualize_predictions.R).
 
