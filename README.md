@@ -5,7 +5,6 @@
 	* [Agronomic Data](#agronomic-data)
 	* [Genomic Data](#genomic-data)
 	* [Transcriptomic Data](#transcriptomic-data)
-	* [Population Structure](#population-structure)
 * [Predictions](#predictions)
 	* [Preparation](#preparation)
 		* [Previous work for this manuscript](#previous-work-for-this-manuscript)
