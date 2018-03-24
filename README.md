@@ -73,7 +73,7 @@ In the case of maize hybrids we analyzed the traits
 *   `Protein` (PRO)
 *   `Starch` (STA)
 *   `Sugar` (SUG)
-*    Lignin (ADL)
+*   `Lignin` (ADL)
 
 The preparation of the phenotypic data for maize hybrids can be reproduced
 [here](analysis/uhoh_data_preparation.R).
