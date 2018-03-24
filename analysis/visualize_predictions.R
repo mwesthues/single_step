@@ -5,7 +5,8 @@ pacman::p_load(
   "data.table",
   "gsubfn",
   "ggthemes",
-  "cowplot"
+  "cowplot",
+  "svglite"
   )
 
 boot_df <- "./data/processed/predictions/bootstrapped_predictions.RDS" %>%
@@ -74,18 +75,24 @@ hybrid_plot <- hyb_df %>%
   dplyr::rename(`Predictive Ability` = "avg_r") %>%
   dplyr::mutate(Combi = forcats::fct_recode(
     Combi,
-    "Reduced" = "Core"
+    `Reduced Set` = "Core",
+    `Full Set` = "Full"
   )) %>%
   ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
-  geom_bar(stat = "identity", position = dodge, color = "black") +
+  geom_bar(stat = "identity", position = dodge, color = "black", width = 0.8) +
   geom_errorbar(limits, position = dodge, width = 0.25) +
   facet_grid(. ~ Combi) +
   scale_fill_manual(values = mycols) +
-  ggthemes::theme_pander(base_size = 10)
+  ggthemes::theme_pander(base_size = 10) +
+  theme(
+    legend.position = "top",
+    panel.spacing = unit(2, "lines")
+  ) +
+  guides(fill = guide_legend(nrow = 1))
 
 ggsave(
   plot = hybrid_plot,
-  filename = "./paper/tables_figures/pred_ability_hybrid.pdf",
+  filename = "./paper/tables_figures/pred_ability_hybrid.svg",
   width = 7,
   height = 4,
   units = "in"
@@ -135,27 +142,32 @@ a_colors <- scales::brewer_pal(type = "div", palette = "Spectral")(n = 6) %>%
   set_names(c("P", "G", "T", "PG", "PT", "GT")) %>%
   .[names(.) %in% c("G", "T", "GT")]
 
-inbred_plot <- inbred_df %>%
+inbred_scen_a_df <- inbred_df %>%
   dplyr::filter(Core_Fraction == "1") %>%
   dplyr::rename(`Predictive Ability` = "avg_r") %>%
   dplyr::mutate(Combi = forcats::fct_recode(
     Combi,
-    "Reduced" = "CIA",
-    "Full" = "FIA"
-  )) %>%
-  ggplot(aes(x = Combi, y = `Predictive Ability`, fill = Predictor)) +
-  geom_bar(stat = "identity", position = dodge) +
-  geom_errorbar(limits, position = dodge, width = 0.25) +
-  facet_grid(Trait ~ .) +
+    `Reduced Set` = "CIA",
+    `Full Set` = "FIA"
+  )) 
+
+inbred_plot <- inbred_scen_a_df %>%
+  ggplot(aes(x = Trait, y = `Predictive Ability`, fill = Predictor)) +
+  geom_bar(stat = "identity", position = dodge, color = "black") +
+  geom_errorbar(limits, position = dodge, width = 0.15) +
+  facet_grid(. ~ Combi) +
   scale_fill_manual(values = a_colors) +
   theme_pander(base_size = 10) +
-  theme(axis.title.x = element_blank())
+  theme(
+    axis.title.x = element_blank(),
+    legend.position = "top"
+  )
 
 ggsave(
   plot = inbred_plot,
-  filename = "./paper/tables_figures/pred_ability_inbred.pdf",
+  filename = "./paper/tables_figures/pred_ability_inbred.svg",
   width = 7,
-  height = 6,
+  height = 4,
   units = "in"
   )
 
@@ -179,9 +191,9 @@ line_type_df <- inbred_df %>%
     )
   ) %>%
   dplyr::mutate(LineType = dplyr::case_when(
-    BetterPredictor == "G" ~ "a",
-    BetterPredictor == "T" ~ "e",
-    BetterPredictor == "None" ~ "k"
+    BetterPredictor == "G" ~ "longdash",
+    BetterPredictor == "T" ~ "dotted",
+    BetterPredictor == "None" ~ "solid"
     )
   ) %>%
   dplyr::select(-Combi, -Core_Fraction)
@@ -199,27 +211,31 @@ core_df <- inbred_df %>%
   dplyr::inner_join(y = line_type_df, by = "Trait")
 
 core_plot <- core_df %>%
-  dplyr::rename(`Core Fraction` = "Core_Fraction") %>%
+  dplyr::rename(`Core Fraction (%)` = "Core_Fraction") %>%
   dplyr::rename(`Predictive Ability` = "avg_r") %>%
   ggplot(aes(
-    x = `Core Fraction`,
+    x = `Core Fraction (%)`,
     y = `Predictive Ability`,
     color = Trait,
     group = Trait
     )
   ) +
-  geom_line(aes(linetype = LineType), size = 1.2) +
-  geom_point(size = 3, shape = 4, color = "black") +
+  geom_line(aes(linetype = LineType), size = 1) +
+  geom_point(size = 3, shape = 20, color = "black") +
   ggthemes::scale_color_tableau() +
   ggthemes::theme_pander(base_size = 10) +
   theme(legend.position = "top") +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   scale_linetype(guide = "none") +
-  scale_shape(guide = "none")
+  scale_shape(guide = "none") +
+  scale_x_discrete(
+    breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1),
+    labels = c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+  )
 
 ggsave(
   plot = core_plot,
-  filename = "./paper/tables_figures/pred_ability_inbred_core_fraction.pdf",
+  filename = "./paper/tables_figures/pred_ability_inbred_core_fraction.svg",
   width = 7,
   height = 6,
   units = "in"
