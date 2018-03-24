@@ -42,7 +42,7 @@ stored under `data/input/maizego`:
 
 *   The file `Expression_final_QQNormalized.tar.gz` from the [Baidu
     Cloud](https://pan.baidu.com/s/1eQH3hfW#list/path=%2FMaizeGo%20Resources%2FTranscriptomic&parentPath=%2F).
-*   The file `blup_traits.csv` from the [Baidu
+*   The file `blup_traits_final.csv` from the [Baidu
     Cloud](https://pan.baidu.com/s/1eQH3hfW#list/path=%2FMaizeGo%20Resources%2FPhenotype%2FAgronomic&parentPath=%2F).
 *   The file `513allchr-imputation.zip` from the [Baidu
     Cloud](https://pan.baidu.com/s/1eQH3hfW#list/path=%2FMaizeGo%20Resources%2FGenotype%2FSNPs_513lines_0.55M_MAF0.05&parentPath=%2F).
