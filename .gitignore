@@ -1,7 +1,7 @@
 
 # Ignore everything
 *
-/data
+!data/processed/*
 
 # Do not ignore files of the following kind...
 !*.R
@@ -12,6 +12,7 @@
 !*.Rmd
 !*reports/single-step-hypred-report.html
 !*tabs_figs/compound_plot.svg
+!*data/processed
 
 # ... even if they are in subdirectories
 !*/
