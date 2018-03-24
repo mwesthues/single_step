@@ -111,49 +111,8 @@ be found under the two following links
 ([hybrids](analysis/uhoh_data_preparation.R), [inbreds](analysis/maizego_gene_expression.R)).
 
 
-
-
-## Population Structure
-Principal component analyses were run for the [hybrid](analysis/pca.R) and
-[inbred](analysis/maizego_snp_analyses.R) material.
-
-The separation between the Dent and the Flint heterotic group for the hybrid
-material [looked as expected](analysis/pca.R) but for the inbred lines we
-found unexpected clustering of the lines, as determined via a [STRUCTURE](analysis/maizego_structure.R),
-analysis and a [PCA](analysis/maizego_snp_anlyses.R), albeit it with very low
-fractions of variance explained by the first five principal components.
-Click [here](reports/select_subpopulation.Rmd) for a more detailed report.
-Inbred lines that belonged to the clusters `1` and `4`, which were rather
-homogeneous, were assigned to scenario `A`.
-We defined a second scenario `B` which simply comprised all available inbred
-lines and ran it to have predictive abilities for all genotypes in case
-population structure was no issue for this material.
-
-
-
-
-
 # Predictions
 ## Preparation
-### Previous work for this manuscript
-In the first draft we wanted to evaluate the influence of the genetic
-constitutation of the set of genotypes that has only data on one out of two
-predictors by generating core samples  (https://github.com/mwesthues/single_step/commit/8f8b39198be7d5091954f84ec0c5834afd1c3cfa).
-We defined core samples as a subset of genotypes that is covered by two
-predictors whereas all other genotypes (*i.e.* the complement) are only covered
-by a single predictor.
-The first application involved assembling core sets of varying sizes by
-maximizing the average genetic distance among core set members using the
-Modifed Rogers (MR) distance as the criterion ([Thachuk et al. (2009)](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-243)).
-The size of the core set was varied in increments of ten percentage points and
-ranged from 10% to 90% of all inbred lines.
-The issue with this approch is that we could not preclude effects of population
-structure in our material on predictive abilities.
-Therefore, we decided to replace the core sampling procedure by a nested random
-subsampling procedure.
-
-
-
 ### Nested subsampling scheme
 To ensure that a potential bias due to population structure would be
 represented by an increased standard error of the predictive abilities we
