@@ -140,9 +140,7 @@ Separately for each combination of `Material`, `Extent`, `Scenario`, `Trait`,
 of 10,000 runs was applied to a data frame comprising observed and predicted
 phenotypic values.
 This yielded 10,000 bootstrap predictive abilities for each of the
-aforementioned combinations together with a corresponding standard error.
-The final predictive ability, and pertaining standard errors, were calculated by
-taking the arithmetic mean of bootstrapped predictive abilities.
+aforementioned combinations.
 
 
 ## Visualization
