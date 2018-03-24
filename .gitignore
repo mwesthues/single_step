@@ -10,6 +10,9 @@
 !data/derived/maizego/snp_meta_info_datatable.RDS
 !data/derived/maizego/mrna.RDS
 
+!data/derived/predictor_subsets/*
+!data/derived/prediction_runs/prediction_template.RDS
+
 # Do not ignore files of the following kind...
 !*.R
 !*.r
