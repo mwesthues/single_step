@@ -2,6 +2,8 @@
 # Ignore everything
 *
 !data/processed/*
+!data/processed/uhoh/*
+!data/processed/maizego/*
 !data/derived/uhoh/*
 
 # Do not ignore files of the following kind...
