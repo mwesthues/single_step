@@ -7,8 +7,6 @@
 	* [Transcriptomic Data](#transcriptomic-data)
 * [Predictions](#predictions)
 	* [Preparation](#preparation)
-		* [Previous work for this manuscript](#previous-work-for-this-manuscript)
-		* [Nested subsampling scheme](#nested-subsampling-scheme)
 		* [Prediction template](#prediction-template)
 	* [Execution](#execution)
 	* [Bootstrap](#bootstrap)
