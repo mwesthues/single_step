@@ -2,6 +2,7 @@
 # Ignore everything
 *
 !data/processed/*
+!data/derived/uhoh/*
 
 # Do not ignore files of the following kind...
 !*.R
